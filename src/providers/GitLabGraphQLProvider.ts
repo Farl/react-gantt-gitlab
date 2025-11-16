@@ -508,6 +508,76 @@ export class GitLabGraphQLProvider {
   }
 
   /**
+   * Batch update task order for multiple tasks
+   * This is more efficient than updating one by one
+   */
+  async updateTasksOrder(
+    tasks: Array<{ id: TID; order: number }>,
+  ): Promise<void> {
+    console.log(
+      `[GitLabGraphQL] Batch updating order for ${tasks.length} tasks`,
+    );
+
+    // 1. Batch fetch all work items data (global ID + description) in one query
+    const iids = tasks.map((t) => t.id);
+    const dataMap = await this.getBatchWorkItemsData(iids);
+
+    // 2. Update each task (still needs individual mutations unfortunately)
+    for (const { id, order } of tasks) {
+      const data = dataMap.get(id);
+      if (!data) {
+        console.error(`[GitLabGraphQL] No data found for task ${id}`);
+        continue;
+      }
+
+      // Inject order into description
+      const newDescription = this.injectOrderIntoDescription(
+        data.description,
+        order,
+      );
+
+      // Perform mutation
+      const mutation = `
+        mutation updateWorkItem($input: WorkItemUpdateInput!) {
+          workItemUpdate(input: $input) {
+            workItem {
+              id
+              iid
+            }
+            errors
+          }
+        }
+      `;
+
+      const input = {
+        id: data.globalId,
+        descriptionWidget: {
+          description: newDescription,
+        },
+      };
+
+      const result = await this.graphqlClient.mutate<{
+        workItemUpdate: {
+          workItem: { id: string; iid: string };
+          errors: string[];
+        };
+      }>(mutation, { input });
+
+      if (
+        result.workItemUpdate.errors &&
+        result.workItemUpdate.errors.length > 0
+      ) {
+        console.error(
+          `[GitLabGraphQL] Failed to update order for task ${id}:`,
+          result.workItemUpdate.errors,
+        );
+      }
+    }
+
+    console.log('[GitLabGraphQL] Batch update completed');
+  }
+
+  /**
    * Perform the actual update
    */
   private async performUpdate(id: TID, task: Partial<ITask>): Promise<void> {
@@ -515,10 +585,8 @@ export class GitLabGraphQLProvider {
     let workItemId: string;
     if (task._gitlab?.id) {
       workItemId = task._gitlab.id;
-      console.log('[GitLabGraphQL] Using cached global ID:', workItemId);
     } else {
       workItemId = await this.getWorkItemGlobalId(id);
-      console.log('[GitLabGraphQL] Queried global ID:', workItemId);
     }
 
     // Build mutation input
@@ -536,7 +604,17 @@ export class GitLabGraphQLProvider {
       task.details !== undefined ||
       task.$custom?.displayOrder !== undefined
     ) {
-      let description = task.details !== undefined ? task.details : '';
+      let description: string;
+
+      // If details is not provided, we need to fetch current description from GitLab
+      if (
+        task.details === undefined &&
+        task.$custom?.displayOrder !== undefined
+      ) {
+        description = await this.getWorkItemDescription(id);
+      } else {
+        description = task.details !== undefined ? task.details : '';
+      }
 
       // Inject order metadata if provided
       if (task.$custom?.displayOrder !== undefined) {
@@ -592,22 +670,12 @@ export class GitLabGraphQLProvider {
       }
     `;
 
-    console.log(
-      '[GitLabGraphQL] Updating work item with input:',
-      JSON.stringify(input, null, 2),
-    );
-
     const result = await this.graphqlClient.mutate<{
       workItemUpdate: {
         workItem: { id: string; iid: string };
         errors: string[];
       };
     }>(mutation, { input });
-
-    console.log(
-      '[GitLabGraphQL] Mutation result:',
-      JSON.stringify(result, null, 2),
-    );
 
     if (
       result.workItemUpdate.errors &&
@@ -621,13 +689,114 @@ export class GitLabGraphQLProvider {
         `Failed to update work item: ${result.workItemUpdate.errors.join(', ')}`,
       );
     }
-
-    console.log('[GitLabGraphQL] Work item updated successfully');
   }
 
   /**
    * Get work item global ID from IID
    */
+  /**
+   * Get work item description by IID
+   */
+  private async getWorkItemDescription(iid: TID): Promise<string> {
+    const query = `
+      query getWorkItemDescription($fullPath: ID!, $iid: String!) {
+        ${this.config.type}(fullPath: $fullPath) {
+          workItems(iids: [$iid]) {
+            nodes {
+              widgets {
+                __typename
+                ... on WorkItemWidgetDescription {
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      fullPath: this.getFullPath(),
+      iid: String(iid),
+    };
+
+    const result = await this.graphqlClient.query<WorkItemsResponse>(
+      query,
+      variables,
+    );
+
+    const workItems =
+      this.config.type === 'group'
+        ? result.group?.workItems.nodes || []
+        : result.project?.workItems.nodes || [];
+
+    if (!workItems || workItems.length === 0) {
+      throw new Error(`Work item with IID ${iid} not found`);
+    }
+
+    const descriptionWidget = workItems[0].widgets?.find(
+      (w: any) => w.__typename === 'WorkItemWidgetDescription',
+    ) as any;
+
+    return descriptionWidget?.description || '';
+  }
+
+  /**
+   * Batch fetch work items data (global ID and description) for multiple IIDs
+   */
+  private async getBatchWorkItemsData(
+    iids: TID[],
+  ): Promise<Map<TID, { globalId: string; description: string }>> {
+    const query = `
+      query getBatchWorkItems($fullPath: ID!, $iids: [String!]!) {
+        ${this.config.type}(fullPath: $fullPath) {
+          workItems(iids: $iids) {
+            nodes {
+              id
+              iid
+              widgets {
+                __typename
+                ... on WorkItemWidgetDescription {
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      fullPath: this.getFullPath(),
+      iids: iids.map(String),
+    };
+
+    const result = await this.graphqlClient.query<WorkItemsResponse>(
+      query,
+      variables,
+    );
+
+    const workItems =
+      this.config.type === 'group'
+        ? result.group?.workItems.nodes || []
+        : result.project?.workItems.nodes || [];
+
+    const dataMap = new Map<TID, { globalId: string; description: string }>();
+
+    for (const wi of workItems) {
+      const descriptionWidget = wi.widgets?.find(
+        (w: any) => w.__typename === 'WorkItemWidgetDescription',
+      ) as any;
+
+      dataMap.set(Number(wi.iid), {
+        globalId: wi.id,
+        description: descriptionWidget?.description || '',
+      });
+    }
+
+    return dataMap;
+  }
+
   private async getWorkItemGlobalId(iid: TID): Promise<string> {
     const query = `
       query getWorkItem($fullPath: ID!, $iid: String!) {

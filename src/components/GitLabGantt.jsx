@@ -519,40 +519,113 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
       // Handle task reordering (move-task event)
       ganttApi.on('move-task', async (ev) => {
-        console.log('[GitLab] Task moved:', ev);
+        // Skip if event is still in progress (dragging)
+        if (ev.inProgress) {
+          return;
+        }
 
-        // Get all tasks in the new order
-        const state = ganttApi.getState();
-        const tasks = state.tasks || [];
+        const movedTask = ganttApi.getTask(ev.id);
+        const parentId = movedTask.parent || 0;
 
-        // Build order map: parent -> list of children IDs in order
-        const orderMap = new Map();
-        tasks.forEach((task, index) => {
-          const parentId = task.parent || 0;
-          if (!orderMap.has(parentId)) {
-            orderMap.set(parentId, []);
-          }
-          orderMap.get(parentId).push({ id: task.id, index });
+        // Get all tasks with the same parent, sorted by current display order
+        const allTasks = allTasksRef.current;
+        let siblings = allTasks.filter(t => t && (t.parent || 0) === parentId);
+
+        // Sort by existing order (if available), otherwise by ID
+        siblings.sort((a, b) => {
+          const orderA = a.$custom?.displayOrder;
+          const orderB = b.$custom?.displayOrder;
+          if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+          if (orderA !== undefined) return -1;
+          if (orderB !== undefined) return 1;
+          return a.id - b.id;
         });
 
-        // For each parent group, update the order in descriptions
-        for (const [parentId, children] of orderMap.entries()) {
-          for (let i = 0; i < children.length; i++) {
-            const { id } = children[i];
-            const task = ganttApi.getTask(id);
+        // Find target position
+        const targetTask = siblings.find(t => t.id === ev.target);
+        if (!targetTask) {
+          console.error('[GitLab] Target task not found:', ev.target);
+          return;
+        }
 
-            // Update task with new order (async, fire and forget to avoid blocking UI)
-            (async () => {
-              try {
-                await syncTask(id, {
-                  details: task.details || '',
-                  $custom: { displayOrder: i }
-                });
-              } catch (error) {
-                console.error(`Failed to update order for task ${id}:`, error);
-              }
-            })();
+        const targetOrder = targetTask.$custom?.displayOrder;
+        const targetIndex = siblings.findIndex(t => t.id === ev.target);
+
+        // Calculate new order for moved task
+        let newOrder;
+        let needsReindex = false;
+        const ORDER_GAP = 10; // Default gap between orders
+
+        if (ev.mode === 'before') {
+          // Insert before target
+          const prevTask = targetIndex > 0 ? siblings[targetIndex - 1] : null;
+          const prevOrder = prevTask?.$custom?.displayOrder;
+
+          if (prevOrder !== undefined && targetOrder !== undefined) {
+            // Try to insert between prevOrder and targetOrder
+            if (targetOrder - prevOrder > 1) {
+              newOrder = Math.floor((prevOrder + targetOrder) / 2);
+            } else {
+              // Not enough space, need to reindex
+              needsReindex = true;
+            }
+          } else if (targetOrder !== undefined) {
+            // No previous task, insert before target
+            newOrder = Math.max(0, targetOrder - ORDER_GAP);
+          } else {
+            // No order info, need to reindex
+            needsReindex = true;
           }
+        } else if (ev.mode === 'after') {
+          // Insert after target
+          const nextTask = targetIndex < siblings.length - 1 ? siblings[targetIndex + 1] : null;
+          const nextOrder = nextTask?.$custom?.displayOrder;
+
+          if (targetOrder !== undefined && nextOrder !== undefined) {
+            // Try to insert between targetOrder and nextOrder
+            if (nextOrder - targetOrder > 1) {
+              newOrder = Math.floor((targetOrder + nextOrder) / 2);
+            } else {
+              // Not enough space, need to reindex
+              needsReindex = true;
+            }
+          } else if (targetOrder !== undefined) {
+            // No next task, insert after target
+            newOrder = targetOrder + ORDER_GAP;
+          } else {
+            // No order info, need to reindex
+            needsReindex = true;
+          }
+        }
+
+        try {
+          if (needsReindex) {
+            // Reindex all siblings with ORDER_GAP spacing
+            console.log('[GitLab] Need to reindex all siblings');
+
+            // Remove moved task and insert at new position
+            siblings = siblings.filter(t => t.id !== ev.id);
+            if (ev.mode === 'before') {
+              siblings.splice(targetIndex, 0, movedTask);
+            } else {
+              siblings.splice(targetIndex + 1, 0, movedTask);
+            }
+
+            const tasksToUpdate = siblings.map((sibling, i) => ({
+              id: sibling.id,
+              order: i * ORDER_GAP
+            }));
+
+            await provider.updateTasksOrder(tasksToUpdate);
+            console.log('[GitLab] Reindexed all tasks:', Object.fromEntries(tasksToUpdate.map(t => [t.id, t.order])));
+          } else {
+            // Only update the moved task
+            console.log(`[GitLab] Inserting task ${ev.id} with order ${newOrder}`);
+            await provider.updateTasksOrder([{ id: ev.id, order: newOrder }]);
+            console.log('[GitLab] Order saved:', {[ev.id]: newOrder});
+          }
+        } catch (error) {
+          console.error('Failed to update task order:', error);
         }
       });
 
