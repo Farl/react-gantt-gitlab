@@ -201,8 +201,21 @@ const Gantt = forwardRef(function Gantt(
     });
   }
 
+  // Custom locale with YY/MM/DD date format
+  const customLocale = useMemo(() => ({
+    ...en,
+    gantt: {
+      ...en.gantt,
+      dateFormat: 'yy/MM/dd',
+    },
+    formats: {
+      ...en.formats,
+      dateFormat: 'yy/MM/dd',
+    },
+  }), []);
+
   return (
-    <Locale words={en} optional={true}>
+    <Locale words={customLocale} optional={true}>
       <StoreContext.Provider value={api}>
         <Layout
           taskTemplate={taskTemplate}

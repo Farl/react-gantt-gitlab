@@ -722,34 +722,50 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     return '';
   }, [isWeekend, isHoliday]);
 
+  // Date cell component for custom formatting
+  const DateCell = useCallback(({ row, column }) => {
+    const date = row[column.id];
+    if (!date) return '';
+
+    const d = date instanceof Date ? date : new Date(date);
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}/${mm}/${dd}`;
+  }, []);
+
   // Simplified columns configuration - just the essentials
-  const columns = useMemo(() => [
-    {
-      id: 'text',
-      header: 'Task Title',
-      width: 250,
-    },
-    {
-      id: 'start',
-      header: 'Start',
-      width: 110,
-    },
-    {
-      id: 'end',
-      header: 'Due',
-      width: 110,
-    },
-    {
-      id: 'progress',
-      header: 'Progress',
-      width: 80,
-    },
-    {
-      id: 'add-task',
-      header: '',
-      width: 50,
-    },
-  ], []);
+  const columns = useMemo(() => {
+    return [
+      {
+        id: 'text',
+        header: 'Task Title',
+        width: 250,
+      },
+      {
+        id: 'start',
+        header: 'Start',
+        width: 110,
+        cell: DateCell,
+      },
+      {
+        id: 'end',
+        header: 'Due',
+        width: 110,
+        cell: DateCell,
+      },
+      {
+        id: 'progress',
+        header: 'Progress',
+        width: 80,
+      },
+      {
+        id: 'add-task',
+        header: '',
+        width: 50,
+      },
+    ];
+  }, [DateCell]);
 
   // Show loading state
   if (syncState.isLoading && !currentConfig) {

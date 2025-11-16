@@ -407,19 +407,23 @@ export class GitLabGraphQLProvider {
 
     // Determine start date: use startDate if available, otherwise use createdAt
     const startDate = dateWidget?.startDate
-      ? new Date(dateWidget.startDate)
+      ? new Date(dateWidget.startDate + 'T00:00:00')
       : new Date(workItem.createdAt);
 
     const endDate = dateWidget?.dueDate
-      ? new Date(dateWidget.dueDate)
+      ? new Date(dateWidget.dueDate + 'T23:59:59')
       : undefined;
 
     // Calculate duration
     let duration: number | undefined;
     if (endDate) {
+      // For date-only fields from GitLab:
+      // - startDate represents start of day (00:00:00)
+      // - dueDate represents end of day (23:59:59)
+      // So same-day tasks (start=end) should have duration of 1 day
       const diffTime = endDate.getTime() - startDate.getTime();
       const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      // Ensure minimum duration of 1 day for same-day tasks
+      // Ensure minimum duration of 1 day
       duration = Math.max(1, days);
     }
 
