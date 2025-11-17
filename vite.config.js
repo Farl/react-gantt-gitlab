@@ -11,9 +11,12 @@ export default defineConfig(({ command, mode }) => {
 
   if (isDemoBuild) {
     // Demo build configuration - includes all dependencies
+    // Use relative path for GitHub/GitLab Pages compatibility
+    const base = process.env.VITE_BASE_PATH || './';
+
     return {
       plugins: [react()],
-      base: './',
+      base: base,
       build: {
         outDir: 'dist-demos',
         rollupOptions: {

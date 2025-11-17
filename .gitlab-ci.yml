@@ -1,0 +1,19 @@
+image: node:20
+
+stages:
+  - deploy
+
+pages:
+  stage: deploy
+  cache:
+    paths:
+      - node_modules/
+  script:
+    - npm ci
+    - npm run build:pages
+    - mv dist-demos public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
