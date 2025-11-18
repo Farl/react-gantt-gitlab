@@ -661,7 +661,26 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         }
       });
 
-      // Handle task deletion
+      // Intercept task deletion to ask for confirmation
+      ganttApi.intercept('delete-task', (ev) => {
+        // Skip if this is an internal deletion (e.g., removing temp task)
+        if (ev.skipHandler) {
+          return true;
+        }
+
+        // Get task info for confirmation message
+        const task = ganttApi.getTask(ev.id);
+        const taskTitle = task ? task.text : `Task ${ev.id}`;
+
+        // Ask for confirmation
+        const confirmed = confirm(
+          `Are you sure you want to delete "${taskTitle}"?\n\nThis will permanently delete the task from GitLab.`
+        );
+
+        return confirmed;
+      });
+
+      // Handle task deletion after confirmation
       ganttApi.on('delete-task', async (ev) => {
         // Skip if this is an internal deletion (e.g., removing temp task)
         if (ev.skipHandler) {
