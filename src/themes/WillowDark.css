@@ -82,3 +82,42 @@
   /* sidebar */
   --wx-sidebar-close-icon: #384047;
 }
+
+/* GitLab-specific bar styling */
+.wx-willow-dark-theme .wx-gitlab-issue {
+  color: var(--wx-gantt-summary-font-color);
+  background-color: var(--wx-gantt-summary-color);
+  border: var(--wx-gantt-summary-border);
+}
+
+.wx-willow-dark-theme .wx-gitlab-issue.wx-selected {
+  border: 1px solid var(--wx-gantt-summary-border-color);
+  box-shadow: var(--wx-gantt-bar-shadow);
+}
+
+.wx-willow-dark-theme .wx-gitlab-issue:hover {
+  box-shadow: var(--wx-gantt-bar-shadow);
+}
+
+.wx-willow-dark-theme .wx-gitlab-issue .wx-progress-percent {
+  background-color: var(--wx-gantt-summary-fill-color);
+}
+
+.wx-willow-dark-theme .wx-gitlab-task {
+  color: var(--wx-gantt-task-font-color);
+  background-color: var(--wx-gantt-task-color);
+  border: var(--wx-gantt-task-border);
+}
+
+.wx-willow-dark-theme .wx-gitlab-task.wx-selected {
+  border: 1px solid var(--wx-gantt-task-border-color);
+  box-shadow: var(--wx-gantt-bar-shadow);
+}
+
+.wx-willow-dark-theme .wx-gitlab-task:hover {
+  box-shadow: var(--wx-gantt-bar-shadow);
+}
+
+.wx-willow-dark-theme .wx-gitlab-task .wx-progress-percent {
+  background-color: var(--wx-gantt-task-fill-color);
+}

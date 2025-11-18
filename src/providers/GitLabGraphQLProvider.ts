@@ -311,50 +311,16 @@ export class GitLabGraphQLProvider {
             Math.max(...childEnds.map((d) => d.getTime())),
           );
 
-          // If parent's dates equal children's span, give parent a smaller default range
-          // so the two bars don't completely overlap
-          let parentStart = task.start;
-          let parentEnd = task.end;
-
-          if (parentStart && parentEnd) {
-            const parentStartTime = new Date(parentStart).getTime();
-            const parentEndTime = new Date(parentEnd).getTime();
-            const spanStartTime = spanStart.getTime();
-            const spanEndTime = spanEnd.getTime();
-
-            // If parent dates equal children span, shrink parent to 50% of the range
-            if (
-              parentStartTime === spanStartTime &&
-              parentEndTime === spanEndTime
-            ) {
-              const totalDuration = spanEndTime - spanStartTime;
-              const quarterDuration = totalDuration * 0.25;
-              parentStart = new Date(spanStartTime + quarterDuration);
-              parentEnd = new Date(spanEndTime - quarterDuration);
-
-              console.log(
-                '[GitLabProvider] Parent dates equal children span, adjusting parent to:',
-                {
-                  taskId: task.id,
-                  newParentStart: parentStart,
-                  newParentEnd: parentEnd,
-                },
-              );
-            }
-          }
-
-          // Main bar keeps the task's original dates (adjustable)
-          // Baseline bar shows the subtask span (read-only reference)
+          // Parent task keeps its own dates from GitLab (start_date/due_date)
+          // Baseline shows the span of all children for reference
           return {
             ...task,
             // Keep the task's type (already set based on GitLab workItemType)
             // Issue -> 'summary' (blue), Task -> 'task' (green)
             $parent: true, // Custom flag for CSS styling
-            // Keep original dates for main bar
-            start: parentStart,
-            end: parentEnd,
-            duration: task.duration,
-            // Store subtask span as baseline
+            // Keep task's own dates - these are independent and adjustable
+            // start, end, duration remain unchanged from GitLab
+            // Store children's span as baseline for reference
             base_start: spanStart,
             base_end: spanEnd,
           };
@@ -473,11 +439,9 @@ export class GitLabGraphQLProvider {
       parent = 0; // We don't map milestones to parent in this version
     }
 
-    // Determine Gantt type based on GitLab work item type
-    // Issue (parent or standalone) -> 'summary' (blue)
-    // Task (subtask) -> 'task' (green)
-    const ganttType =
-      workItem.workItemType?.name === 'Task' ? 'task' : 'summary';
+    // Always use 'task' type to avoid Gantt's auto-calculation for summary types
+    // Use custom flag $isIssue to distinguish GitLab Issue from Task for styling
+    const isIssue = workItem.workItemType?.name !== 'Task';
 
     const task: ITask = {
       id: Number(workItem.iid),
@@ -486,7 +450,7 @@ export class GitLabGraphQLProvider {
       end: endDate,
       duration,
       progress,
-      type: ganttType,
+      type: 'task', // Always 'task' to prevent auto-calculation
       details: description,
       parent,
       assigned: assignees,
@@ -494,6 +458,7 @@ export class GitLabGraphQLProvider {
       weight: weightWidget?.weight,
       state: workItem.state,
       web_url: workItem.webUrl,
+      $isIssue: isIssue, // Custom flag: true for GitLab Issue, false for GitLab Task
       $custom: order !== null ? { displayOrder: order } : undefined,
       _gitlab: {
         id: workItem.id, // Global ID
