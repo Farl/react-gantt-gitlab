@@ -76,15 +76,6 @@ export function useGitLabSync(
       }));
 
       try {
-        // Save current fold state before syncing
-        const openStateMap = new Map(
-          tasks.map((t) => [t.id, t.open !== undefined ? t.open : true]),
-        );
-        console.log('[useGitLabSync] Saved fold state for tasks:', {
-          count: openStateMap.size,
-          states: Array.from(openStateMap.entries()),
-        });
-
         const data = await provider.getData(options);
 
         console.log('[useGitLabSync] Received data from provider:', {
@@ -101,25 +92,7 @@ export function useGitLabSync(
 
         if (isMountedRef.current) {
           console.log('[useGitLabSync] Setting state...');
-
-          // Merge fold state back to new tasks
-          const tasksWithState = data.tasks.map((task) => ({
-            ...task,
-            open: openStateMap.has(task.id)
-              ? openStateMap.get(task.id)
-              : task.open !== undefined
-                ? task.open
-                : true,
-          }));
-
-          console.log('[useGitLabSync] Merged fold state into tasks:', {
-            originalCount: data.tasks.length,
-            mergedCount: tasksWithState.length,
-            preserved: tasksWithState.filter((t) => openStateMap.has(t.id))
-              .length,
-          });
-
-          setTasks(tasksWithState);
+          setTasks(data.tasks);
           setLinks(data.links);
           setMilestones(data.milestones || []);
           setEpics(data.epics || []);
