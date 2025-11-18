@@ -175,19 +175,16 @@ export function useGitLabSync(
       }
 
       try {
-        const issue = await provider.createIssue(task);
-        const newTask: ITask = {
-          id: issue.iid,
-          text: issue.title,
-          start: new Date(issue.created_at),
-          end: issue.due_date ? new Date(issue.due_date) : undefined,
-          ...task,
-        };
+        // createIssue returns a complete ITask from GitLab
+        const createdTask = await provider.createIssue(task);
 
-        // Add to local state
-        setTasks((prevTasks) => [...prevTasks, newTask]);
+        console.log('[useGitLabSync] Task created from GitLab:', createdTask);
 
-        return newTask;
+        // Add the new task to local state
+        // This will cause Gantt to update via the tasks prop
+        setTasks((prevTasks) => [...prevTasks, createdTask]);
+
+        return createdTask;
       } catch (error) {
         console.error('Failed to create task:', error);
         throw error;

@@ -933,6 +933,13 @@ export class GitLabGraphQLProvider {
         ? { projectPath: this.getFullPath() }
         : { namespacePath: this.getFullPath() };
 
+    // Calculate end date if only start and duration are provided
+    let endDate = task.end;
+    if (task.start && !endDate && task.duration) {
+      endDate = new Date(task.start);
+      endDate.setDate(endDate.getDate() + task.duration - 1);
+    }
+
     const variables = {
       input: {
         ...pathInput,
@@ -943,14 +950,14 @@ export class GitLabGraphQLProvider {
             description: task.details,
           },
         }),
-        ...(task.start || task.end
+        ...(task.start || endDate
           ? {
               startAndDueDateWidget: {
                 ...(task.start && {
                   startDate: task.start.toISOString().split('T')[0],
                 }),
-                ...(task.end && {
-                  dueDate: task.end.toISOString().split('T')[0],
+                ...(endDate && {
+                  dueDate: endDate.toISOString().split('T')[0],
                 }),
               },
             }

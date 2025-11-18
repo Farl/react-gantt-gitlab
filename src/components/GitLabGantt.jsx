@@ -175,6 +175,60 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const init = useCallback(
     (ganttApi) => {
       setApi(ganttApi);
+      // Expose API to window for debugging
+      window.ganttApi = ganttApi;
+
+      // Helper function to inspect tasks
+      window.debugTasks = () => {
+        try {
+          const state = ganttApi.getState();
+          const allTasks = state.tasks || [];
+          console.log('=== All Tasks in Gantt ===');
+          console.log('Total tasks:', allTasks.length);
+          console.log('State structure:', Object.keys(state));
+
+          allTasks.forEach(t => {
+            console.log(`Task ${t.id}: "${t.text}"`, {
+              start: t.start,
+              end: t.end,
+              base_start: t.base_start,
+              base_end: t.base_end,
+              parent: t.parent,
+              hasBaseline: !!(t.base_start && t.base_end)
+            });
+          });
+
+          return allTasks;
+        } catch (error) {
+          console.error('Error in debugTasks:', error);
+          console.log('Trying alternative method...');
+
+          // Try alternative method
+          const state = ganttApi.getState();
+          console.log('Full state:', state);
+          return state;
+        }
+      };
+
+      // Helper function to find a specific task
+      window.findTask = (id) => {
+        try {
+          const state = ganttApi.getState();
+          const allTasks = state.tasks || [];
+          const task = allTasks.find(t => t.id == id);
+
+          if (task) {
+            console.log(`Found task ${id}:`, task);
+          } else {
+            console.log(`Task ${id} not found. Available IDs:`, allTasks.map(t => t.id));
+          }
+
+          return task;
+        } catch (error) {
+          console.error('Error in findTask:', error);
+          return null;
+        }
+      };
 
       // Auto-scroll to today after data loads
       const now = new Date();
@@ -309,9 +363,24 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           return;
         }
 
-        // Skip temporary IDs
-        if (typeof ev.id === 'string' && ev.id.startsWith('temp')) {
+        // Handle temporary IDs
+        const isTempId = typeof ev.id === 'string' && ev.id.startsWith('temp');
+
+        // Check if this is an ID update (replacing temp ID with real ID)
+        const isIdUpdate = ev.task.id !== undefined && ev.task.id !== ev.id;
+
+        // Skip temporary IDs UNLESS:
+        // 1. We're updating the ID (temp -> real)
+        // 2. Or skipSync is true (internal update)
+        if (isTempId && !isIdUpdate && !ev.skipSync) {
           console.log('Skipping update for temporary task:', ev.id);
+          return;
+        }
+
+        // If this is an ID update for temp task, allow it but don't sync to GitLab
+        if (isTempId && isIdUpdate) {
+          console.log('[GitLab] Replacing temporary task ID:', ev.id, '→', ev.task.id);
+          // Don't sync this to GitLab, and don't process parent baseline updates
           return;
         }
 
@@ -490,23 +559,48 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
       // Handle task creation
       ganttApi.on('add-task', async (ev) => {
+        // Skip if this is a replacement task (not from user action)
+        if (ev.skipHandler) {
+          return;
+        }
+
         try {
+          // Create task in GitLab
+          // This will also add it to React state (in useGitLabSync)
           const newTask = await createTask(ev.task);
-          // Update the task ID in Gantt
-          ganttApi.exec('update-task', {
-            id: ev.id,
-            task: { id: newTask.id },
+
+          console.log('[GitLab] Task created from GitLab:', {
+            tempId: ev.id,
+            newId: newTask.id,
+            newTask,
           });
+
+          // Strategy: Delete temp task, let React state drive the update
+          // The new task was already added to state by createTask()
+          // Gantt will receive it via the tasks prop and display it
+
+          // Delete the temporary task (with baseline)
+          ganttApi.exec('delete-task', {
+            id: ev.id,
+            skipHandler: true, // Don't trigger delete handler
+          });
+
+          console.log('[GitLab] Temporary task deleted, waiting for React state to update Gantt with real task');
         } catch (error) {
           console.error('Failed to create task:', error);
           alert(`Failed to create task: ${error.message}`);
           // Remove the temporary task
-          ganttApi.exec('delete-task', { id: ev.id });
+          ganttApi.exec('delete-task', { id: ev.id, skipHandler: true });
         }
       });
 
       // Handle task deletion
       ganttApi.on('delete-task', async (ev) => {
+        // Skip if this is an internal deletion (e.g., removing temp task)
+        if (ev.skipHandler) {
+          return;
+        }
+
         try {
           await deleteTask(ev.id);
         } catch (error) {
