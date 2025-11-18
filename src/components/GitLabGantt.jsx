@@ -124,10 +124,77 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     deleteLink,
   } = useGitLabSync(provider, autoSync);
 
+  // Ref to store fold state before data updates
+  const openStateRef = useRef(new Map());
+
+  // Wrapped sync function that preserves fold state
+  const syncWithFoldState = useCallback(
+    async (options) => {
+      // Save fold state before sync
+      if (api) {
+        try {
+          const state = api.getState();
+          const currentTasks = state.tasks || [];
+          const newOpenState = new Map();
+
+          currentTasks.forEach((task) => {
+            if (task.open !== undefined) {
+              newOpenState.set(task.id, task.open);
+            }
+          });
+
+          openStateRef.current = newOpenState;
+          console.log('[GitLabGantt] Saved fold state before sync:', {
+            count: newOpenState.size,
+            states: Array.from(newOpenState.entries()),
+          });
+        } catch (error) {
+          console.error('[GitLabGantt] Failed to save fold state:', error);
+        }
+      }
+
+      // Call original sync
+      await sync(options);
+    },
+    [api, sync]
+  );
+
   // Update ref when allTasks changes
   useEffect(() => {
     allTasksRef.current = allTasks;
-  }, [allTasks]);
+
+    // Restore fold state after tasks update
+    if (api && allTasks.length > 0) {
+      // Small delay to ensure Gantt has processed the new tasks
+      setTimeout(() => {
+        try {
+          const state = api.getState();
+          const currentTasks = state.tasks || [];
+
+          console.log('[GitLabGantt] Restoring fold state:', {
+            savedStates: openStateRef.current.size,
+            currentTasks: currentTasks.length,
+          });
+
+          // Restore open state from saved map
+          currentTasks.forEach((task) => {
+            if (openStateRef.current.has(task.id)) {
+              const savedOpen = openStateRef.current.get(task.id);
+              if (task.open !== savedOpen) {
+                console.log(
+                  `[GitLabGantt] Restoring fold state for task ${task.id}:`,
+                  savedOpen
+                );
+                api.exec('open-task', { id: task.id, mode: savedOpen });
+              }
+            }
+          });
+        } catch (error) {
+          console.error('[GitLabGantt] Failed to restore fold state:', error);
+        }
+      }, 100);
+    }
+  }, [allTasks, api]);
 
   // Apply filters to tasks
   const filteredTasks = useMemo(() => {
@@ -309,7 +376,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               console.log('[GitLab] Changes saved successfully');
 
               // Refresh from GitLab to update local state
-              await sync();
+              await syncWithFoldState();
 
               // Close editor after successful save
               ganttApi.exec('close-editor');
@@ -337,7 +404,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               // Discard changes and reload
               pendingEditorChangesRef.current.clear();
               ganttApi.exec('close-editor');
-              sync(); // Reload to revert local changes
+              syncWithFoldState(); // Reload to revert local changes
             }
             // If not confirmed, do nothing (stay in editor)
           } else {
@@ -520,7 +587,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               console.error('Failed to sync task update:', error);
               alert(`Failed to sync task: ${error.message}`);
               // Revert by reloading from GitLab
-              sync();
+              syncWithFoldState();
             }
           })();
         }
@@ -607,7 +674,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           console.error('Failed to delete task:', error);
           alert(`Failed to delete task: ${error.message}`);
           // Reload data to restore the task
-          sync();
+          syncWithFoldState();
         }
       });
 
@@ -744,11 +811,11 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         } catch (error) {
           console.error('Failed to delete link:', error);
           alert(`Failed to delete link: ${error.message}`);
-          sync();
+          syncWithFoldState();
         }
       });
     },
-    [syncTask, createTask, deleteTask, createLink, deleteLink, links, sync]
+    [syncTask, createTask, deleteTask, createLink, deleteLink, links, syncWithFoldState]
   );
 
   // Today marker - ensure correct date without timezone issues
@@ -940,7 +1007,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         </div>
 
         <SyncButton
-          onSync={sync}
+          onSync={syncWithFoldState}
           syncState={syncState}
           filterOptions={filterOptions}
         />
@@ -1060,7 +1127,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       {syncState.error && (
         <div className="error-banner">
           <strong>Sync Error:</strong> {syncState.error}
-          <button onClick={() => sync()} className="retry-btn">
+          <button onClick={() => syncWithFoldState()} className="retry-btn">
             Retry
           </button>
         </div>
