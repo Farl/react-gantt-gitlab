@@ -55,10 +55,11 @@ import GitLabIntegration from './cases/GitLabIntegration.jsx';
 export const links = [
   [
     '/gitlab-integration/:skin',
-    'GitLab Integration',
+    'GitLab Gantt',
     GitLabIntegration,
     'GitLabIntegration',
   ],
+  ['Demos', null, null, null],
   ['/base/:skin', 'Basic Gantt', BasicInit, 'BasicInit'],
 
   ['/sizes/:skin', 'Scale / cell sizes', GanttSizes, 'GanttSizes'],

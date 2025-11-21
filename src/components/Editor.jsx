@@ -6,6 +6,7 @@ import { dateToString, locale } from '@svar-ui/lib-dom';
 import { en } from '@svar-ui/gantt-locales';
 import { en as coreEn } from '@svar-ui/core-locales';
 import { context } from '@svar-ui/react-core';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import Links from './editor/Links.jsx';
 import DateTimePicker from './editor/DateTimePicker.jsx';
@@ -44,18 +45,34 @@ function Editor({
     return dateToString(f, i18nData.calendar);
   }, [i18nData]);
 
+  const activeTask = useStore(api, "_activeTask");
+
   const normalizedTopBar = useMemo(() => {
     if (topBar === true && !readonly) {
       const buttons = [
         { comp: 'icon', icon: 'wxi-close', id: 'close' },
         { comp: 'spacer' },
-        {
-          comp: 'button',
-          type: 'danger',
-          text: _('Delete'),
-          id: 'delete',
-        },
       ];
+
+      // Add GitLab link button with Font Awesome icon
+      const webUrl = activeTask?._gitlab?.web_url || activeTask?.web_url;
+      if (webUrl) {
+        buttons.push({
+          comp: 'button',
+          id: 'gitlab-link',
+          title: 'Open in GitLab',
+          circle: true,
+          css: 'gitlab-link-btn',
+        });
+      }
+
+      buttons.push({
+        comp: 'button',
+        type: 'danger',
+        text: _('Delete'),
+        id: 'delete',
+      });
+
       if (autoSave) return { items: buttons };
       return {
         items: [
@@ -70,7 +87,7 @@ function Editor({
       };
     }
     return topBar;
-  }, [topBar, readonly, autoSave, _]);
+  }, [topBar, readonly, autoSave, _, activeTask]);
 
   // resize
   const [compactMode, setCompactMode] = useState(false);
@@ -91,7 +108,6 @@ function Editor({
     };
   }, [handleResize]);
 
-  const activeTask = useStore(api, "_activeTask");
   // const taskId = useStore(api, "activeTaskId");
   const taskId = useMemo(() => activeTask?.id, [activeTask]);
   const unit = useStore(api, "durationUnit");
@@ -242,8 +258,16 @@ function Editor({
       if (!changes.length) saveLinks();
       else hide();
     }
+    if (item.id === 'gitlab-link') {
+      // Open GitLab link in new tab
+      const webUrl = activeTask?._gitlab?.web_url || activeTask?.web_url;
+      if (webUrl) {
+        window.open(webUrl, '_blank');
+      }
+      return; // Don't hide editor
+    }
     if (item.comp) hide();
-  }, [api, taskId, autoSave, saveLinks, deleteTask, hide]);
+  }, [api, taskId, autoSave, saveLinks, deleteTask, hide, activeTask]);
 
   const normalizeTask = useCallback((t, key) => {
     if (unscheduledTasks && t.type === 'summary') t.unscheduled = false;

@@ -236,3 +236,25 @@
   color: #42454d;
   background-color: #f1f1f1;
 }
+
+/* Group styles */
+.wx-demos.group-header {
+  display: flex;
+  align-items: center;
+  height: 37px;
+  font-weight: 600;
+  padding-left: 16px;
+  color: #42454d;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 8px;
+}
+
+.wx-demos.group-content {
+  padding-left: 0;
+}
+
+.wx-demos.group-content .wx-demos.demo {
+  padding-left: 24px;
+}

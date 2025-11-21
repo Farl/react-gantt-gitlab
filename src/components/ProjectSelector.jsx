@@ -178,7 +178,15 @@ export function ProjectSelector({ onProjectChange, currentConfigId }) {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            // Only close if clicking directly on overlay (not dragging from content)
+            if (e.target === e.currentTarget) {
+              setShowModal(false);
+            }
+          }}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingConfig ? 'Edit Configuration' : 'Add New Configuration'}</h3>

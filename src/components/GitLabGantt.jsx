@@ -3,6 +3,7 @@
  * Main component that integrates GitLab data with react-gantt
  */
 
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Gantt from './Gantt.jsx';
 import Editor from './Editor.jsx';
@@ -1255,6 +1256,32 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     return `${yy}/${mm}/${dd}`;
   }, []);
 
+  // Custom cell component for Task Title with icons
+  const TaskTitleCell = useCallback(({ row }) => {
+    const data = row;
+    let icon;
+    let iconStyle = { marginRight: '8px', color: 'inherit' };
+
+    // Determine icon based on GitLab type (all icons in black/white)
+    if (data.$isMilestone || data._gitlab?.type === 'milestone') {
+      // Milestone
+      icon = <i className="far fa-flag" style={iconStyle}></i>;
+    } else if (data._gitlab?.workItemType === 'Task') {
+      // Task/Subtask (GitLab work item type is 'Task')
+      icon = <i className="far fa-square-check" style={iconStyle}></i>;
+    } else {
+      // Issue (GitLab work item type is 'Issue' or other)
+      icon = <i className="far fa-clipboard" style={iconStyle}></i>;
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {icon}
+        <span>{data.text}</span>
+      </div>
+    );
+  }, []);
+
   // Simplified columns configuration - just the essentials
   const columns = useMemo(() => {
     return [
@@ -1262,6 +1289,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         id: 'text',
         header: 'Task Title',
         width: 250,
+        cell: TaskTitleCell,
       },
       {
         id: 'start',
@@ -1286,7 +1314,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         width: 50,
       },
     ];
-  }, [DateCell]);
+  }, [DateCell, TaskTitleCell]);
 
   // Show loading state
   if (syncState.isLoading && !currentConfig) {
@@ -1335,7 +1363,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             className="btn-settings"
             title="Settings"
           >
-            ⚙️
+            <i className="fas fa-cog"></i>
           </button>
         </div>
 
@@ -1413,7 +1441,15 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       </div>
 
       {showSettings && (
-        <div className="settings-modal-overlay" onClick={() => setShowSettings(false)}>
+        <div
+          className="settings-modal-overlay"
+          onMouseDown={(e) => {
+            // Only close if clicking directly on overlay (not dragging from content)
+            if (e.target === e.currentTarget) {
+              setShowSettings(false);
+            }
+          }}
+        >
           <div className="settings-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="settings-modal-header">
               <h3>Settings</h3>
@@ -1693,11 +1729,16 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           border-radius: 4px;
           background: white;
           cursor: pointer;
-          font-size: 16px;
-          transition: background 0.2s;
+          transition: background 0.2s, color 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #666;
+          font-size: 14px;
         }
 
         .btn-settings:hover {
+          color: #333;
           background: #f5f5f5;
         }
 

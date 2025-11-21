@@ -4,3 +4,11 @@
 .wx-sidearea .wx-gantt-editor.wx-full-screen.wx-XkvqDXuw {
   width: 100%;
 }
+
+/* GitLab link button with Font Awesome icon */
+.wx-button.gitlab-link-btn::before {
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  content: '\f35d'; /* fa-external-link-alt */
+  font-size: 14px;
+}

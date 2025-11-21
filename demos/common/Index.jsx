@@ -71,21 +71,9 @@ function DemoExplorerContent({
         <div className="wx-demos sidebar-content">
           <div className="wx-demos sidebar-header">
             <div className="wx-demos box-title">
-              <a
-                href="https://svar.dev/react/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img src={LogoIcon} alt="Logo icon" className="box-title-img" />
-              </a>
+              <img src={LogoIcon} alt="Logo icon" className="box-title-img" />
               <div className="wx-demos separator"></div>
-              <a
-                href={`https://svar.dev/react/${productTag}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <h1 className="wx-demos title">React {publicName}</h1>
-              </a>
+              <h1 className="wx-demos title">React {publicName}</h1>
             </div>
             <div className="wx-demos btn-box">
               <Button
@@ -97,17 +85,59 @@ function DemoExplorerContent({
             </div>
           </div>
           <div className="wx-demos box-links">
-            {links.map((data) => (
-              <NavLink
-                key={data[0]}
-                to={data[0].replace(':skin', skin)}
-                className={({ isActive }) =>
-                  `wx-demos demo ${isActive ? 'active' : ''}`
+            {links.map((data, index) => {
+              // Check if this is a group header (no path starting with '/')
+              if (!data[0].startsWith('/')) {
+                return (
+                  <details key={`group-${index}`}>
+                    <summary className="wx-demos group-header">{data[0]}</summary>
+                    <div className="wx-demos group-content">
+                      {/* Render items until next group or end */}
+                      {links.slice(index + 1).map((item) => {
+                        if (!item[0].startsWith('/')) return null; // Stop at next group
+                        return (
+                          <NavLink
+                            key={item[0]}
+                            to={item[0].replace(':skin', skin)}
+                            className={({ isActive }) =>
+                              `wx-demos demo ${isActive ? 'active' : ''}`
+                            }
+                          >
+                            {item[1]}
+                          </NavLink>
+                        );
+                      }).filter(Boolean).slice(0, links.slice(index + 1).findIndex(item => !item[0].startsWith('/')))}
+                    </div>
+                  </details>
+                );
+              }
+              // Check if this item is part of a group (previous item was a group header)
+              if (index > 0 && !links[index - 1][0].startsWith('/')) {
+                return null; // Already rendered as part of the group
+              }
+              // Check if any previous item is a group that hasn't been closed
+              let inGroup = false;
+              for (let i = index - 1; i >= 0; i--) {
+                if (!links[i][0].startsWith('/')) {
+                  inGroup = true;
+                  break;
                 }
-              >
-                {data[1]}
-              </NavLink>
-            ))}
+              }
+              if (inGroup) return null;
+
+              // Regular link (not in a group)
+              return (
+                <NavLink
+                  key={data[0]}
+                  to={data[0].replace(':skin', skin)}
+                  className={({ isActive }) =>
+                    `wx-demos demo ${isActive ? 'active' : ''}`
+                  }
+                >
+                  {data[1]}
+                </NavLink>
+              );
+            }).filter(Boolean)}
           </div>
         </div>
       </div>

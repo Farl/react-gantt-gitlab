@@ -479,13 +479,13 @@ export class GitLabGraphQLProvider {
 
     return {
       id: milestoneTaskId,
-      text: `[Milestone] ${milestone.title}`,
+      text: milestone.title, // Don't add [Milestone] prefix - use icon in grid instead
       start: startDate,
       end: endDate,
       duration,
       type: 'task', // Use 'task' type to show bar with baseline support
       parent: 0, // Milestones are always at root level
-      // Do NOT set open: true without data property - causes Gantt store error
+      // DO NOT set open: true without data property - causes Gantt store error
       // Gantt will handle open state based on children
       details: milestone.description || '',
       $isMilestone: true, // Custom flag for identifying milestones (for CSS styling)
