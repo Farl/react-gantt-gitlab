@@ -1260,23 +1260,26 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const TaskTitleCell = useCallback(({ row }) => {
     const data = row;
     let icon;
-    let iconStyle = { marginRight: '8px', color: 'inherit' };
+    let iconColor;
 
-    // Determine icon based on GitLab type (all icons in black/white)
+    // Determine icon and color based on GitLab type
     if (data.$isMilestone || data._gitlab?.type === 'milestone') {
-      // Milestone
-      icon = <i className="far fa-flag" style={iconStyle}></i>;
+      // Milestone - purple
+      icon = <i className="far fa-flag"></i>;
+      iconColor = '#ad44ab';
     } else if (data._gitlab?.workItemType === 'Task') {
-      // Task/Subtask (GitLab work item type is 'Task')
-      icon = <i className="far fa-square-check" style={iconStyle}></i>;
+      // Task/Subtask (GitLab work item type is 'Task') - green
+      icon = <i className="far fa-square-check"></i>;
+      iconColor = '#00ba94';
     } else {
-      // Issue (GitLab work item type is 'Issue' or other)
-      icon = <i className="far fa-clipboard" style={iconStyle}></i>;
+      // Issue (GitLab work item type is 'Issue' or other) - blue
+      icon = <i className="far fa-clipboard"></i>;
+      iconColor = '#3983eb';
     }
 
     return (
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        {icon}
+        <span style={{ marginRight: '8px', color: iconColor }}>{icon}</span>
         <span>{data.text}</span>
       </div>
     );
