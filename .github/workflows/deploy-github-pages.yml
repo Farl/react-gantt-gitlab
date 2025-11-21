@@ -51,6 +51,16 @@ jobs:
           echo "index.html content:"
           cat dist-demos/index.html
 
+      - name: Add .nojekyll file
+        run: touch dist-demos/.nojekyll
+
+      - name: Final verification before upload
+        run: |
+          echo "Final dist-demos contents:"
+          find dist-demos -type f
+          echo "Checking CSS file size:"
+          ls -lh dist-demos/assets/*.css
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
