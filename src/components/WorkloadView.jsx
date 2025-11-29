@@ -1,0 +1,608 @@
+/**
+ * WorkloadView Component
+ * Main component for workload visualization by Assignee/Label
+ */
+
+import '@fortawesome/fontawesome-free/css/all.min.css';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { WorkloadChart } from './WorkloadChart.jsx';
+import { WorkloadSidebar } from './WorkloadSidebar.jsx';
+import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider.ts';
+import { gitlabConfigManager } from '../config/GitLabConfigManager.ts';
+import { useGitLabSync } from '../hooks/useGitLabSync.ts';
+import { useGitLabHolidays } from '../hooks/useGitLabHolidays.ts';
+import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
+import { useHighlightTime } from '../hooks/useHighlightTime.ts';
+import {
+  getUniqueAssignees,
+  getUniqueLabels,
+  findOriginalTask,
+} from '../utils/WorkloadUtils.ts';
+import { SyncButton } from './SyncButton.jsx';
+import { ProjectSelector } from './ProjectSelector.jsx';
+import './WorkloadView.css';
+
+export function WorkloadView({ initialConfigId, autoSync = false }) {
+  const [currentConfig, setCurrentConfig] = useState(null);
+  const [provider, setProvider] = useState(null);
+  const [configs, setConfigs] = useState([]);
+
+  // Selection state for workload grouping
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
+  const [selectedLabels, setSelectedLabels] = useState([]);
+
+  // Project members and labels from GitLab API
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [projectLabels, setProjectLabels] = useState([]);
+
+  // Store reference to all tasks for event handlers
+  const allTasksRef = useRef([]);
+
+  // Load settings from localStorage with defaults
+  const [cellWidth, setCellWidth] = useState(() => {
+    const saved = localStorage.getItem('workload-cell-width');
+    return saved ? Number(saved) : 40;
+  });
+  const [cellWidthDisplay, setCellWidthDisplay] = useState(cellWidth);
+  const cellWidthTimerRef = useRef(null);
+
+  const [cellHeight, setCellHeight] = useState(() => {
+    const saved = localStorage.getItem('workload-cell-height');
+    return saved ? Number(saved) : 38;
+  });
+  const [cellHeightDisplay, setCellHeightDisplay] = useState(cellHeight);
+  const cellHeightTimerRef = useRef(null);
+
+  // Debounced cell width update
+  const handleCellWidthChange = useCallback((value) => {
+    setCellWidthDisplay(value);
+    if (cellWidthTimerRef.current) {
+      clearTimeout(cellWidthTimerRef.current);
+    }
+    cellWidthTimerRef.current = setTimeout(() => {
+      setCellWidth(value);
+    }, 100);
+  }, []);
+
+  // Debounced cell height update
+  const handleCellHeightChange = useCallback((value) => {
+    setCellHeightDisplay(value);
+    if (cellHeightTimerRef.current) {
+      clearTimeout(cellHeightTimerRef.current);
+    }
+    cellHeightTimerRef.current = setTimeout(() => {
+      setCellHeight(value);
+    }, 100);
+  }, []);
+
+  const [canEditHolidays, setCanEditHolidays] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showViewOptions, setShowViewOptions] = useState(false);
+
+  // Show "Others" category for uncategorized tasks
+  const [showOthers, setShowOthers] = useState(() => {
+    const saved = localStorage.getItem('workload-show-others');
+    return saved === 'true';
+  });
+
+  // Use shared date range preset hook
+  const {
+    dateRangePreset,
+    setDateRangePreset,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+    dateRange,
+  } = useDateRangePreset({ storagePrefix: 'workload' });
+
+  const [lengthUnit, setLengthUnit] = useState(() => {
+    const saved = localStorage.getItem('workload-length-unit');
+    return saved || 'day';
+  });
+
+  // Calculate effective cellWidth based on lengthUnit
+  const effectiveCellWidth = useMemo(() => {
+    if (lengthUnit === 'day') {
+      return cellWidth;
+    }
+    switch (lengthUnit) {
+      case 'hour':
+        return 80;
+      case 'week':
+        return 100;
+      case 'month':
+        return 120;
+      case 'quarter':
+        return 150;
+      default:
+        return cellWidth;
+    }
+  }, [lengthUnit, cellWidth]);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('workload-cell-width', cellWidth.toString());
+  }, [cellWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('workload-cell-height', cellHeight.toString());
+  }, [cellHeight]);
+
+  useEffect(() => {
+    localStorage.setItem('workload-length-unit', lengthUnit);
+  }, [lengthUnit]);
+
+  // Persist showOthers to localStorage
+  useEffect(() => {
+    localStorage.setItem('workload-show-others', showOthers.toString());
+  }, [showOthers]);
+
+  // Load all configs for project switcher
+  useEffect(() => {
+    const allConfigs = gitlabConfigManager.getAllConfigs();
+    setConfigs(allConfigs);
+  }, []);
+
+  // Initialize provider when config changes
+  const handleConfigChange = useCallback((config) => {
+    setCurrentConfig(config);
+
+    const newProvider = new GitLabGraphQLProvider({
+      gitlabUrl: config.gitlabUrl,
+      token: config.token,
+      projectId: config.projectId,
+      groupId: config.groupId,
+      type: config.type,
+    });
+
+    setProvider(newProvider);
+  }, []);
+
+  // Quick switch between projects
+  const handleQuickSwitch = useCallback(
+    (configId) => {
+      gitlabConfigManager.setActiveConfig(configId);
+      const config = gitlabConfigManager.getConfig(configId);
+      if (config) {
+        handleConfigChange(config);
+      }
+    },
+    [handleConfigChange]
+  );
+
+  // Initialize with active config on mount
+  useEffect(() => {
+    const activeConfig =
+      gitlabConfigManager.getConfig(initialConfigId) ||
+      gitlabConfigManager.getActiveConfig();
+
+    if (activeConfig) {
+      handleConfigChange(activeConfig);
+    }
+  }, [initialConfigId, handleConfigChange]);
+
+  // Use sync hook
+  const { tasks: allTasks, syncState, sync, syncTask } = useGitLabSync(
+    provider,
+    autoSync
+  );
+
+  // Get project path for holidays hook
+  const projectPath = useMemo(() => {
+    if (!currentConfig) return null;
+    if (currentConfig.type === 'project' && currentConfig.projectId) {
+      return String(currentConfig.projectId);
+    } else if (currentConfig.type === 'group' && currentConfig.groupId) {
+      return String(currentConfig.groupId);
+    }
+    return null;
+  }, [currentConfig]);
+
+  // Get proxy config for REST API calls
+  const proxyConfig = useMemo(() => {
+    if (!currentConfig) return null;
+    return {
+      gitlabUrl: currentConfig.gitlabUrl,
+      token: currentConfig.token,
+      isDev: import.meta.env.DEV,
+    };
+  }, [currentConfig?.gitlabUrl, currentConfig?.token]);
+
+  // Check permissions when provider changes
+  useEffect(() => {
+    if (!provider) {
+      setCanEditHolidays(false);
+      return;
+    }
+
+    provider.checkCanEdit().then((canEdit) => {
+      setCanEditHolidays(canEdit);
+    });
+  }, [provider]);
+
+  // Use GitLab holidays hook
+  const { holidays, workdays } = useGitLabHolidays(
+    projectPath,
+    proxyConfig,
+    canEditHolidays
+  );
+
+  // Update ref when allTasks changes
+  useEffect(() => {
+    allTasksRef.current = allTasks;
+  }, [allTasks]);
+
+  // Fetch project members and labels from GitLab API when provider changes
+  useEffect(() => {
+    if (!provider) {
+      setProjectMembers([]);
+      setProjectLabels([]);
+      return;
+    }
+
+    // Fetch members and labels in parallel
+    Promise.all([
+      provider.getProjectMembers().catch(() => []),
+      provider.getProjectLabels().catch(() => []),
+    ]).then(([members, labels]) => {
+      setProjectMembers(members);
+      setProjectLabels(labels);
+    });
+  }, [provider]);
+
+  // Extract assignees and labels from tasks (fallback if API doesn't have them)
+  const taskAssignees = useMemo(() => getUniqueAssignees(allTasks), [allTasks]);
+  const taskLabels = useMemo(() => getUniqueLabels(allTasks), [allTasks]);
+
+  // Combine project members with task assignees, and project labels with task labels
+  const availableAssignees = useMemo(() => {
+    const combined = new Set([...projectMembers, ...taskAssignees]);
+    return Array.from(combined).sort();
+  }, [projectMembers, taskAssignees]);
+
+  const availableLabels = useMemo(() => {
+    const combined = new Set([...projectLabels, ...taskLabels]);
+    return Array.from(combined).sort();
+  }, [projectLabels, taskLabels]);
+
+  // Generate storage key for current project
+  const filterStorageKey = useMemo(() => {
+    if (!currentConfig) return null;
+    const projectKey = currentConfig.projectId || currentConfig.groupId || 'default';
+    return `workload-filter-${projectKey}`;
+  }, [currentConfig]);
+
+  // Load saved filter when project changes
+  useEffect(() => {
+    if (!filterStorageKey) return;
+
+    const saved = localStorage.getItem(filterStorageKey);
+    if (saved) {
+      try {
+        const { assignees, labels } = JSON.parse(saved);
+        // Only restore if arrays exist
+        if (Array.isArray(assignees)) setSelectedAssignees(assignees);
+        if (Array.isArray(labels)) setSelectedLabels(labels);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    } else {
+      // Reset to empty when switching to a new project without saved filters
+      setSelectedAssignees([]);
+      setSelectedLabels([]);
+    }
+  }, [filterStorageKey]);
+
+  // Save filter when selection changes
+  useEffect(() => {
+    if (!filterStorageKey) return;
+
+    localStorage.setItem(
+      filterStorageKey,
+      JSON.stringify({
+        assignees: selectedAssignees,
+        labels: selectedLabels,
+      })
+    );
+  }, [filterStorageKey, selectedAssignees, selectedLabels]);
+
+  // Track pending date changes for debounce
+  const pendingDateChangesRef = useRef(new Map());
+  const dateChangeTimersRef = useRef(new Map());
+
+  // Handle task drag from WorkloadChart
+  const handleTaskDrag = useCallback(
+    (task, changes) => {
+      // Find original task
+      const originalTask = findOriginalTask(task.id, allTasksRef.current);
+      if (!originalTask) {
+        console.warn('[WorkloadView] Could not find original task for:', task.id);
+        return;
+      }
+
+      // Debounce date changes
+      const taskKey = String(originalTask.id);
+
+      // Merge with any pending changes for this task
+      const existing = pendingDateChangesRef.current.get(taskKey) || {};
+      const merged = { ...existing };
+      if (changes.start !== undefined) merged.start = changes.start;
+      if (changes.end !== undefined) merged.end = changes.end;
+      pendingDateChangesRef.current.set(taskKey, merged);
+
+      // Clear existing timer
+      const existingTimer = dateChangeTimersRef.current.get(taskKey);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // Set new timer
+      const timer = setTimeout(async () => {
+        const pendingChanges = pendingDateChangesRef.current.get(taskKey);
+        pendingDateChangesRef.current.delete(taskKey);
+        dateChangeTimersRef.current.delete(taskKey);
+
+        if (pendingChanges) {
+          try {
+            await syncTask(originalTask.id, pendingChanges);
+          } catch (error) {
+            console.error(
+              '[WorkloadView] Failed to sync task:',
+              error.message
+            );
+          }
+        }
+      }, 500);
+
+      dateChangeTimersRef.current.set(taskKey, timer);
+    },
+    [syncTask]
+  );
+
+  // Use shared highlight time hook for weekend/holiday logic
+  const { highlightTime } = useHighlightTime({ holidays, workdays });
+
+  // Show loading state
+  if (syncState.isLoading && !currentConfig) {
+    return (
+      <div className="workload-view-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading GitLab configuration...</p>
+      </div>
+    );
+  }
+
+  // Show config prompt if no config
+  if (!currentConfig) {
+    return (
+      <div className="workload-view-empty">
+        <div className="empty-message">
+          <h3>No GitLab project configured</h3>
+          <p>
+            Please configure a GitLab project in the Gantt View first, then
+            return here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasSelection =
+    selectedAssignees.length > 0 || selectedLabels.length > 0;
+
+  return (
+    <div className="workload-view-container">
+      <div className="workload-view-header">
+        <div className="project-switcher">
+          <select
+            value={currentConfig?.id || ''}
+            onChange={(e) => handleQuickSwitch(e.target.value)}
+            className="project-select-compact"
+          >
+            <option value="">Select Project...</option>
+            {configs.map((config) => (
+              <option key={config.id} value={config.id}>
+                {config.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="btn-settings"
+            title="Settings"
+          >
+            <i className="fas fa-cog"></i>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowViewOptions(!showViewOptions)}
+          className="btn-view-options"
+          title="View Options"
+        >
+          <i className="fas fa-sliders-h"></i>
+          <i className={`fas fa-chevron-${showViewOptions ? 'up' : 'down'} chevron-icon`}></i>
+        </button>
+
+        {showViewOptions && (
+          <div className="view-controls">
+            <label className="control-label">
+              Range:
+              <select
+                value={dateRangePreset}
+                onChange={(e) => setDateRangePreset(e.target.value)}
+                className="unit-select"
+              >
+                <option value="1m">1 Month</option>
+                <option value="3m">3 Months</option>
+                <option value="6m">6 Months</option>
+                <option value="1y">1 Year</option>
+                <option value="2y">2 Years</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            {dateRangePreset === 'custom' && (
+              <>
+                <label className="control-label">
+                  From:
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="date-input"
+                  />
+                </label>
+                <label className="control-label">
+                  To:
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="date-input"
+                  />
+                </label>
+              </>
+            )}
+            <label className="control-label">
+              Width:
+              <input
+                type="range"
+                min="20"
+                max="100"
+                value={cellWidthDisplay}
+                onChange={(e) => handleCellWidthChange(Number(e.target.value))}
+                className="slider"
+                disabled={lengthUnit !== 'day'}
+              />
+              <span className="control-value">
+                {lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}
+              </span>
+            </label>
+            <label className="control-label">
+              Height:
+              <input
+                type="range"
+                min="20"
+                max="60"
+                value={cellHeightDisplay}
+                onChange={(e) => handleCellHeightChange(Number(e.target.value))}
+                className="slider"
+              />
+              <span className="control-value">{cellHeightDisplay}</span>
+            </label>
+            <label className="control-label">
+              Unit:
+              <select
+                value={lengthUnit}
+                onChange={(e) => setLengthUnit(e.target.value)}
+                className="unit-select"
+              >
+                <option value="hour">Hour</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="quarter">Quarter</option>
+              </select>
+            </label>
+            <label className="control-label checkbox-label">
+              <input
+                type="checkbox"
+                checked={showOthers}
+                onChange={(e) => setShowOthers(e.target.checked)}
+              />
+              Others
+            </label>
+          </div>
+        )}
+
+        <SyncButton onSync={sync} syncState={syncState} filterOptions={{}} />
+      </div>
+
+      {syncState.error && (
+        <div className="error-banner">
+          <strong>Sync Error:</strong> {syncState.error}
+          <button onClick={() => sync()} className="retry-btn">
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="workload-view-content">
+        <WorkloadSidebar
+          assignees={availableAssignees}
+          labels={availableLabels}
+          selectedAssignees={selectedAssignees}
+          selectedLabels={selectedLabels}
+          onAssigneesChange={setSelectedAssignees}
+          onLabelsChange={setSelectedLabels}
+        />
+
+        <div className="workload-gantt-wrapper">
+          {syncState.isLoading || allTasks.length === 0 ? (
+            <div className="loading-message">
+              <p>Loading GitLab data...</p>
+            </div>
+          ) : !hasSelection ? (
+            <div className="no-selection-message">
+              <i className="fas fa-hand-pointer"></i>
+              <h3>Select Assignees or Labels</h3>
+              <p>
+                Choose assignees and/or labels from the sidebar to view their
+                workload.
+              </p>
+            </div>
+          ) : (
+            <WorkloadChart
+              key={`workload-${lengthUnit}-${effectiveCellWidth}`}
+              tasks={allTasks}
+              selectedAssignees={selectedAssignees}
+              selectedLabels={selectedLabels}
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              cellWidth={effectiveCellWidth}
+              cellHeight={cellHeight}
+              lengthUnit={lengthUnit}
+              highlightTime={highlightTime}
+              onTaskDrag={handleTaskDrag}
+              showOthers={showOthers}
+            />
+          )}
+        </div>
+      </div>
+
+      {showSettings && (
+        <div
+          className="settings-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSettings(false);
+            }
+          }}
+        >
+          <div className="settings-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-modal-header">
+              <h3>Workload Settings</h3>
+              <button onClick={() => setShowSettings(false)} className="btn-close-modal">
+                &times;
+              </button>
+            </div>
+
+            <div className="settings-section">
+              <h4>GitLab Project</h4>
+              <ProjectSelector
+                onProjectChange={(config) => {
+                  handleConfigChange(config);
+                  setShowSettings(false);
+                }}
+                currentConfigId={currentConfig?.id}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default WorkloadView;

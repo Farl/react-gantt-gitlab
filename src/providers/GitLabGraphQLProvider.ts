@@ -2398,4 +2398,84 @@ export class GitLabGraphQLProvider {
       isDev: this.isDev,
     };
   }
+
+  /**
+   * Fetch project members (for Workload View)
+   * Returns list of member names who have access to the project
+   */
+  async getProjectMembers(): Promise<string[]> {
+    const query = `
+      query getProjectMembers($fullPath: ID!) {
+        ${this.config.type}(fullPath: $fullPath) {
+          projectMembers(first: 100) {
+            nodes {
+              user {
+                name
+                username
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.graphqlClient.query<any>(query, {
+        fullPath: this.getFullPath(),
+      });
+
+      const members =
+        this.config.type === 'group'
+          ? result.group?.projectMembers?.nodes || []
+          : result.project?.projectMembers?.nodes || [];
+
+      // Extract unique member names
+      const names = members
+        .map((m: any) => m.user?.name)
+        .filter((name: string | undefined) => name);
+
+      return [...new Set(names)].sort() as string[];
+    } catch (error) {
+      console.warn('[GitLabGraphQL] Failed to fetch project members:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch project labels (for Workload View)
+   * Returns list of label titles available in the project
+   */
+  async getProjectLabels(): Promise<string[]> {
+    const query = `
+      query getProjectLabels($fullPath: ID!) {
+        ${this.config.type}(fullPath: $fullPath) {
+          labels(first: 100) {
+            nodes {
+              title
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.graphqlClient.query<any>(query, {
+        fullPath: this.getFullPath(),
+      });
+
+      const labels =
+        this.config.type === 'group'
+          ? result.group?.labels?.nodes || []
+          : result.project?.labels?.nodes || [];
+
+      // Extract label titles
+      return labels
+        .map((l: any) => l.title)
+        .filter((title: string | undefined) => title)
+        .sort();
+    } catch (error) {
+      console.warn('[GitLabGraphQL] Failed to fetch project labels:', error);
+      return [];
+    }
+  }
 }

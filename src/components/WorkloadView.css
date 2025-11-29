@@ -1,0 +1,536 @@
+/**
+ * WorkloadView Styles
+ */
+
+/* Container */
+.workload-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wx-background);
+}
+
+/* Header */
+.workload-view-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--wx-gitlab-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gitlab-header-border, #e1e4e8);
+  flex-wrap: wrap;
+}
+
+.workload-view-header .project-switcher {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.workload-view-header .project-select-compact {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.workload-view-header .btn-settings {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  cursor: pointer;
+  color: #586069;
+  transition: all 0.2s ease;
+}
+
+.workload-view-header .btn-settings:hover {
+  background: var(--wx-background-alt, #f6f8fa);
+  color: #24292e;
+}
+
+.workload-view-header .btn-view-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  cursor: pointer;
+  color: #586069;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.workload-view-header .btn-view-options:hover {
+  background: var(--wx-background-alt, #f6f8fa);
+  color: #24292e;
+}
+
+.workload-view-header .btn-view-options .chevron-icon {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.workload-view-header .view-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--wx-gitlab-control-background, #fff);
+  border-radius: 4px;
+  border: 1px solid var(--wx-gitlab-control-border, #e1e4e8);
+}
+
+.workload-view-header .control-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--wx-gitlab-control-text, #586069);
+  white-space: nowrap;
+}
+
+.workload-view-header .slider {
+  width: 80px;
+  height: 4px;
+  cursor: pointer;
+}
+
+.workload-view-header .slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workload-view-header .control-value {
+  min-width: 30px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.workload-view-header .unit-select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  font-size: 13px;
+}
+
+.workload-view-header .date-input {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  font-size: 13px;
+  width: 130px;
+}
+
+.workload-view-header .checkbox-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+.workload-view-header .checkbox-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6b4fbb;
+}
+
+/* Settings Modal */
+.settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.settings-modal-content {
+  background: var(--wx-background, #fff);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--wx-border-color, #e1e4e8);
+}
+
+.settings-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--wx-color-primary, #24292e);
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--wx-color-secondary, #586069);
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-close-modal:hover {
+  color: var(--wx-color-primary, #24292e);
+}
+
+.settings-section {
+  padding: 20px;
+}
+
+.settings-section h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--wx-color-secondary, #586069);
+}
+
+/* Dark theme for modal */
+.wx-dark-theme .settings-modal-content {
+  background: var(--wx-background, #1e1e1e);
+}
+
+.wx-dark-theme .settings-modal-header {
+  border-color: var(--wx-border-color, #3c3c3c);
+}
+
+.wx-dark-theme .settings-modal-header h3 {
+  color: var(--wx-color-primary, #d4d4d4);
+}
+
+.wx-dark-theme .btn-close-modal {
+  color: var(--wx-color-secondary, #a0a0a0);
+}
+
+.wx-dark-theme .btn-close-modal:hover {
+  color: var(--wx-color-primary, #d4d4d4);
+}
+
+.wx-dark-theme .workload-view-header .date-input {
+  background: var(--wx-background-alt, #2d2d2d);
+  border-color: var(--wx-border-color, #3c3c3c);
+  color: var(--wx-color-primary, #d4d4d4);
+}
+
+/* Content area */
+.workload-view-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.workload-sidebar {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid var(--wx-border-color, #e1e4e8);
+  background: var(--wx-background-alt, #f6f8fa);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-section {
+  background: var(--wx-background, #fff);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--wx-border-color, #e1e4e8);
+}
+
+.sidebar-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--wx-border-color, #e1e4e8);
+}
+
+.sidebar-section h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wx-color-primary, #24292e);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-section h3 i {
+  color: var(--wx-color-secondary, #6b4fbb);
+}
+
+.section-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-width: 40px;
+  border: 1px solid var(--wx-border-color, #d1d5da);
+  background: var(--wx-background, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  color: #333;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  background: var(--wx-background-alt, #f6f8fa);
+  border-color: var(--wx-color-primary, #24292e);
+}
+
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.checkbox-item:hover {
+  background: var(--wx-background-alt, #f6f8fa);
+}
+
+.checkbox-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  font-size: 13px;
+  color: var(--wx-color-primary, #24292e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkbox-label.label-tag {
+  padding: 2px 8px;
+  background: var(--wx-background-alt, #f6f8fa);
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.empty-message {
+  color: var(--wx-color-secondary, #6a737d);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Selection summary */
+.selection-summary {
+  background: var(--wx-background-alt, #f6f8fa);
+  padding: 12px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.summary-label {
+  color: #555;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Gantt wrapper */
+.workload-gantt-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Group header in Gantt grid */
+.workload-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.workload-group-header .group-name {
+  color: var(--wx-color-primary, #24292e);
+}
+
+.workload-group-header .group-count {
+  font-size: 12px;
+  color: var(--wx-color-secondary, #6a737d);
+  font-weight: normal;
+}
+
+/* Loading states */
+.workload-view-loading,
+.workload-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.workload-view-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--wx-border-color, #e1e4e8);
+  border-top-color: var(--wx-color-primary, #0366d6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--wx-color-secondary, #6a737d);
+}
+
+/* No selection message */
+.no-selection-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 40px;
+  color: var(--wx-color-secondary, #6a737d);
+}
+
+.no-selection-message i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-selection-message h3 {
+  margin: 0 0 8px;
+  color: var(--wx-color-primary, #24292e);
+}
+
+.no-selection-message p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Error banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffeef0;
+  border-bottom: 1px solid #f97583;
+  color: #cb2431;
+}
+
+.error-banner .retry-btn {
+  padding: 4px 12px;
+  background: #cb2431;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.error-banner .retry-btn:hover {
+  background: #a31d27;
+}
+
+/* Dark theme support */
+.wx-dark-theme .workload-view-container {
+  background: var(--wx-background, #1e1e1e);
+}
+
+.wx-dark-theme .workload-view-header {
+  background: var(--wx-gitlab-header-background, #252526);
+  border-color: var(--wx-gitlab-header-border, #3c3c3c);
+}
+
+.wx-dark-theme .workload-sidebar {
+  background: var(--wx-background-alt, #252526);
+  border-color: var(--wx-border-color, #3c3c3c);
+}
+
+.wx-dark-theme .sidebar-section {
+  background: var(--wx-background, #1e1e1e);
+  border-color: var(--wx-border-color, #3c3c3c);
+}
+
+.wx-dark-theme .checkbox-item:hover {
+  background: var(--wx-background-alt, #2d2d2d);
+}
+
+.wx-dark-theme .checkbox-label {
+  color: var(--wx-color-primary, #d4d4d4);
+}
+
+.wx-dark-theme .workload-group-header .group-name {
+  color: var(--wx-color-primary, #d4d4d4);
+}
+
+.wx-dark-theme .action-btn {
+  background: var(--wx-background-alt, #2d2d2d);
+  border-color: var(--wx-border-color, #3c3c3c);
+  color: var(--wx-color-secondary, #a0a0a0);
+}
+
+.wx-dark-theme .action-btn:hover {
+  background: var(--wx-background, #1e1e1e);
+}

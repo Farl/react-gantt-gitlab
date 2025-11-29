@@ -14,6 +14,8 @@ import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider.ts';
 import { gitlabConfigManager } from '../config/GitLabConfigManager.ts';
 import { useGitLabSync } from '../hooks/useGitLabSync.ts';
 import { useGitLabHolidays } from '../hooks/useGitLabHolidays.ts';
+import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
+import { useHighlightTime } from '../hooks/useHighlightTime.ts';
 import { GitLabFilters } from '../utils/GitLabFilters.ts';
 import { ProjectSelector } from './ProjectSelector.jsx';
 import { SyncButton } from './SyncButton.jsx';
@@ -25,6 +27,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const [provider, setProvider] = useState(null);
   const [filterOptions, setFilterOptions] = useState({});
   const [showSettings, setShowSettings] = useState(false);
+  const [showViewOptions, setShowViewOptions] = useState(false);
   const [configs, setConfigs] = useState([]);
 
   // Store reference to all tasks for event handlers
@@ -76,6 +79,17 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     const saved = localStorage.getItem('gantt-length-unit');
     return saved || 'day';
   });
+
+  // Use shared date range preset hook
+  const {
+    dateRangePreset,
+    setDateRangePreset,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+    dateRange,
+  } = useDateRangePreset({ storagePrefix: 'gantt' });
 
   // Calculate effective cellWidth based on lengthUnit
   const effectiveCellWidth = useMemo(() => {
@@ -345,45 +359,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const stats = useMemo(() => {
     return GitLabFilters.calculateStats(filteredTasks);
   }, [filteredTasks]);
-
-  // Dynamic date range based on lengthUnit to avoid performance issues
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    let start, end;
-
-    switch (lengthUnit) {
-      case 'hour':
-        // For hour view, show only 2 weeks to avoid rendering thousands of cells
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-        break;
-      case 'day':
-        // Standard range: 1 month before, 1 year after
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        end = new Date(now.getFullYear() + 1, now.getMonth(), 0);
-        break;
-      case 'week':
-        // For week view, show 3 months before and 6 months after
-        start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 6, 0);
-        break;
-      case 'month':
-        // For month view, show 6 months before and 2 years after
-        start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        end = new Date(now.getFullYear() + 2, now.getMonth(), 0);
-        break;
-      case 'quarter':
-        // For quarter view, show 1 year before and 3 years after
-        start = new Date(now.getFullYear() - 1, 0, 1);
-        end = new Date(now.getFullYear() + 3, 11, 31);
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        end = new Date(now.getFullYear() + 1, now.getMonth(), 0);
-    }
-
-    return { start, end };
-  }, [lengthUnit]); // Recalculate when lengthUnit changes
 
   // Dynamic scales based on lengthUnit (lengthUnit = the smallest time unit to display)
   const scales = useMemo(() => {
@@ -1203,81 +1178,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     ];
   }, []);
 
-  // Helper function to normalize date string to YYYY-MM-DD format
-  const normalizeDateString = useCallback((dateStr) => {
-    // Trim whitespace
-    dateStr = dateStr.trim();
-
-    // Support both YYYY-MM-DD and YYYY/M/D formats
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split('/');
-      if (parts.length === 3) {
-        const year = parts[0];
-        const month = parts[1].padStart(2, '0');
-        const day = parts[2].padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      }
-    }
-    return dateStr; // Already in YYYY-MM-DD format
-  }, []);
-
-  // Helper function to format date as YYYY-MM-DD in local timezone
-  const formatLocalDate = useCallback((date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  // Pre-compute normalized date sets for efficient lookup
-  // Use JSON.stringify to create stable dependency (avoid re-computation when array reference changes but content is same)
-  const holidaysKey = useMemo(() => JSON.stringify(holidays.map(h => typeof h === 'string' ? h : h.date)), [holidays]);
-  const workdaysKey = useMemo(() => JSON.stringify(workdays.map(w => typeof w === 'string' ? w : w.date)), [workdays]);
-
-  const holidaySet = useMemo(() => {
-    const set = new Set();
-    for (const holiday of holidays) {
-      const dateStr = typeof holiday === 'string' ? holiday : holiday.date;
-      set.add(normalizeDateString(dateStr));
-    }
-    return set;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holidaysKey, normalizeDateString]);
-
-  const workdaySet = useMemo(() => {
-    const set = new Set();
-    for (const wd of workdays) {
-      const dateStr = typeof wd === 'string' ? wd : wd.date;
-      set.add(normalizeDateString(dateStr));
-    }
-    return set;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workdaysKey, normalizeDateString]);
-
-  // Working days and holidays calculation
-  const isWeekend = useCallback((date) => {
-    const day = date.getDay();
-    const dateStr = formatLocalDate(date);
-
-    // Check if this weekend day is marked as a workday
-    if (workdaySet.has(dateStr)) {
-      return false; // It's a workday despite being weekend
-    }
-
-    return day === 0 || day === 6; // Sunday or Saturday
-  }, [workdaySet, formatLocalDate]);
-
-  const isHoliday = useCallback((date) => {
-    const dateStr = formatLocalDate(date);
-    return holidaySet.has(dateStr);
-  }, [holidaySet, formatLocalDate]);
-
-  const highlightTime = useCallback((date, unit) => {
-    if (unit === 'day' && (isWeekend(date) || isHoliday(date))) {
-      return 'wx-weekend';
-    }
-    return '';
-  }, [isWeekend, isHoliday]);
+  // Use shared highlight time hook for weekend/holiday logic
+  const { highlightTime } = useHighlightTime({ holidays, workdays });
 
   // Date cell component for custom formatting
   const DateCell = useCallback(({ row, column }) => {
@@ -1405,47 +1307,94 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           </button>
         </div>
 
-        <div className="view-controls">
-          <label className="control-label">
-            Width:
-            <input
-              type="range"
-              min="20"
-              max="100"
-              value={cellWidthDisplay}
-              onChange={(e) => handleCellWidthChange(Number(e.target.value))}
-              className="slider"
-              disabled={lengthUnit !== 'day'}
-            />
-            <span className="control-value">{lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}</span>
-          </label>
-          <label className="control-label">
-            Height:
-            <input
-              type="range"
-              min="20"
-              max="60"
-              value={cellHeightDisplay}
-              onChange={(e) => handleCellHeightChange(Number(e.target.value))}
-              className="slider"
-            />
-            <span className="control-value">{cellHeightDisplay}</span>
-          </label>
-          <label className="control-label">
-            Unit:
-            <select
-              value={lengthUnit}
-              onChange={(e) => setLengthUnit(e.target.value)}
-              className="unit-select"
-            >
-              <option value="hour">Hour</option>
-              <option value="day">Day</option>
-              <option value="week">Week</option>
-              <option value="month">Month</option>
-              <option value="quarter">Quarter</option>
-            </select>
-          </label>
-        </div>
+        <button
+          onClick={() => setShowViewOptions(!showViewOptions)}
+          className="btn-view-options"
+        >
+          <i className="fas fa-sliders-h"></i>
+          <i className={`fas fa-chevron-${showViewOptions ? 'up' : 'down'} chevron-icon`}></i>
+        </button>
+
+        {showViewOptions && (
+          <div className="view-controls">
+            <label className="control-label">
+              Range:
+              <select
+                value={dateRangePreset}
+                onChange={(e) => setDateRangePreset(e.target.value)}
+                className="unit-select"
+              >
+                <option value="1m">1 Month</option>
+                <option value="3m">3 Months</option>
+                <option value="6m">6 Months</option>
+                <option value="1y">1 Year</option>
+                <option value="2y">2 Years</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            {dateRangePreset === 'custom' && (
+              <>
+                <label className="control-label">
+                  From:
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="date-input"
+                  />
+                </label>
+                <label className="control-label">
+                  To:
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="date-input"
+                  />
+                </label>
+              </>
+            )}
+            <label className="control-label">
+              Width:
+              <input
+                type="range"
+                min="20"
+                max="100"
+                value={cellWidthDisplay}
+                onChange={(e) => handleCellWidthChange(Number(e.target.value))}
+                className="slider"
+                disabled={lengthUnit !== 'day'}
+              />
+              <span className="control-value">{lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}</span>
+            </label>
+            <label className="control-label">
+              Height:
+              <input
+                type="range"
+                min="20"
+                max="60"
+                value={cellHeightDisplay}
+                onChange={(e) => handleCellHeightChange(Number(e.target.value))}
+                className="slider"
+              />
+              <span className="control-value">{cellHeightDisplay}</span>
+            </label>
+            <label className="control-label">
+              Unit:
+              <select
+                value={lengthUnit}
+                onChange={(e) => setLengthUnit(e.target.value)}
+                className="unit-select"
+              >
+                <option value="hour">Hour</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="quarter">Quarter</option>
+              </select>
+            </label>
+          </div>
+        )}
 
         <SyncButton
           onSync={syncWithFoldState}
@@ -1757,6 +1706,21 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           border-color: #1f75cb;
         }
 
+        .date-input {
+          padding: 4px 8px;
+          border: 1px solid var(--wx-gitlab-button-border);
+          border-radius: 4px;
+          font-size: 13px;
+          background: var(--wx-gitlab-button-background);
+          color: var(--wx-gitlab-button-text);
+          width: 130px;
+        }
+
+        .date-input:focus {
+          outline: none;
+          border-color: #1f75cb;
+        }
+
         .project-select-compact {
           padding: 6px 12px;
           border: 1px solid var(--wx-gitlab-button-border);
@@ -1785,6 +1749,30 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         .btn-settings:hover {
           color: var(--wx-gitlab-button-hover-text);
           background: var(--wx-gitlab-button-hover-background);
+        }
+
+        .btn-view-options {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border: 1px solid var(--wx-gitlab-button-border);
+          border-radius: 4px;
+          background: var(--wx-gitlab-button-background);
+          cursor: pointer;
+          color: var(--wx-gitlab-button-text);
+          font-size: 13px;
+          transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-view-options:hover {
+          color: var(--wx-gitlab-button-hover-text);
+          background: var(--wx-gitlab-button-hover-background);
+        }
+
+        .btn-view-options .chevron-icon {
+          font-size: 10px;
+          opacity: 0.7;
         }
 
         .settings-modal-overlay {
