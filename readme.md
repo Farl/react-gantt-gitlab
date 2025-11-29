@@ -1,83 +1,43 @@
-<div align="center">
-	
-# SVAR React Gantt Chart
+# React Gantt for GitLab
 
-:globe_with_meridians: [Website](https://svar.dev/react/gantt/) • :bulb: [Getting Started](https://docs.svar.dev/react/gantt/getting_started/) • :eyes: [Demos](https://docs.svar.dev/react/gantt/samples/)
+https://react-gantt-gitlab-8d7d33.pages.rayark.io/
 
-[![npm](https://img.shields.io/npm/v/@svar-ui/react-gantt.svg)](https://www.npmjs.com/package/@svar-ui/react-gantt)
-[![License](https://img.shields.io/github/license/svar-widgets/react-gantt)](https://github.com/svar-widgets/react-gantt/blob/main/license.txt)
-[![npm downloads](https://img.shields.io/npm/dm/@svar-ui/react-gantt.svg)](https://www.npmjs.com/package/@svar-ui/react-gantt)
+## GitLab Gantt
 
-</div>
+![GitLab Gantt Screenshot](./assets/gitlab-gantt.png)
 
-[SVAR React Gantt](https://svar.dev/react/gantt/) is a customizable, high-performance React Gantt chart component that helps you visualize and manage project timelines. Its intuitive interface allows users to add, edit, and organize tasks and dependencies directly on the timeline via drag-and-drop or through a simple task edit form. 
+- 設置 GitLab 專案
+  - 需要 Base URL, Access Token
+  - 設置國定假日和特殊工作日 (使用 GitLab Snippets 存放)
+- 簡易的篩選器
+- 新增/編輯/刪除 GitLab Milestone
+  - 在旁邊按 + 可以新增內層 Issue
+- 新增/編輯/刪除 GitLab Issue
+  - 在旁邊按 + 可以新增內層 Task
+- 新增/編輯/刪除 GitLab Task
+- 雙擊打開 Milestone, Issue, Task 編輯器
+  - 可以從編輯器連進 GitLab 頁面
+- 支援 Issue / Task 排序
+  - 與 GitLab 內的排序連動
+- 在時間軸調整 Milestone / Issue / Task 時間
+- 可以設置 Issue/Task 之間的連結 (Link)
+  - 點擊時間bar兩旁的圓圈，可以進入 Link 設置，點另外一個圓圈就會連結
+  - 可以在編輯視窗裡面刪除/修改連線
+- 支援調整的時距
 
-TypeScript support, React 19 compatibility, and clean UI make it a modern and reliable choice for building interactive Gantt charts.
+### 已知問題
 
-<div align="center">
-  <img src="https://cdn.svar.dev/public/gantt-chart-ui.png" alt="SVAR React Gantt Chart - Screenshot">
-</div>
+- 新建 milestone 裡面的 issue, task 會隔一小段時間同步後才會正常顯示
+- 目前不支援拖到其他 Milestone / Issue 底下
 
-### ✨ Key Features
+## Workload View
 
--   Interactive drag-and-drop interface
--   Intuitive and customizable task edit form
--   Set task dependencies on the timeline or in a popup form
--   Showing task progress on the taskbar
--   Hierarchical view of sub tasks
--   Configurable timeline (hours, days, weeks)
--   Flexible time units: support for hours and minutes
--   Custom time scales: define custom periods like sprints or stages
--   Ability to use custom HTML in grid cells
--   Sorting tasks in grid
--   Toolbar and context menu
--   Tooltips for taskbars
--   Weekends/holidays highlights
--   Zooming with scroll
--   Hotkey support for common actions
--   Fast performance with large data sets
--   Localization
--   Light and dark skins
--   Full TypeScript support
--   React 18 & 19 compatible
+![Workload View Screenshot](./assets/workload-view.png)
 
-[Check out the demos](https://docs.svar.dev/react/gantt/samples/) to see all SVAR React Gantt features in action.
+- 可以用 Assignee 和 Labels 來篩選，觀察工作負荷量
+- 可以調整時間
+- 可以上下拖曳將工作指派到不同人或是移動到不同的 Labels
 
-### :hammer_and_wrench: How to Use
+## Acknowledgements
 
-To start using **SVAR React Gantt**, simply import the package and include the desired component in your React file:
-
-```jsx
-import { Gantt } from "@svar-ui/react-gantt";
-import "@svar-ui/react-gantt/all.css";
-
-const tasks = [
-  {
-    id: 20,
-    text: "New Task",
-    start: new Date(2024, 5, 11),
-    end: new Date(2024, 6, 12),
-    duration: 1,
-    progress: 2,
-    type: "task",
-    lazy: false,
-  },
-  {
-    id: 47,
-    text: "[1] Master project",
-    start: new Date(2024, 5, 12),
-    end: new Date(2024, 7, 12),
-    duration: 8,
-    progress: 0,
-    parent: 0,
-    type: "summary",
-  },
-];
-const myComponent => (<Gantt tasks={tasks} />);
-```
-
-See the [getting started guide](https://docs.svar.dev/react/gantt/getting_started/) to learn how to configure data sources, customize columns, and enable editing.
-
-### :speech_balloon: Need Help?
-
-[Post an Issue](https://github.com/svar-widgets/react-gantt/issues/) or use our [community forum](https://forum.svar.dev).
+- This project is based on [SVAR React Gantt](https://svar.dev/react/gantt/)
