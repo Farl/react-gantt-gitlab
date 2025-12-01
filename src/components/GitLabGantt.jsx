@@ -1576,7 +1576,11 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 });
 
                 if (orphanedTasks.length > 0) {
-                  console.error('[GitLabGantt RENDER] Found orphaned tasks (parent does not exist):', orphanedTasks);
+                  console.error('[GitLabGantt RENDER] Found orphaned tasks (parent does not exist):', {
+                    count: orphanedTasks.length,
+                    orphanedTaskIds: orphanedTasks.map(t => ({id: t.id, parent: t.parent, text: t.text})),
+                    message: 'This should not happen after filter integrity fix'
+                  });
                 }
 
                 try {

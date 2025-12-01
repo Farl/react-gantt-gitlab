@@ -160,7 +160,55 @@ export class GitLabFilters {
       filtered = this.searchTasks(filtered, options.search);
     }
 
+    // Ensure parent-child integrity: include all necessary parent tasks
+    filtered = this.ensureParentChildIntegrity(filtered, tasks);
+
     return filtered;
+  }
+
+  /**
+   * Ensure all filtered tasks have their parent tasks included
+   * This prevents orphaned tasks in the Gantt chart
+   */
+  static ensureParentChildIntegrity(
+    filteredTasks: ITask[],
+    allTasks: ITask[],
+  ): ITask[] {
+    const taskMap = new Map<number | string, ITask>();
+    const requiredParents = new Set<number | string>();
+
+    // First, add all filtered tasks to the map
+    filteredTasks.forEach((task) => {
+      taskMap.set(task.id, task);
+    });
+
+    // Find all required parent IDs
+    filteredTasks.forEach((task) => {
+      if (task.parent && task.parent !== 0) {
+        let currentParentId: number | string | undefined = task.parent;
+
+        // Walk up the parent chain to find all ancestors
+        while (currentParentId && currentParentId !== 0) {
+          if (!taskMap.has(currentParentId)) {
+            requiredParents.add(currentParentId);
+
+            // Find the parent task in allTasks
+            const parentTask = allTasks.find((t) => t.id === currentParentId);
+            if (parentTask) {
+              taskMap.set(currentParentId, parentTask);
+              currentParentId = parentTask.parent;
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+    });
+
+    // Return all tasks including required parents
+    return Array.from(taskMap.values());
   }
 
   /**
