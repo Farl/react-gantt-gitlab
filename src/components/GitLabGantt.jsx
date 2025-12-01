@@ -1635,6 +1635,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               readonly={false}
               baselines={true}
               taskTemplate={SmartTaskContent}
+              autoScale={false}
                   />
                 );
               } catch (error) {
