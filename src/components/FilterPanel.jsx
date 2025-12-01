@@ -132,116 +132,128 @@ export function FilterPanel({
 
       {isExpanded && (
         <div className="filter-content">
-          {/* Search */}
-          <div className="filter-section">
-            <label className="filter-label">Search</label>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search tasks..."
-              className="filter-search"
-            />
+          {/* Top Row: Search and State */}
+          <div className="filter-row">
+            {/* Search */}
+            <div className="filter-section filter-search-section">
+              <label className="filter-label">Search</label>
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search tasks..."
+                className="filter-search"
+              />
+            </div>
+
+            {/* States */}
+            <div className="filter-section filter-state-section">
+              <label className="filter-label">State</label>
+              <div className="filter-options horizontal">
+                {['opened', 'closed'].map((state) => (
+                  <label key={state} className="filter-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={filters.states.includes(state)}
+                      onChange={() => handleStateToggle(state)}
+                    />
+                    <span>{state}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* States */}
-          <div className="filter-section">
-            <label className="filter-label">State</label>
-            <div className="filter-options">
-              {['opened', 'closed'].map((state) => (
-                <label key={state} className="filter-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={filters.states.includes(state)}
-                    onChange={() => handleStateToggle(state)}
-                  />
-                  <span>{state}</span>
+          {/* Main Filter Grid */}
+          <div className="filter-grid">
+            {/* Milestones */}
+            {milestones && milestones.length > 0 && (
+              <div className="filter-section">
+                <label className="filter-label">
+                  <i className="fas fa-flag-checkered"></i>
+                  Milestones ({milestones.length})
                 </label>
-              ))}
-            </div>
+                <div className="filter-options scrollable">
+                  {milestones.map((milestone) => (
+                    <label key={milestone.id} className="filter-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={filters.milestoneIds.includes(milestone.id)}
+                        onChange={() => handleMilestoneToggle(milestone.id)}
+                      />
+                      <span title={milestone.title}>{milestone.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Epics */}
+            {epics && epics.length > 0 && (
+              <div className="filter-section">
+                <label className="filter-label">
+                  <i className="fas fa-layer-group"></i>
+                  Epics ({epics.length})
+                </label>
+                <div className="filter-options scrollable">
+                  {epics.map((epic) => (
+                    <label key={epic.id} className="filter-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={filters.epicIds.includes(epic.id)}
+                        onChange={() => handleEpicToggle(epic.id)}
+                      />
+                      <span title={epic.title}>{epic.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Labels */}
+            {availableLabels.length > 0 && (
+              <div className="filter-section">
+                <label className="filter-label">
+                  <i className="fas fa-tags"></i>
+                  Labels ({availableLabels.length})
+                </label>
+                <div className="filter-options scrollable">
+                  {availableLabels.map((label) => (
+                    <label key={label} className="filter-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={filters.labels.includes(label)}
+                        onChange={() => handleLabelToggle(label)}
+                      />
+                      <span className="label-tag">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Assignees */}
+            {availableAssignees.length > 0 && (
+              <div className="filter-section">
+                <label className="filter-label">
+                  <i className="fas fa-users"></i>
+                  Assignees ({availableAssignees.length})
+                </label>
+                <div className="filter-options scrollable">
+                  {availableAssignees.map((assignee) => (
+                    <label key={assignee} className="filter-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={filters.assignees.includes(assignee)}
+                        onChange={() => handleAssigneeToggle(assignee)}
+                      />
+                      <span>{assignee}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* Milestones */}
-          {milestones && milestones.length > 0 && (
-            <div className="filter-section">
-              <label className="filter-label">
-                Milestones ({milestones.length})
-              </label>
-              <div className="filter-options scrollable">
-                {milestones.map((milestone) => (
-                  <label key={milestone.id} className="filter-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.milestoneIds.includes(milestone.id)}
-                      onChange={() => handleMilestoneToggle(milestone.id)}
-                    />
-                    <span title={milestone.title}>{milestone.title}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Epics */}
-          {epics && epics.length > 0 && (
-            <div className="filter-section">
-              <label className="filter-label">Epics ({epics.length})</label>
-              <div className="filter-options scrollable">
-                {epics.map((epic) => (
-                  <label key={epic.id} className="filter-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.epicIds.includes(epic.id)}
-                      onChange={() => handleEpicToggle(epic.id)}
-                    />
-                    <span title={epic.title}>{epic.title}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Labels */}
-          {availableLabels.length > 0 && (
-            <div className="filter-section">
-              <label className="filter-label">
-                Labels ({availableLabels.length})
-              </label>
-              <div className="filter-options scrollable">
-                {availableLabels.map((label) => (
-                  <label key={label} className="filter-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.labels.includes(label)}
-                      onChange={() => handleLabelToggle(label)}
-                    />
-                    <span className="label-tag">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Assignees */}
-          {availableAssignees.length > 0 && (
-            <div className="filter-section">
-              <label className="filter-label">
-                Assignees ({availableAssignees.length})
-              </label>
-              <div className="filter-options scrollable">
-                {availableAssignees.map((assignee) => (
-                  <label key={assignee} className="filter-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.assignees.includes(assignee)}
-                      onChange={() => handleAssigneeToggle(assignee)}
-                    />
-                    <span>{assignee}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -315,16 +327,65 @@ export function FilterPanel({
           gap: 16px;
         }
 
+        .filter-row {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 16px;
+          align-items: start;
+        }
+
+        .filter-search-section {
+          flex: 1;
+        }
+
+        .filter-state-section {
+          min-width: 150px;
+        }
+
+        .filter-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          align-items: start;
+        }
+
+        @media (min-width: 1200px) {
+          .filter-grid {
+            grid-template-columns: repeat(4, 1fr);
+          }
+        }
+
+        @media (min-width: 900px) and (max-width: 1199px) {
+          .filter-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
+        @media (min-width: 600px) and (max-width: 899px) {
+          .filter-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
         .filter-section {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          min-width: 0; /* Prevent grid blowout */
         }
 
         .filter-label {
           font-size: 13px;
           font-weight: 600;
           color: var(--wx-gitlab-filter-text);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .filter-label i {
+          font-size: 11px;
+          opacity: 0.7;
         }
 
         .filter-search {
@@ -342,10 +403,19 @@ export function FilterPanel({
           gap: 6px;
         }
 
+        .filter-options.horizontal {
+          flex-direction: row;
+          gap: 12px;
+        }
+
         .filter-options.scrollable {
-          max-height: 200px;
+          max-height: 150px;
           overflow-y: auto;
           padding-right: 4px;
+          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border-radius: 4px;
+          padding: 8px;
+          background: var(--wx-gitlab-filter-input-background);
         }
 
         .filter-options.scrollable::-webkit-scrollbar {

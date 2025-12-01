@@ -439,11 +439,14 @@ export class GitLabGraphQLProvider {
     // Fetch links (related work items)
     const links = await this.fetchWorkItemLinks(workItems);
 
+    // Fetch epics (only for group level)
+    const epics = await this.fetchEpics();
+
     return {
       tasks,
       links,
       milestones: [], // Milestones are now included in tasks
-      epics: [], // TODO: Fetch epics if needed
+      epics, // Return fetched epics
     };
   }
 
@@ -2773,6 +2776,93 @@ export class GitLabGraphQLProvider {
         .sort();
     } catch (error) {
       console.warn('[GitLabGraphQL] Failed to fetch project labels:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch Epics from GitLab (Group level only)
+   * Returns list of epics with their id, iid, and title
+   */
+  async fetchEpics(): Promise<
+    Array<{ id: number; iid: number; title: string }>
+  > {
+    // Epics are only available at group level
+    if (this.config.type !== 'group') {
+      return [];
+    }
+
+    const query = `
+      query getEpics($fullPath: ID!, $after: String) {
+        group(fullPath: $fullPath) {
+          epics(state: opened, first: 100, after: $after) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              id
+              iid
+              title
+              state
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const allEpics: Array<{ id: number; iid: number; title: string }> = [];
+      let hasNextPage = true;
+      let endCursor: string | null = null;
+
+      // Fetch all pages
+      while (hasNextPage) {
+        const variables: any = {
+          fullPath: this.getFullPath(),
+        };
+
+        if (endCursor) {
+          variables.after = endCursor;
+        }
+
+        const result = await this.graphqlClient.query<{
+          group: {
+            epics: {
+              pageInfo: { hasNextPage: boolean; endCursor: string | null };
+              nodes: Array<{
+                id: string;
+                iid: string;
+                title: string;
+                state: string;
+              }>;
+            };
+          };
+        }>(query, variables);
+
+        const epics = result.group?.epics?.nodes || [];
+
+        // Convert and add epics to array
+        epics.forEach((epic) => {
+          // Extract numeric IID from the global ID (e.g., "gid://gitlab/Epic/123" -> 123)
+          const epicId = epic.id.match(/\/Epic\/(\d+)$/)?.[1];
+          if (epicId) {
+            allEpics.push({
+              id: Number(epicId),
+              iid: Number(epic.iid),
+              title: epic.title,
+            });
+          }
+        });
+
+        hasNextPage = result.group?.epics?.pageInfo?.hasNextPage || false;
+        endCursor = result.group?.epics?.pageInfo?.endCursor || null;
+      }
+
+      console.log(`[GitLabGraphQL] Fetched ${allEpics.length} epics`);
+      return allEpics.sort((a, b) => a.title.localeCompare(b.title));
+    } catch (error) {
+      console.warn('[GitLabGraphQL] Failed to fetch epics:', error);
       return [];
     }
   }
