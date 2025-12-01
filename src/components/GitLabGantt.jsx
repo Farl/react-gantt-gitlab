@@ -979,7 +979,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             }
           }
 
-          console.log('[GitLabGantt] Deleting task:', { id: ev.id, task, _gitlab: task?._gitlab });
           await deleteTask(ev.id, task);
         } catch (error) {
           console.error('Failed to delete task:', error);

@@ -169,14 +169,6 @@ export function useGitLabSync(
           const milestoneTask = currentTasks.find(
             (t) => t._gitlab?.globalId === milestoneGlobalId,
           );
-          console.log('[useGitLabSync] Looking for milestone:', {
-            milestoneGlobalId,
-            found: !!milestoneTask,
-            milestoneTaskId: milestoneTask?.id,
-            allMilestones: currentTasks
-              .filter((t) => t._gitlab?.type === 'milestone')
-              .map((t) => ({ id: t.id, globalId: t._gitlab?.globalId })),
-          });
           if (milestoneTask) {
             createdTask.parent = milestoneTask.id;
             // Also mark this as an Issue for proper styling

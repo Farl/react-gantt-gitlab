@@ -178,6 +178,10 @@ export class GitLabGraphQLProvider {
                   parent {
                     id
                     iid
+                    title
+                    workItemType {
+                      name
+                    }
                   }
                   children {
                     nodes {
@@ -751,10 +755,24 @@ export class GitLabGraphQLProvider {
     // Determine work item type
     const isIssue = workItem.workItemType?.name !== 'Task';
 
+    // First, check if Issue has Epic parent (store for filtering regardless of milestone)
+    // This must be done BEFORE determining display parent, because an Issue can have
+    // both an Epic parent AND a Milestone - we want to store Epic for filtering
+    if (isIssue && hierarchyWidget?.parent) {
+      const parentType = (hierarchyWidget.parent as any).workItemType?.name;
+      if (parentType === 'Epic') {
+        // Store Epic parent ID for filtering
+        // Note: We use iid because Epic API and WorkItem API return different global IDs
+        // but iid is consistent across both APIs
+        epicParentId = Number(hierarchyWidget.parent.iid);
+      }
+    }
+
+    // Now determine display parent (for Gantt hierarchy)
     // Priority for parent assignment:
     // 1. For Tasks: Use hierarchyWidget.parent (Task hierarchy)
     // 2. For Issues: Use Milestone first (for display), even if Epic parent exists
-    // 3. For Issues without Milestone but with Epic: Store Epic ID for notation
+    // 3. For Issues without Milestone but with Epic: Show at root level
 
     if (!isIssue && hierarchyWidget?.parent) {
       // This is a Task with parent - use hierarchy
@@ -762,20 +780,17 @@ export class GitLabGraphQLProvider {
       parentIid = parent;
     } else if (milestoneWidget?.milestone) {
       // Issue or Task belongs to a milestone - display under milestone
+      // Note: epicParentId is already set above if Epic parent exists
       parent = 10000 + Number(milestoneWidget.milestone.iid);
     } else if (isIssue && hierarchyWidget?.parent) {
-      // Issue with Epic parent but no Milestone
-      // Check if parent is an Epic (type would be different from Task/Issue)
-      const parentType = hierarchyWidget.parent.workItemType?.name;
-      if (
-        parentType === 'Epic' ||
-        (!parentType && hierarchyWidget.parent.iid)
-      ) {
-        // This is an Epic parent - store for later notation but don't set as parent
-        epicParentId = Number(hierarchyWidget.parent.iid);
-        parent = 0; // Will be at root level with [Epic #] notation
-      } else {
-        // Unlikely case: Issue has another Issue/Task as parent
+      // Issue with parent but no Milestone
+      const parentType = (hierarchyWidget.parent as any).workItemType?.name;
+      if (parentType === 'Epic') {
+        // Epic parent without Milestone - show at root level
+        // epicParentId is already set above
+        parent = 0;
+      } else if (parentType) {
+        // Issue has another Issue/Task as parent (unlikely but possible)
         parent = Number(hierarchyWidget.parent.iid);
         parentIid = parent;
       }
@@ -2847,15 +2862,32 @@ export class GitLabGraphQLProvider {
   }
 
   /**
-   * Fetch Epics from GitLab (Group level only)
+   * Fetch Epics from GitLab
+   * For group config: fetches epics directly from the group
+   * For project config: extracts group path from project path and fetches group epics
    * Returns list of epics with their id, iid, and title
    */
   async fetchEpics(): Promise<
     Array<{ id: number; iid: number; title: string }>
   > {
-    // Epics are only available at group level
-    if (this.config.type !== 'group') {
-      return [];
+    // Determine group path based on config type
+    let groupPath: string;
+
+    if (this.config.type === 'group') {
+      // Direct group access
+      groupPath = String(this.config.groupId);
+    } else {
+      // For project, extract group path from project path (e.g., "mygroup/myproject" -> "mygroup")
+      // Or for nested groups: "parent/child/project" -> "parent/child"
+      const projectPath = String(this.config.projectId);
+      const lastSlashIndex = projectPath.lastIndexOf('/');
+
+      if (lastSlashIndex === -1) {
+        // No group in path (shouldn't happen for GitLab projects)
+        return [];
+      }
+
+      groupPath = projectPath.substring(0, lastSlashIndex);
     }
 
     const query = `
@@ -2885,7 +2917,7 @@ export class GitLabGraphQLProvider {
       // Fetch all pages
       while (hasNextPage) {
         const variables: any = {
-          fullPath: this.getFullPath(),
+          fullPath: groupPath,
         };
 
         if (endCursor) {
@@ -2909,23 +2941,22 @@ export class GitLabGraphQLProvider {
         const epics = result.group?.epics?.nodes || [];
 
         // Convert and add epics to array
+        // Use iid as the primary identifier for filtering because:
+        // - Epic API returns gid://gitlab/Epic/X
+        // - WorkItem API returns gid://gitlab/WorkItem/Y for the same Epic
+        // - These are different IDs! But iid is consistent across both APIs
         epics.forEach((epic) => {
-          // Extract numeric IID from the global ID (e.g., "gid://gitlab/Epic/123" -> 123)
-          const epicId = epic.id.match(/\/Epic\/(\d+)$/)?.[1];
-          if (epicId) {
-            allEpics.push({
-              id: Number(epicId),
-              iid: Number(epic.iid),
-              title: epic.title,
-            });
-          }
+          allEpics.push({
+            id: Number(epic.iid), // Use iid for filtering consistency
+            iid: Number(epic.iid),
+            title: epic.title,
+          });
         });
 
         hasNextPage = result.group?.epics?.pageInfo?.hasNextPage || false;
         endCursor = result.group?.epics?.pageInfo?.endCursor || null;
       }
 
-      console.log(`[GitLabGraphQL] Fetched ${allEpics.length} epics`);
       return allEpics.sort((a, b) => a.title.localeCompare(b.title));
     } catch (error) {
       console.warn('[GitLabGraphQL] Failed to fetch epics:', error);
