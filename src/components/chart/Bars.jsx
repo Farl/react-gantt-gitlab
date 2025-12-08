@@ -43,7 +43,6 @@ function Bars(props) {
 
   const [linkFrom, setLinkFrom] = useState(undefined);
   const [taskMove, setTaskMove] = useState(null);
-  const progressFromRef = useRef(null);
 
   const [touched, setTouched] = useState(undefined);
   const touchTimerRef = useRef(null);
@@ -126,32 +125,18 @@ function Bars(props) {
       const { clientX } = point;
       const id = getID(node);
       const task = api.getTask(id);
-      const css = point.target.classList;
 
       if (!readonly) {
-        if (css.contains('wx-progress-marker')) {
-          const { progress } = api.getTask(id);
-          progressFromRef.current = {
-            id,
-            x: clientX,
-            progress,
-            dx: 0,
-            node,
-            marker: point.target,
-          };
-          point.target.classList.add('wx-progress-in-drag');
-        } else {
-          const mode = getMoveMode(node, point, task) || 'move';
+        const mode = getMoveMode(node, point, task) || 'move';
 
-          setTaskMove({
-            id,
-            mode,
-            x: clientX,
-            dx: 0,
-            l: task.$x,
-            w: task.$w,
-          });
-        }
+        setTaskMove({
+          id,
+          mode,
+          x: clientX,
+          dx: 0,
+          l: task.$x,
+          w: task.$w,
+        });
         startDrag();
       }
     },
@@ -185,16 +170,7 @@ function Bars(props) {
 
 
   const up = useCallback(() => {
-    if (progressFromRef.current) {
-      const { dx, id, marker, value } = progressFromRef.current;
-      progressFromRef.current = null;
-      if (typeof value != 'undefined' && dx)
-        api.exec('update-task', { id, task: { progress: value } });
-      marker.classList.remove('wx-progress-in-drag');
-
-      ignoreNextClickRef.current = true;
-      endDrag();
-    } else if (taskMove) {
+    if (taskMove) {
       const { id, mode, dx, l, w, start } = taskMove;
       setTaskMove(null);
       if (start) {
@@ -233,23 +209,7 @@ function Bars(props) {
       const { clientX } = point;
 
       if (!readonly) {
-        if (progressFromRef.current) {
-          const { node, x, id } = progressFromRef.current;
-          const dx = (progressFromRef.current.dx = clientX - x);
-
-          const diff = Math.round((dx / node.offsetWidth) * 100);
-          let progress = progressFromRef.current.progress + diff;
-          progressFromRef.current.value = progress = Math.min(
-            Math.max(0, progress),
-            100,
-          );
-
-          api.exec('update-task', {
-            id,
-            task: { progress },
-            inProgress: true,
-          });
-        } else if (taskMove) {
+        if (taskMove) {
           const { mode, l, w, x, id, start } = taskMove;
           const dx = clientX - x;
           if (
@@ -535,31 +495,13 @@ function Bars(props) {
               ) : null}
 
               {task.type !== 'milestone' ? (
-                <>
-                  {task.progress ? (
-                    <div className="wx-GKbcLEGA wx-progress-wrapper">
-                      <div
-                        className="wx-GKbcLEGA wx-progress-percent"
-                        style={{ width: `${task.progress}%` }}
-                      ></div>
-                    </div>
-                  ) : null}
-                  {!readonly ? (
-                    <div
-                      className="wx-GKbcLEGA wx-progress-marker"
-                      style={{ left: `calc(${task.progress}% - 10px)` }}
-                    >
-                      {task.progress}
-                    </div>
-                  ) : null}
-                  {TaskTemplate ? (
-                    <TaskTemplate data={task} api={api} onAction={forward} />
-                  ) : (
-                    <div className="wx-GKbcLEGA wx-content">
-                      {task.text || ''}
-                    </div>
-                  )}
-                </>
+                TaskTemplate ? (
+                  <TaskTemplate data={task} api={api} onAction={forward} />
+                ) : (
+                  <div className="wx-GKbcLEGA wx-content">
+                    {task.text || ''}
+                  </div>
+                )
               ) : (
                 <>
                   <div className="wx-GKbcLEGA wx-content"></div>

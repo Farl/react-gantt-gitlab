@@ -681,25 +681,24 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           return;
         }
 
-        // Determine if this is a visual change (dates, progress) or text change
-        const hasDateOrProgressChange =
+        // Determine if this is a visual change (dates) or text change
+        const hasDateChange =
           ev.task.start !== undefined ||
           ev.task.end !== undefined ||
-          ev.task.duration !== undefined ||
-          ev.task.progress !== undefined;
+          ev.task.duration !== undefined;
 
         const hasTextChange =
           ev.task.text !== undefined ||
           ev.task.details !== undefined;
 
-        if (isEditorOpenRef.current && hasTextChange && !hasDateOrProgressChange) {
+        if (isEditorOpenRef.current && hasTextChange && !hasDateChange) {
           // Editor is open and ONLY text fields changed - save for later
           if (!pendingEditorChangesRef.current.has(ev.id)) {
             pendingEditorChangesRef.current.set(ev.id, {});
           }
           Object.assign(pendingEditorChangesRef.current.get(ev.id), ev.task);
-        } else if (hasDateOrProgressChange || !isEditorOpenRef.current) {
-          // Date/progress changes OR changes outside editor
+        } else if (hasDateChange || !isEditorOpenRef.current) {
+          // Date changes OR changes outside editor
           // Use ev.task directly - it contains the NEW values after drag event completes
           const currentTask = ganttApi.getTask(ev.id);
           const taskChanges = {};
@@ -735,9 +734,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
           if (ev.task.duration !== undefined) {
             taskChanges.duration = ev.task.duration;
-          }
-          if (ev.task.progress !== undefined) {
-            taskChanges.progress = ev.task.progress;
           }
 
           // Sync to GitLab without updating React state (to avoid re-render conflicts)
@@ -1271,11 +1267,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         header: 'Due',
         width: 110,
         cell: DateCell,
-      },
-      {
-        id: 'progress',
-        header: 'Progress',
-        width: 80,
       },
       {
         id: 'add-task',

@@ -145,10 +145,6 @@ function Editor({
         }));
       }
 
-      if (item.comp === 'slider' && item.key === 'progress') {
-        item.labelTemplate = (value) => `${_(item.label)} ${value}%`;
-      }
-
       if (item.label) item.label = _(item.label);
       if (item.config?.placeholder)
         item.config.placeholder = _(item.config.placeholder);
@@ -184,7 +180,8 @@ function Editor({
           return !milestone;
         }
         case 'slider': {
-          return !milestone;
+          // Hide progress slider (not supported for GitLab)
+          return false;
         }
         default:
           return true;
@@ -215,8 +212,6 @@ function Editor({
           const value = activeTask[key];
           if (comp === 'date' && value instanceof Date) {
             values[key] = dateFormat(value);
-          } else if (comp === 'slider' && key === 'progress') {
-            values[key] = `${value}%`;
           } else {
             values[key] = value;
           }
