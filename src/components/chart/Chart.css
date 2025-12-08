@@ -5,6 +5,16 @@
   overflow-y: hidden;
 }
 
+.wx-chart.wx-mR7v2Xag.wx-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.wx-chart.wx-mR7v2Xag.wx-dragging * {
+  cursor: grabbing !important;
+  pointer-events: none;
+}
+
 .wx-markers.wx-mR7v2Xag {
   position: absolute;
 }

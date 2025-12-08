@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useMiddleMouseDrag } from '../hooks/useMiddleMouseDrag';
 import './WorkloadChart.css';
 
 /**
@@ -224,6 +225,9 @@ export function WorkloadChart({
   const containerRef = useRef(null);
   const chartScrollRef = useRef(null);
   const [dragState, setDragState] = useState(null);
+
+  // Middle mouse drag to scroll
+  const { isDragging: isMiddleMouseDragging, onMouseDown: onMiddleMouseDown } = useMiddleMouseDrag(chartScrollRef);
   const [dropTargetGroup, setDropTargetGroup] = useState(null);
 
   // Optimistic updates - store local date overrides until server confirms
@@ -784,9 +788,10 @@ export function WorkloadChart({
 
         {/* Chart area */}
         <div
-          className="workload-chart-scroll"
+          className={`workload-chart-scroll${isMiddleMouseDragging ? ' wx-dragging' : ''}`}
           ref={chartScrollRef}
           onScroll={handleChartScroll}
+          onMouseDown={onMiddleMouseDown}
         >
           <div
             className="workload-chart-content"

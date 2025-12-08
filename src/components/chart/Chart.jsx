@@ -12,6 +12,7 @@ import Links from './Links.jsx';
 import { hotkeys } from '@svar-ui/grid-store';
 import storeContext from '../../context';
 import { useStore, useStoreWithCounter } from '@svar-ui/lib-react';
+import { useMiddleMouseDrag } from '../../hooks/useMiddleMouseDrag';
 import './Chart.css';
 
 function Chart(props) {
@@ -40,6 +41,9 @@ function Chart(props) {
   const [scrollLeft, setScrollLeft] = useState();
   const [scrollTop, setScrollTop] = useState();
   const chartRef = useRef(null);
+
+  // Middle mouse drag to scroll
+  const { isDragging, onMouseDown } = useMiddleMouseDrag(chartRef);
 
   const extraRows = 1;
   useEffect(() => {
@@ -211,10 +215,11 @@ function Chart(props) {
 
   return (
     <div
-      className="wx-mR7v2Xag wx-chart"
+      className={`wx-mR7v2Xag wx-chart${isDragging ? ' wx-dragging' : ''}`}
       tabIndex={-1}
       ref={chartRef}
       onScroll={onScroll}
+      onMouseDown={onMouseDown}
     >
       {markers && markers.length ? (
         <div

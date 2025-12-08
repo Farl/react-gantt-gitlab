@@ -178,6 +178,16 @@
   position: relative;
 }
 
+.workload-chart-scroll.wx-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.workload-chart-scroll.wx-dragging * {
+  cursor: grabbing !important;
+  pointer-events: none;
+}
+
 .workload-chart-content {
   position: relative;
   min-height: 100%;
