@@ -108,14 +108,30 @@ export class GitLabFilters {
 
   /**
    * Filter tasks by state
+   *
+   * Note: GitLab GraphQL API returns state as 'OPEN' / 'CLOSED' (uppercase, no 'ed' suffix)
+   * But the filter UI uses 'opened' / 'closed' for user-friendly display
+   * This function normalizes both formats for comparison
    */
   static filterByState(tasks: ITask[], states: string[]): ITask[] {
     if (states.length === 0) {
       return tasks;
     }
 
+    // Normalize filter states to match GitLab GraphQL format
+    // 'opened' -> 'OPEN', 'closed' -> 'CLOSED'
+    const normalizedStates = states.map((s) => {
+      const lower = s.toLowerCase();
+      if (lower === 'opened' || lower === 'open') return 'OPEN';
+      if (lower === 'closed' || lower === 'close') return 'CLOSED';
+      return s.toUpperCase();
+    });
+
     return tasks.filter((task) => {
-      return task.state && states.includes(task.state);
+      if (!task.state) return false;
+      // Normalize task state to uppercase for comparison
+      const taskState = task.state.toUpperCase();
+      return normalizedStates.includes(taskState);
     });
   }
 
@@ -446,7 +462,12 @@ export class GitLabFilters {
       const progress = task.progress || 0;
       totalProgress += progress;
 
-      if (progress === 100 || task.state === 'closed') {
+      // Normalize state check (GraphQL returns 'OPEN'/'CLOSED', REST returns 'opened'/'closed')
+      const isClosed =
+        task.state?.toUpperCase() === 'CLOSED' ||
+        task.state?.toLowerCase() === 'closed';
+
+      if (progress === 100 || isClosed) {
         stats.completed++;
       } else if (progress > 0) {
         stats.inProgress++;
@@ -455,12 +476,7 @@ export class GitLabFilters {
       }
 
       // Check if overdue
-      if (
-        task.end &&
-        task.end < now &&
-        progress < 100 &&
-        task.state !== 'closed'
-      ) {
+      if (task.end && task.end < now && progress < 100 && !isClosed) {
         stats.overdue++;
       }
     });

@@ -116,15 +116,6 @@ export function FilterPanel({
     });
   };
 
-  const handleStateToggle = (state) => {
-    setFilters((prev) => {
-      const newStates = prev.states.includes(state)
-        ? prev.states.filter((s) => s !== state)
-        : [...prev.states, state];
-      return { ...prev, states: newStates };
-    });
-  };
-
   const handleSearchChange = (search) => {
     setFilters((prev) => ({ ...prev, search }));
   };
@@ -167,7 +158,6 @@ export function FilterPanel({
     filters.epicIds.length +
     filters.labels.length +
     filters.assignees.length +
-    filters.states.length +
     (filters.search ? 1 : 0);
 
   return (
@@ -207,36 +197,16 @@ export function FilterPanel({
 
       {isExpanded && (
         <div className="filter-content">
-          {/* Top Row: Search and State */}
-          <div className="filter-row">
-            {/* Search */}
-            <div className="filter-section filter-search-section">
-              <label className="filter-label">Search</label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search tasks..."
-                className="filter-search"
-              />
-            </div>
-
-            {/* States */}
-            <div className="filter-section filter-state-section">
-              <label className="filter-label">State</label>
-              <div className="filter-options horizontal">
-                {['opened', 'closed'].map((state) => (
-                  <label key={state} className="filter-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={filters.states.includes(state)}
-                      onChange={() => handleStateToggle(state)}
-                    />
-                    <span>{state}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+          {/* Search */}
+          <div className="filter-section">
+            <label className="filter-label">Search</label>
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search tasks..."
+              className="filter-search"
+            />
           </div>
 
           {/* Main Filter Grid */}
@@ -408,21 +378,6 @@ export function FilterPanel({
           gap: 16px;
         }
 
-        .filter-row {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 16px;
-          align-items: start;
-        }
-
-        .filter-search-section {
-          flex: 1;
-        }
-
-        .filter-state-section {
-          min-width: 150px;
-        }
-
         .filter-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -482,11 +437,6 @@ export function FilterPanel({
           display: flex;
           flex-direction: column;
           gap: 6px;
-        }
-
-        .filter-options.horizontal {
-          flex-direction: row;
-          gap: 12px;
         }
 
         .filter-options.scrollable {
