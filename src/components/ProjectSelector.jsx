@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { gitlabConfigManager } from '../config/GitLabConfigManager';
 
-export function ProjectSelector({ onProjectChange, currentConfigId }) {
+export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsChange }) {
   const [configs, setConfigs] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
@@ -70,6 +70,10 @@ export function ProjectSelector({ onProjectChange, currentConfigId }) {
     if (window.confirm('Are you sure you want to delete this configuration?')) {
       gitlabConfigManager.deleteConfig(configId);
       loadConfigs();
+      // Notify parent to refresh its configs list
+      if (onConfigsChange) {
+        onConfigsChange();
+      }
 
       // If deleted config was active, switch to another
       const activeConfig = gitlabConfigManager.getActiveConfig();
@@ -120,6 +124,10 @@ export function ProjectSelector({ onProjectChange, currentConfigId }) {
     }
 
     loadConfigs();
+    // Notify parent to refresh its configs list
+    if (onConfigsChange) {
+      onConfigsChange();
+    }
     setShowModal(false);
   };
 

@@ -139,15 +139,25 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     localStorage.setItem('gantt-length-unit', lengthUnit);
   }, [lengthUnit]);
 
-  // Load all configs for project switcher
+  // Reload configs list (used on mount and after add/update/delete)
+  const reloadConfigs = useCallback(() => {
+    setConfigs(gitlabConfigManager.getAllConfigs());
+  }, []);
+
+  // Load configs on mount
   useEffect(() => {
-    const allConfigs = gitlabConfigManager.getAllConfigs();
-    setConfigs(allConfigs);
+    reloadConfigs();
   }, []);
 
   // Initialize provider when config changes
   const handleConfigChange = useCallback((config) => {
     setCurrentConfig(config);
+
+    // Clear filter options when switching project/group
+    setFilterOptions({});
+
+    // Clear last used preset ID (will be loaded from localStorage for new config)
+    setLastUsedPresetId(null);
 
     const newProvider = new GitLabGraphQLProvider({
       gitlabUrl: config.gitlabUrl,
@@ -1521,6 +1531,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         <ProjectSelector
           onProjectChange={handleConfigChange}
           currentConfigId={currentConfig?.id}
+          onConfigsChange={reloadConfigs}
         />
         <div className="empty-message">
           <h3>No GitLab project configured</h3>
@@ -1701,6 +1712,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                   setShowSettings(false);
                 }}
                 currentConfigId={currentConfig?.id}
+                onConfigsChange={reloadConfigs}
               />
             </div>
 

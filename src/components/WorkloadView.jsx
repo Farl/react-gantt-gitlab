@@ -138,10 +138,14 @@ export function WorkloadView({ initialConfigId, autoSync = false }) {
     localStorage.setItem('workload-show-others', showOthers.toString());
   }, [showOthers]);
 
-  // Load all configs for project switcher
+  // Reload configs list (used on mount and after add/update/delete)
+  const reloadConfigs = useCallback(() => {
+    setConfigs(gitlabConfigManager.getAllConfigs());
+  }, []);
+
+  // Load configs on mount
   useEffect(() => {
-    const allConfigs = gitlabConfigManager.getAllConfigs();
-    setConfigs(allConfigs);
+    reloadConfigs();
   }, []);
 
   // Initialize provider when config changes
@@ -672,6 +676,7 @@ export function WorkloadView({ initialConfigId, autoSync = false }) {
                   setShowSettings(false);
                 }}
                 currentConfigId={currentConfig?.id}
+                onConfigsChange={reloadConfigs}
               />
             </div>
           </div>
