@@ -465,7 +465,8 @@ function Bars(props) {
           (linkFrom && linkFrom.id === task.id ? ' wx-selected' : '') +
           (task.$reorder ? ' wx-reorder-task' : '') +
           (task.$parent ? ' wx-parent-task' : '') +
-          (task.$isIssue !== undefined ? (task.$isIssue ? ' wx-gitlab-issue' : ' wx-gitlab-task') : '');
+          (task.$isIssue !== undefined ? (task.$isIssue ? ' wx-gitlab-issue' : ' wx-gitlab-task') : '') +
+          (task.$isMilestone || task._gitlab?.type === 'milestone' ? ' wx-gitlab-milestone' : '');
         const leftLinkClass =
           'wx-link wx-left' +
           (linkFrom ? ' wx-visible' : '') +

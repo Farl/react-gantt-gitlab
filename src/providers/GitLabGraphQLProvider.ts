@@ -930,8 +930,9 @@ export class GitLabGraphQLProvider {
    * Uses queue to prevent race conditions
    */
   async updateWorkItem(id: TID, task: Partial<ITask>): Promise<void> {
-    // Check if this is a milestone (ID >= 10000)
-    if (Number(id) >= 10000) {
+    // Check if this is a milestone based on _gitlab.type
+    // Previously used ID >= 10000 as a heuristic, but this fails for projects with 10000+ issues
+    if (task._gitlab?.type === 'milestone') {
       return this.updateMilestone(id, task);
     }
 

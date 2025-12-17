@@ -258,6 +258,44 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     canEditHolidays
   );
 
+  // Generate localStorage key for last used preset
+  const getPresetStorageKey = useCallback(() => {
+    if (!currentConfig) return null;
+    if (currentConfig.type === 'project' && currentConfig.projectId) {
+      return `gitlab-gantt-preset-project-${currentConfig.projectId}`;
+    } else if (currentConfig.type === 'group' && currentConfig.groupId) {
+      return `gitlab-gantt-preset-group-${currentConfig.groupId}`;
+    }
+    return null;
+  }, [currentConfig]);
+
+  // Load last used preset ID from localStorage
+  const [lastUsedPresetId, setLastUsedPresetId] = useState(null);
+
+  // Load preset ID when config changes
+  useEffect(() => {
+    const key = getPresetStorageKey();
+    if (key) {
+      const savedId = localStorage.getItem(key);
+      setLastUsedPresetId(savedId);
+    } else {
+      setLastUsedPresetId(null);
+    }
+  }, [getPresetStorageKey]);
+
+  // Save preset ID when user selects a preset
+  const handlePresetSelect = useCallback((presetId) => {
+    const key = getPresetStorageKey();
+    if (key) {
+      if (presetId) {
+        localStorage.setItem(key, presetId);
+      } else {
+        localStorage.removeItem(key);
+      }
+      setLastUsedPresetId(presetId);
+    }
+  }, [getPresetStorageKey]);
+
   // Ref to store fold state before data updates
   const openStateRef = useRef(new Map());
 
@@ -1753,6 +1791,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         onCreatePreset={createNewPreset}
         onRenamePreset={renamePreset}
         onDeletePreset={deletePreset}
+        onPresetSelect={handlePresetSelect}
+        initialPresetId={lastUsedPresetId}
       />
 
       {syncState.error && (
@@ -2458,14 +2498,13 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           opacity: 0.9;
         }
 
-        /* Milestone styling - use purple color for milestones (ID >= 10000) */
-        /* Gantt uses data-id attribute for task bars */
-        .wx-bar[data-id^="1000"] {
+        /* Milestone styling - use class-based selector for GitLab milestones */
+        .wx-bar.wx-gitlab-milestone {
           background-color: var(--wx-gantt-milestone-color) !important;
           border-color: var(--wx-gantt-milestone-color) !important;
         }
 
-        .wx-bar[data-id^="1000"] .wx-content {
+        .wx-bar.wx-gitlab-milestone .wx-content {
           background-color: var(--wx-gantt-milestone-color) !important;
         }
 

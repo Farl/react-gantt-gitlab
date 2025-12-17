@@ -4,27 +4,69 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Toast } from './Toast.jsx';
 
 /**
- * Check if two filter objects are equal
+ * Simple dialog component for preset name input
+ */
+function PresetDialog({ title, label, placeholder, value, onChange, onSubmit, onCancel, submitLabel, saving }) {
+  return (
+    <div className="preset-dialog-overlay" onClick={onCancel}>
+      <div className="preset-dialog" onClick={e => e.stopPropagation()}>
+        <div className="dialog-header">{title}</div>
+        <div className="dialog-body">
+          <label>{label}</label>
+          <input
+            type="text"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoFocus
+            onKeyDown={e => {
+              if (e.key === 'Enter') onSubmit();
+              if (e.key === 'Escape') onCancel();
+            }}
+          />
+        </div>
+        <div className="dialog-footer">
+          <button className="btn-cancel" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className="btn-save"
+            onClick={onSubmit}
+            disabled={!value.trim() || saving}
+          >
+            {saving ? 'Saving...' : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Check if two filter objects are equal (shallow comparison for arrays, deep for values)
  */
 function areFiltersEqual(a, b) {
   if (!a && !b) return true;
   if (!a || !b) return false;
 
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
+  // Compare all known filter keys
+  const filterKeys = ['milestoneIds', 'epicIds', 'labels', 'assignees', 'states', 'search'];
 
-  if (keysA.length !== keysB.length) return false;
-
-  for (const key of keysA) {
+  for (const key of filterKeys) {
     const valA = a[key];
     const valB = b[key];
 
-    if (Array.isArray(valA) && Array.isArray(valB)) {
-      if (valA.length !== valB.length) return false;
-      if (!valA.every((v, i) => v === valB[i])) return false;
-    } else if (valA !== valB) {
+    // Handle arrays
+    if (Array.isArray(valA) || Array.isArray(valB)) {
+      const arrA = valA || [];
+      const arrB = valB || [];
+      if (arrA.length !== arrB.length) return false;
+      if (!arrA.every((v, i) => v === arrB[i])) return false;
+    } else if ((valA || '') !== (valB || '')) {
+      // Handle strings (search field) - treat undefined/null as empty string
       return false;
     }
   }
@@ -65,9 +107,15 @@ export function FilterPresetSelector({
   const [renameTarget, setRenameTarget] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const [errorMessage, setErrorMessage] = useState(null);
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
   const menuButtonRefs = useRef({});
+
+  // Clear error handler
+  const clearError = useCallback(() => {
+    setErrorMessage(null);
+  }, []);
 
   // Find if current filters match any preset
   const matchingPreset = presets?.find(p => areFiltersEqual(p.filters, currentFilters));
@@ -110,7 +158,7 @@ export function FilterPresetSelector({
   }, []);
 
   const handleSelectPreset = useCallback((preset) => {
-    onSelectPreset(preset.filters);
+    onSelectPreset(preset);
     setIsOpen(false);
   }, [onSelectPreset]);
 
@@ -122,9 +170,15 @@ export function FilterPresetSelector({
 
   const handleCreatePreset = useCallback(async () => {
     if (!newPresetName.trim()) return;
-    await onCreatePreset(newPresetName.trim());
-    setShowCreateDialog(false);
-    setNewPresetName('');
+    try {
+      await onCreatePreset(newPresetName.trim());
+      setShowCreateDialog(false);
+      setNewPresetName('');
+    } catch (err) {
+      const message = err?.message || 'Failed to save preset';
+      setErrorMessage(message.includes('403') ? 'Permission denied: You may not have write access to this project' : message);
+      setShowCreateDialog(false);
+    }
   }, [newPresetName, onCreatePreset]);
 
   const handleOpenRenameDialog = useCallback((preset) => {
@@ -136,15 +190,26 @@ export function FilterPresetSelector({
 
   const handleRenamePreset = useCallback(async () => {
     if (!newPresetName.trim() || !renameTarget) return;
-    await onRenamePreset(renameTarget.id, newPresetName.trim());
-    setShowRenameDialog(false);
-    setRenameTarget(null);
-    setNewPresetName('');
+    try {
+      await onRenamePreset(renameTarget.id, newPresetName.trim());
+      setShowRenameDialog(false);
+      setRenameTarget(null);
+      setNewPresetName('');
+    } catch (err) {
+      const message = err?.message || 'Failed to rename preset';
+      setErrorMessage(message.includes('403') ? 'Permission denied: You may not have write access to this project' : message);
+      setShowRenameDialog(false);
+    }
   }, [newPresetName, renameTarget, onRenamePreset]);
 
   const handleDeletePreset = useCallback(async (preset) => {
     if (window.confirm(`Delete preset "${preset.name}"?`)) {
-      await onDeletePreset(preset.id);
+      try {
+        await onDeletePreset(preset.id);
+      } catch (err) {
+        const message = err?.message || 'Failed to delete preset';
+        setErrorMessage(message.includes('403') ? 'Permission denied: You may not have write access to this project' : message);
+      }
     }
     setActiveMenuId(null);
   }, [onDeletePreset]);
@@ -181,6 +246,17 @@ export function FilterPresetSelector({
         {matchingPreset && <span className="preset-name">{matchingPreset.name}</span>}
         {saving && <i className="fas fa-spinner fa-spin" style={{ marginLeft: 4 }}></i>}
       </button>
+
+      {/* Error Toast - rendered via portal */}
+      {errorMessage && (
+        <Toast
+          message={errorMessage}
+          type="error"
+          onClose={clearError}
+          duration={5000}
+          position="top-right"
+        />
+      )}
 
       {isOpen && (
         <div className="filter-preset-dropdown">
@@ -267,72 +343,32 @@ export function FilterPresetSelector({
 
       {/* Create Preset Dialog */}
       {showCreateDialog && (
-        <div className="preset-dialog-overlay" onClick={() => setShowCreateDialog(false)}>
-          <div className="preset-dialog" onClick={e => e.stopPropagation()}>
-            <div className="dialog-header">Save Filter Preset</div>
-            <div className="dialog-body">
-              <label>Preset Name</label>
-              <input
-                type="text"
-                value={newPresetName}
-                onChange={e => setNewPresetName(e.target.value)}
-                placeholder="Enter preset name..."
-                autoFocus
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreatePreset();
-                  if (e.key === 'Escape') setShowCreateDialog(false);
-                }}
-              />
-            </div>
-            <div className="dialog-footer">
-              <button className="btn-cancel" onClick={() => setShowCreateDialog(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn-save"
-                onClick={handleCreatePreset}
-                disabled={!newPresetName.trim() || saving}
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PresetDialog
+          title="Save Filter Preset"
+          label="Preset Name"
+          placeholder="Enter preset name..."
+          value={newPresetName}
+          onChange={setNewPresetName}
+          onSubmit={handleCreatePreset}
+          onCancel={() => setShowCreateDialog(false)}
+          submitLabel="Save"
+          saving={saving}
+        />
       )}
 
       {/* Rename Preset Dialog */}
       {showRenameDialog && (
-        <div className="preset-dialog-overlay" onClick={() => setShowRenameDialog(false)}>
-          <div className="preset-dialog" onClick={e => e.stopPropagation()}>
-            <div className="dialog-header">Rename Preset</div>
-            <div className="dialog-body">
-              <label>New Name</label>
-              <input
-                type="text"
-                value={newPresetName}
-                onChange={e => setNewPresetName(e.target.value)}
-                placeholder="Enter new name..."
-                autoFocus
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleRenamePreset();
-                  if (e.key === 'Escape') setShowRenameDialog(false);
-                }}
-              />
-            </div>
-            <div className="dialog-footer">
-              <button className="btn-cancel" onClick={() => setShowRenameDialog(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn-save"
-                onClick={handleRenamePreset}
-                disabled={!newPresetName.trim() || saving}
-              >
-                {saving ? 'Saving...' : 'Rename'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PresetDialog
+          title="Rename Preset"
+          label="New Name"
+          placeholder="Enter new name..."
+          value={newPresetName}
+          onChange={setNewPresetName}
+          onSubmit={handleRenamePreset}
+          onCancel={() => setShowRenameDialog(false)}
+          submitLabel="Rename"
+          saving={saving}
+        />
       )}
 
       <style>{`

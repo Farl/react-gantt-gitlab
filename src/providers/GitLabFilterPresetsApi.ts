@@ -100,6 +100,7 @@ async function fetchSnippetRaw(
 
 /**
  * Get snippet content by ID
+ * Uses direct fetch for /raw endpoint since it returns plain text, not JSON
  */
 async function getSnippetContent(
   fullPath: string,
@@ -107,22 +108,8 @@ async function getSnippetContent(
   proxyConfig: GitLabProxyConfig,
   configType: 'project' | 'group',
 ): Promise<string> {
-  const prefix = getEndpointPrefix(fullPath, configType);
-
-  // Use raw endpoint to get content
-  const content = await gitlabRestRequest<string>(
-    `${prefix}/snippets/${snippetId}/raw`,
-    proxyConfig,
-  );
-
-  // gitlabRestRequest returns {} for non-JSON responses
-  // We need to handle the raw text response
-  if (typeof content === 'object') {
-    // Fetch raw content directly
-    return fetchSnippetRaw(fullPath, snippetId, proxyConfig, configType);
-  }
-
-  return content;
+  // /raw endpoint returns plain text, so we use fetchSnippetRaw directly
+  return fetchSnippetRaw(fullPath, snippetId, proxyConfig, configType);
 }
 
 /**

@@ -3,7 +3,7 @@
  * Provides UI for filtering tasks by milestones, epics, labels, etc.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GitLabFilters } from '../utils/GitLabFilters';
 import { FilterPresetSelector } from './FilterPresetSelector';
 
@@ -21,6 +21,8 @@ export function FilterPanel({
   onCreatePreset,
   onRenamePreset,
   onDeletePreset,
+  onPresetSelect,
+  initialPresetId,
 }) {
   const [filters, setFilters] = useState({
     milestoneIds: initialFilters.milestoneIds || [],
@@ -35,6 +37,9 @@ export function FilterPanel({
   const [availableLabels, setAvailableLabels] = useState([]);
   const [availableAssignees, setAvailableAssignees] = useState([]);
 
+  // Track if initial preset has been applied
+  const initialPresetAppliedRef = useRef(false);
+
   useEffect(() => {
     // Extract unique labels and assignees from tasks
     if (tasks && tasks.length > 0) {
@@ -42,6 +47,31 @@ export function FilterPanel({
       setAvailableAssignees(GitLabFilters.getUniqueAssignees(tasks));
     }
   }, [tasks]);
+
+  // Apply initial preset when presets are loaded
+  useEffect(() => {
+    if (
+      initialPresetId &&
+      presets &&
+      presets.length > 0 &&
+      !presetsLoading &&
+      !initialPresetAppliedRef.current
+    ) {
+      const preset = presets.find(p => p.id === initialPresetId);
+      if (preset) {
+        const presetFilters = preset.filters;
+        setFilters({
+          milestoneIds: presetFilters.milestoneIds || [],
+          epicIds: presetFilters.epicIds || [],
+          labels: presetFilters.labels || [],
+          assignees: presetFilters.assignees || [],
+          states: presetFilters.states || [],
+          search: presetFilters.search || '',
+        });
+        initialPresetAppliedRef.current = true;
+      }
+    }
+  }, [initialPresetId, presets, presetsLoading]);
 
   useEffect(() => {
     // Notify parent of filter changes
@@ -111,7 +141,8 @@ export function FilterPanel({
   };
 
   // Apply preset filters
-  const handleApplyPreset = useCallback((presetFilters) => {
+  const handleApplyPreset = useCallback((preset) => {
+    const presetFilters = preset.filters;
     setFilters({
       milestoneIds: presetFilters.milestoneIds || [],
       epicIds: presetFilters.epicIds || [],
@@ -120,7 +151,9 @@ export function FilterPanel({
       states: presetFilters.states || [],
       search: presetFilters.search || '',
     });
-  }, []);
+    // Notify parent of preset selection (for localStorage persistence)
+    onPresetSelect?.(preset.id);
+  }, [onPresetSelect]);
 
   // Create preset with current filters
   const handleCreatePreset = useCallback(async (name) => {

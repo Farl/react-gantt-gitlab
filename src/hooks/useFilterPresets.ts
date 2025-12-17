@@ -132,17 +132,19 @@ export function useFilterPresets(
         return;
       }
 
+      const previousPresets = presetsRef.current;
       const newPreset = createPreset(name, filters);
-      const newPresets = [...presetsRef.current, newPreset];
+      const newPresets = [...previousPresets, newPreset];
 
       // Optimistic update
       setPresets(newPresets);
 
       try {
         await savePresetsToGitLab(newPresets);
-      } catch {
+      } catch (err) {
         // Rollback on error
-        setPresets(presetsRef.current);
+        setPresets(previousPresets);
+        throw err; // Re-throw for caller to handle
       }
     },
     [canEdit, savePresetsToGitLab],
@@ -159,7 +161,8 @@ export function useFilterPresets(
         return;
       }
 
-      const newPresets = presetsRef.current.map((preset) =>
+      const previousPresets = presetsRef.current;
+      const newPresets = previousPresets.map((preset) =>
         preset.id === id
           ? {
               ...preset,
@@ -174,9 +177,10 @@ export function useFilterPresets(
 
       try {
         await savePresetsToGitLab(newPresets);
-      } catch {
+      } catch (err) {
         // Rollback on error
-        setPresets(presetsRef.current);
+        setPresets(previousPresets);
+        throw err; // Re-throw for caller to handle
       }
     },
     [canEdit, savePresetsToGitLab],
@@ -190,18 +194,18 @@ export function useFilterPresets(
         return;
       }
 
-      const newPresets = presetsRef.current.filter(
-        (preset) => preset.id !== id,
-      );
+      const previousPresets = presetsRef.current;
+      const newPresets = previousPresets.filter((preset) => preset.id !== id);
 
       // Optimistic update
       setPresets(newPresets);
 
       try {
         await savePresetsToGitLab(newPresets);
-      } catch {
+      } catch (err) {
         // Rollback on error
-        setPresets(presetsRef.current);
+        setPresets(previousPresets);
+        throw err; // Re-throw for caller to handle
       }
     },
     [canEdit, savePresetsToGitLab],
