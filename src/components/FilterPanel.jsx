@@ -631,27 +631,27 @@ export function FilterPanel({
         .filter-header {
           display: flex;
           align-items: center;
-          padding: 12px;
+          padding: 6px 12px;
         }
 
         .filter-header-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
         .filter-toggle {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           background: none;
           border: none;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 500;
           color: var(--wx-gitlab-filter-text);
           cursor: pointer;
-          padding: 4px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           transition: background 0.2s;
         }
@@ -677,12 +677,12 @@ export function FilterPanel({
         }
 
         .btn-clear {
-          padding: 4px 12px;
+          padding: 2px 8px;
           background: #dc3545;
           color: white;
           border: none;
           border-radius: 4px;
-          font-size: 12px;
+          font-size: 11px;
           cursor: pointer;
           transition: background 0.2s;
         }
@@ -692,12 +692,12 @@ export function FilterPanel({
         }
 
         .btn-apply-server-header {
-          padding: 4px 12px;
+          padding: 2px 8px;
           background: #1f75cb;
           color: white;
           border: none;
           border-radius: 4px;
-          font-size: 12px;
+          font-size: 11px;
           cursor: pointer;
           transition: background 0.2s;
         }

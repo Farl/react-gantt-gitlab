@@ -13,12 +13,12 @@
 }
 
 .wx-demos.page-content-header {
-  height: 70px;
+  height: 44px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 40px;
-  padding: 16px;
+  gap: 24px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--wx-demo-sidebar-border);
 }
 
@@ -124,7 +124,7 @@
 
 .wx-demos.wrapper-content {
   flex: 1;
-  height: calc(100% - 70px);
+  height: calc(100% - 44px);
 }
 
 .wx-demos.wrapper-content .wx-demos.content {

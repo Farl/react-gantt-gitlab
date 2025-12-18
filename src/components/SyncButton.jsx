@@ -49,8 +49,8 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
       >
         <svg
           className="sync-icon"
-          width="16"
-          height="16"
+          width="14"
+          height="14"
           viewBox="0 0 16 16"
           fill="currentColor"
         >
@@ -76,22 +76,24 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
         .gitlab-sync-button {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 6px;
         }
 
         .sync-btn {
-          display: flex;
+          height: 24px;
+          display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
+          gap: 4px;
+          padding: 0 8px;
           background: #1f75cb;
           color: white;
           border: none;
           border-radius: 4px;
-          font-size: 14px;
+          font-size: 12px;
           cursor: pointer;
           transition: background 0.2s;
           font-weight: 500;
+          box-sizing: border-box;
         }
 
         .sync-btn:hover:not(:disabled) {
@@ -121,7 +123,7 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
         }
 
         .sync-info {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--wx-gitlab-control-text);
         }
 

@@ -1698,87 +1698,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           <i className={`fas fa-chevron-${showViewOptions ? 'up' : 'down'} chevron-icon`}></i>
         </button>
 
-        {showViewOptions && (
-          <div className="view-controls">
-            <label className="control-label">
-              Range:
-              <select
-                value={dateRangePreset}
-                onChange={(e) => setDateRangePreset(e.target.value)}
-                className="unit-select"
-              >
-                <option value="1m">1 Month</option>
-                <option value="3m">3 Months</option>
-                <option value="6m">6 Months</option>
-                <option value="1y">1 Year</option>
-                <option value="2y">2 Years</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            {dateRangePreset === 'custom' && (
-              <>
-                <label className="control-label">
-                  From:
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="date-input"
-                  />
-                </label>
-                <label className="control-label">
-                  To:
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="date-input"
-                  />
-                </label>
-              </>
-            )}
-            <label className="control-label">
-              Width:
-              <input
-                type="range"
-                min="20"
-                max="100"
-                value={cellWidthDisplay}
-                onChange={(e) => handleCellWidthChange(Number(e.target.value))}
-                className="slider"
-                disabled={lengthUnit !== 'day'}
-              />
-              <span className="control-value">{lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}</span>
-            </label>
-            <label className="control-label">
-              Height:
-              <input
-                type="range"
-                min="20"
-                max="60"
-                value={cellHeightDisplay}
-                onChange={(e) => handleCellHeightChange(Number(e.target.value))}
-                className="slider"
-              />
-              <span className="control-value">{cellHeightDisplay}</span>
-            </label>
-            <label className="control-label">
-              Unit:
-              <select
-                value={lengthUnit}
-                onChange={(e) => setLengthUnit(e.target.value)}
-                className="unit-select"
-              >
-                <option value="hour">Hour</option>
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-                <option value="quarter">Quarter</option>
-              </select>
-            </label>
-          </div>
-        )}
-
         <SyncButton
           onSync={syncWithFoldState}
           syncState={syncState}
@@ -1809,6 +1728,87 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           )}
         </div>
       </div>
+
+      {showViewOptions && (
+        <div className="view-controls">
+          <label className="control-label">
+            Range:
+            <select
+              value={dateRangePreset}
+              onChange={(e) => setDateRangePreset(e.target.value)}
+              className="unit-select"
+            >
+              <option value="1m">1 Month</option>
+              <option value="3m">3 Months</option>
+              <option value="6m">6 Months</option>
+              <option value="1y">1 Year</option>
+              <option value="2y">2 Years</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          {dateRangePreset === 'custom' && (
+            <>
+              <label className="control-label">
+                From:
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="date-input"
+                />
+              </label>
+              <label className="control-label">
+                To:
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="date-input"
+                />
+              </label>
+            </>
+          )}
+          <label className="control-label">
+            Width:
+            <input
+              type="range"
+              min="20"
+              max="100"
+              value={cellWidthDisplay}
+              onChange={(e) => handleCellWidthChange(Number(e.target.value))}
+              className="slider"
+              disabled={lengthUnit !== 'day'}
+            />
+            <span className="control-value">{lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}</span>
+          </label>
+          <label className="control-label">
+            Height:
+            <input
+              type="range"
+              min="20"
+              max="60"
+              value={cellHeightDisplay}
+              onChange={(e) => handleCellHeightChange(Number(e.target.value))}
+              className="slider"
+            />
+            <span className="control-value">{cellHeightDisplay}</span>
+          </label>
+          <label className="control-label">
+            Unit:
+            <select
+              value={lengthUnit}
+              onChange={(e) => setLengthUnit(e.target.value)}
+              className="unit-select"
+            >
+              <option value="hour">Hour</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       {showSettings && (
         <div
@@ -2088,8 +2088,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         .gitlab-gantt-header {
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 12px 16px;
+          gap: 6px;
+          padding: 4px 12px;
           background: var(--wx-gitlab-header-background);
           border-bottom: 1px solid var(--wx-gitlab-header-border);
           flex-wrap: wrap;
@@ -2097,25 +2097,24 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
         .project-switcher {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           align-items: center;
         }
 
         .view-controls {
           display: flex;
-          gap: 16px;
+          gap: 12px;
           align-items: center;
           padding: 4px 12px;
           background: var(--wx-gitlab-control-background);
-          border-radius: 4px;
-          border: 1px solid var(--wx-gitlab-control-border);
+          border-bottom: 1px solid var(--wx-gitlab-control-border);
         }
 
         .control-label {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 13px;
+          gap: 6px;
+          font-size: 12px;
           color: var(--wx-gitlab-control-text);
           white-space: nowrap;
         }
@@ -2139,14 +2138,14 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         }
 
         .unit-select {
-          padding: 4px 8px;
+          padding: 2px 6px;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
-          font-size: 13px;
+          font-size: 12px;
           background: var(--wx-gitlab-button-background);
           color: var(--wx-gitlab-button-text);
           cursor: pointer;
-          min-width: 80px;
+          min-width: 70px;
         }
 
         .unit-select:hover {
@@ -2159,13 +2158,13 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         }
 
         .date-input {
-          padding: 4px 8px;
+          padding: 2px 6px;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
-          font-size: 13px;
+          font-size: 12px;
           background: var(--wx-gitlab-button-background);
           color: var(--wx-gitlab-button-text);
-          width: 130px;
+          width: 120px;
         }
 
         .date-input:focus {
@@ -2174,18 +2173,22 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         }
 
         .project-select-compact {
-          padding: 6px 12px;
+          height: 24px;
+          padding: 0 6px;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
-          font-size: 14px;
+          font-size: 12px;
           background: var(--wx-gitlab-button-background);
           color: var(--wx-gitlab-button-text);
           cursor: pointer;
-          min-width: 200px;
+          min-width: 160px;
+          box-sizing: border-box;
         }
 
         .btn-settings {
-          padding: 6px 12px;
+          height: 24px;
+          width: 24px;
+          padding: 0;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
           background: var(--wx-gitlab-button-background);
@@ -2195,7 +2198,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           align-items: center;
           justify-content: center;
           color: var(--wx-gitlab-button-text);
-          font-size: 14px;
+          font-size: 12px;
+          box-sizing: border-box;
         }
 
         .btn-settings:hover {
@@ -2204,17 +2208,19 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         }
 
         .btn-view-options {
-          display: flex;
+          height: 24px;
+          display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
+          gap: 4px;
+          padding: 0 6px;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
           background: var(--wx-gitlab-button-background);
           cursor: pointer;
           color: var(--wx-gitlab-button-text);
-          font-size: 13px;
+          font-size: 12px;
           transition: background 0.2s, color 0.2s;
+          box-sizing: border-box;
         }
 
         .btn-view-options:hover {
@@ -2532,14 +2538,14 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
         .stats-panel {
           display: flex;
-          gap: 16px;
+          gap: 12px;
           margin-left: auto;
-          font-size: 13px;
+          font-size: 12px;
         }
 
         .stat-item {
           display: flex;
-          gap: 4px;
+          gap: 3px;
           align-items: center;
         }
 

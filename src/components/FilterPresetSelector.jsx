@@ -386,12 +386,12 @@ export function FilterPresetSelector({
         .btn-filter-preset {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 8px;
+          gap: 4px;
+          padding: 2px 6px;
           background: none;
           border: 1px solid var(--wx-gitlab-filter-input-border);
           border-radius: 4px;
-          font-size: 13px;
+          font-size: 12px;
           color: var(--wx-gitlab-filter-text);
           cursor: pointer;
           transition: background 0.2s, border-color 0.2s;

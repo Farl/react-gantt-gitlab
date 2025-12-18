@@ -504,99 +504,99 @@ export function WorkloadView({ initialConfigId, autoSync = false }) {
           <i className={`fas fa-chevron-${showViewOptions ? 'up' : 'down'} chevron-icon`}></i>
         </button>
 
-        {showViewOptions && (
-          <div className="view-controls">
-            <label className="control-label">
-              Range:
-              <select
-                value={dateRangePreset}
-                onChange={(e) => setDateRangePreset(e.target.value)}
-                className="unit-select"
-              >
-                <option value="1m">1 Month</option>
-                <option value="3m">3 Months</option>
-                <option value="6m">6 Months</option>
-                <option value="1y">1 Year</option>
-                <option value="2y">2 Years</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            {dateRangePreset === 'custom' && (
-              <>
-                <label className="control-label">
-                  From:
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="date-input"
-                  />
-                </label>
-                <label className="control-label">
-                  To:
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="date-input"
-                  />
-                </label>
-              </>
-            )}
-            <label className="control-label">
-              Width:
-              <input
-                type="range"
-                min="20"
-                max="100"
-                value={cellWidthDisplay}
-                onChange={(e) => handleCellWidthChange(Number(e.target.value))}
-                className="slider"
-                disabled={lengthUnit !== 'day'}
-              />
-              <span className="control-value">
-                {lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}
-              </span>
-            </label>
-            <label className="control-label">
-              Height:
-              <input
-                type="range"
-                min="20"
-                max="60"
-                value={cellHeightDisplay}
-                onChange={(e) => handleCellHeightChange(Number(e.target.value))}
-                className="slider"
-              />
-              <span className="control-value">{cellHeightDisplay}</span>
-            </label>
-            <label className="control-label">
-              Unit:
-              <select
-                value={lengthUnit}
-                onChange={(e) => setLengthUnit(e.target.value)}
-                className="unit-select"
-              >
-                <option value="hour">Hour</option>
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-                <option value="quarter">Quarter</option>
-              </select>
-            </label>
-            <label className="control-label checkbox-label">
-              <input
-                type="checkbox"
-                checked={showOthers}
-                onChange={(e) => setShowOthers(e.target.checked)}
-              />
-              Others
-            </label>
-          </div>
-        )}
-
         <SyncButton onSync={sync} syncState={syncState} filterOptions={{}} />
       </div>
+
+      {showViewOptions && (
+        <div className="view-controls">
+          <label className="control-label">
+            Range:
+            <select
+              value={dateRangePreset}
+              onChange={(e) => setDateRangePreset(e.target.value)}
+              className="unit-select"
+            >
+              <option value="1m">1 Month</option>
+              <option value="3m">3 Months</option>
+              <option value="6m">6 Months</option>
+              <option value="1y">1 Year</option>
+              <option value="2y">2 Years</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          {dateRangePreset === 'custom' && (
+            <>
+              <label className="control-label">
+                From:
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="date-input"
+                />
+              </label>
+              <label className="control-label">
+                To:
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="date-input"
+                />
+              </label>
+            </>
+          )}
+          <label className="control-label">
+            Width:
+            <input
+              type="range"
+              min="20"
+              max="100"
+              value={cellWidthDisplay}
+              onChange={(e) => handleCellWidthChange(Number(e.target.value))}
+              className="slider"
+              disabled={lengthUnit !== 'day'}
+            />
+            <span className="control-value">
+              {lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}
+            </span>
+          </label>
+          <label className="control-label">
+            Height:
+            <input
+              type="range"
+              min="20"
+              max="60"
+              value={cellHeightDisplay}
+              onChange={(e) => handleCellHeightChange(Number(e.target.value))}
+              className="slider"
+            />
+            <span className="control-value">{cellHeightDisplay}</span>
+          </label>
+          <label className="control-label">
+            Unit:
+            <select
+              value={lengthUnit}
+              onChange={(e) => setLengthUnit(e.target.value)}
+              className="unit-select"
+            >
+              <option value="hour">Hour</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="quarter">Quarter</option>
+            </select>
+          </label>
+          <label className="control-label checkbox-label">
+            <input
+              type="checkbox"
+              checked={showOthers}
+              onChange={(e) => setShowOthers(e.target.checked)}
+            />
+            Others
+          </label>
+        </div>
+      )}
 
       {syncState.error && (
         <div className="error-banner">

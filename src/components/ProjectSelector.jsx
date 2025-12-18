@@ -310,9 +310,10 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
       <style>{`
         .gitlab-project-selector {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
+          align-items: center;
           gap: 8px;
-          padding: 12px;
+          padding: 6px 12px;
           background: var(--wx-gitlab-filter-background);
           border-bottom: 1px solid var(--wx-gitlab-filter-border);
         }
@@ -325,15 +326,24 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
 
         .project-select {
           flex: 1;
-          padding: 8px 12px;
+          padding: 4px 8px;
           border: 1px solid var(--wx-gitlab-button-border);
           border-radius: 4px;
-          font-size: 14px;
+          font-size: 13px;
           background: var(--wx-gitlab-button-background);
           color: var(--wx-gitlab-button-text);
         }
 
-        .btn-add, .btn-edit, .btn-delete, .btn-test, .btn-save, .btn-cancel {
+        .btn-add, .btn-edit, .btn-delete {
+          padding: 4px 10px;
+          border: none;
+          border-radius: 4px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-test, .btn-save, .btn-cancel {
           padding: 8px 16px;
           border: none;
           border-radius: 4px;
@@ -403,12 +413,12 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
 
         .selector-actions {
           display: flex;
-          gap: 8px;
+          gap: 4px;
         }
 
         .config-actions {
           display: flex;
-          gap: 8px;
+          gap: 4px;
         }
 
         .modal-overlay {
