@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { GitLabFilters } from '../utils/GitLabFilters';
 import { FilterPresetSelector } from './FilterPresetSelector';
+import { FilterMultiSelect } from './FilterMultiSelect';
 
 // Default empty server filters
 const DEFAULT_SERVER_FILTERS = {
@@ -89,22 +90,130 @@ export function FilterPanel({
   // Track if server filters have unsync'd changes
   const [hasUnsyncedServerChanges, setHasUnsyncedServerChanges] = useState(false);
 
+  // Track currently selected preset ID
+  const [selectedPresetId, setSelectedPresetId] = useState(initialPresetId || null);
+
   const [isExpanded, setIsExpanded] = useState(false);
-  const [availableLabels, setAvailableLabels] = useState([]);
-  const [availableAssignees, setAvailableAssignees] = useState([]);
 
   // Track if initial preset has been applied
   const initialPresetAppliedRef = useRef(false);
 
-  useEffect(() => {
-    // Extract unique labels and assignees from tasks
-    if (tasks && tasks.length > 0) {
-      setAvailableLabels(GitLabFilters.getUniqueLabels(tasks));
-      setAvailableAssignees(GitLabFilters.getUniqueAssignees(tasks));
-    }
-  }, [tasks]);
+  // Build label options - merge from tasks (client) and filterOptions (server)
+  const labelOptions = useMemo(() => {
+    // First, get labels from filterOptions (server source - has colors)
+    const serverLabels = filterOptions?.labels || [];
+    const serverLabelMap = new Map(serverLabels.map(l => [l.title, l]));
+
+    // Then get labels from tasks (client source)
+    const taskLabels = tasks ? GitLabFilters.getUniqueLabels(tasks) : [];
+
+    // Merge: prefer server data for color info
+    const merged = new Map();
+    taskLabels.forEach(label => {
+      const serverLabel = serverLabelMap.get(label);
+      merged.set(label, {
+        value: label,
+        label: label,
+        color: serverLabel?.color || null,
+      });
+    });
+    // Add server-only labels
+    serverLabels.forEach(sl => {
+      if (!merged.has(sl.title)) {
+        merged.set(sl.title, {
+          value: sl.title,
+          label: sl.title,
+          color: sl.color || null,
+        });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks, filterOptions?.labels]);
+
+  // Build assignee options - merge from tasks (client) and filterOptions (server)
+  const assigneeOptions = useMemo(() => {
+    // First, get members from filterOptions (server source - has username and name)
+    const serverMembers = filterOptions?.members || [];
+    const serverMemberMap = new Map(serverMembers.map(m => [m.username, m]));
+
+    // Then get assignees from tasks (client source) - these are display names
+    const taskAssignees = tasks ? GitLabFilters.getUniqueAssignees(tasks) : [];
+
+    // Merge: for client we use display name as value, for server we need username
+    // Since client filters use assignee display name, we'll create options with name as value
+    const merged = new Map();
+
+    // Add task assignees (by display name)
+    taskAssignees.forEach(assignee => {
+      // Try to find matching server member
+      const serverMember = serverMembers.find(m => m.name === assignee || m.username === assignee);
+      merged.set(assignee, {
+        value: assignee,
+        label: assignee,
+        subtitle: serverMember ? `@${serverMember.username}` : null,
+        username: serverMember?.username || null,
+      });
+    });
+
+    // Add server members not in tasks
+    serverMembers.forEach(member => {
+      if (!merged.has(member.name) && !merged.has(member.username)) {
+        merged.set(member.name, {
+          value: member.name,
+          label: member.name,
+          subtitle: `@${member.username}`,
+          username: member.username,
+        });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks, filterOptions?.members]);
+
+  // Build milestone options - merge from milestones prop and filterOptions
+  // Use iid as value for client-side filtering (matches _gitlab.milestoneIid)
+  const milestoneOptions = useMemo(() => {
+    // Milestones from prop (has iid)
+    const propMilestones = milestones || [];
+    // Milestones from filterOptions (server - has iid and title)
+    const serverMilestones = filterOptions?.milestones || [];
+
+    // Create map by title for deduplication
+    const merged = new Map();
+
+    propMilestones.forEach(m => {
+      merged.set(m.title, {
+        value: m.iid, // Use iid for filtering (matches _gitlab.milestoneIid)
+        title: m.title,
+        label: m.title,
+      });
+    });
+
+    serverMilestones.forEach(m => {
+      if (!merged.has(m.title)) {
+        merged.set(m.title, {
+          value: m.iid,
+          title: m.title,
+          label: m.title,
+        });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [milestones, filterOptions?.milestones]);
+
+  // Build epic options from epics prop
+  const epicOptions = useMemo(() => {
+    return (epics || []).map(e => ({
+      value: e.id,
+      label: e.title,
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [epics]);
 
   // Apply initial preset when presets are loaded
+  // NOTE: This only sets the UI state. GitLabGantt handles the initial sync with filters.
+  // We don't call onServerFilterApply here to avoid double sync.
   useEffect(() => {
     if (
       initialPresetId &&
@@ -122,15 +231,17 @@ export function FilterPanel({
           setActiveTab('server');
           const parsedServerFilters = parseServerFiltersFromPreset(presetFilters.serverFilters);
           setServerFilters(parsedServerFilters);
-          onServerFilterApply?.(parsedServerFilters);
+          // Don't call onServerFilterApply here - GitLabGantt handles initial sync
         } else {
           setActiveTab('client');
           setFilters(parseClientFiltersFromPreset(presetFilters));
         }
+        // Set the selected preset ID to show it's active in the UI
+        setSelectedPresetId(initialPresetId);
         initialPresetAppliedRef.current = true;
       }
     }
-  }, [initialPresetId, presets, presetsLoading, onServerFilterApply]);
+  }, [initialPresetId, presets, presetsLoading]);
 
   useEffect(() => {
     // Notify parent of filter changes
@@ -138,42 +249,6 @@ export function FilterPanel({
       onFilterChange(filters);
     }
   }, [filters, onFilterChange]);
-
-  const handleMilestoneToggle = (milestoneId) => {
-    setFilters((prev) => {
-      const newMilestoneIds = prev.milestoneIds.includes(milestoneId)
-        ? prev.milestoneIds.filter((id) => id !== milestoneId)
-        : [...prev.milestoneIds, milestoneId];
-      return { ...prev, milestoneIds: newMilestoneIds };
-    });
-  };
-
-  const handleEpicToggle = (epicId) => {
-    setFilters((prev) => {
-      const newEpicIds = prev.epicIds.includes(epicId)
-        ? prev.epicIds.filter((id) => id !== epicId)
-        : [...prev.epicIds, epicId];
-      return { ...prev, epicIds: newEpicIds };
-    });
-  };
-
-  const handleLabelToggle = (label) => {
-    setFilters((prev) => {
-      const newLabels = prev.labels.includes(label)
-        ? prev.labels.filter((l) => l !== label)
-        : [...prev.labels, label];
-      return { ...prev, labels: newLabels };
-    });
-  };
-
-  const handleAssigneeToggle = (assignee) => {
-    setFilters((prev) => {
-      const newAssignees = prev.assignees.includes(assignee)
-        ? prev.assignees.filter((a) => a !== assignee)
-        : [...prev.assignees, assignee];
-      return { ...prev, assignees: newAssignees };
-    });
-  };
 
   const handleSearchChange = (search) => {
     setFilters((prev) => ({ ...prev, search }));
@@ -194,27 +269,34 @@ export function FilterPanel({
       setActiveTab('client');
       setFilters(parseClientFiltersFromPreset(presetFilters));
     }
-    onPresetSelect?.(preset.id);
+    setSelectedPresetId(preset.id); // Update local state
+    onPresetSelect?.(preset.id); // Notify parent
   }, [onPresetSelect, onServerFilterApply]);
 
   // Create preset with current filters
   const handleCreatePreset = useCallback(async (name) => {
     if (onCreatePreset) {
+      let newPresetId;
       if (activeTab === 'server') {
         // Save as server filter preset
-        await onCreatePreset(name, {
+        newPresetId = await onCreatePreset(name, {
           filterType: 'server',
           serverFilters: serverFilters,
         });
       } else {
         // Save as client filter preset
-        await onCreatePreset(name, {
+        newPresetId = await onCreatePreset(name, {
           filterType: 'client',
           ...filters,
         });
       }
+      // Select the newly created preset
+      if (newPresetId) {
+        setSelectedPresetId(newPresetId);
+        onPresetSelect?.(newPresetId);
+      }
     }
-  }, [onCreatePreset, filters, serverFilters, activeTab]);
+  }, [onCreatePreset, filters, serverFilters, activeTab, onPresetSelect]);
 
   // Client filter count
   const clientFilterCount =
@@ -261,13 +343,6 @@ export function FilterPanel({
     setHasUnsyncedServerChanges(true);
   };
 
-  // Toggle item in array (for multi-select)
-  const toggleArrayItem = (array, item) => {
-    return array.includes(item)
-      ? array.filter(i => i !== item)
-      : [...array, item];
-  };
-
   return (
     <div className="gitlab-filter-panel">
       <div className="filter-header">
@@ -293,24 +368,41 @@ export function FilterPanel({
             onCreatePreset={handleCreatePreset}
             onRenamePreset={onRenamePreset}
             onDeletePreset={onDeletePreset}
+            selectedPresetId={selectedPresetId}
+            serverFilterCount={serverFilterCount}
           />
-        </div>
 
-        <div className="filter-header-right">
+          {/* Clear and Apply buttons - grouped on left side */}
           {clientFilterCount > 0 && (
             <button
-              onClick={() => setFilters(DEFAULT_CLIENT_FILTERS)}
+              onClick={() => {
+                setFilters(DEFAULT_CLIENT_FILTERS);
+                setSelectedPresetId(null); // Clear local state
+                onPresetSelect?.(null); // Notify parent
+              }}
               className="btn-clear"
             >
-              Clear Client{clientFilterCount > 0 ? ` (${clientFilterCount})` : ''}
+              Clear Client ({clientFilterCount})
             </button>
           )}
           {serverFilterCount > 0 && (
             <button
-              onClick={handleClearServerFilters}
+              onClick={() => {
+                handleClearServerFilters();
+                setSelectedPresetId(null); // Clear local state
+                onPresetSelect?.(null); // Notify parent
+              }}
               className="btn-clear btn-clear-server"
             >
-              Clear Server{serverFilterCount > 0 ? ` (${serverFilterCount})` : ''}
+              Clear Server ({serverFilterCount})
+            </button>
+          )}
+          {hasUnsyncedServerChanges && (
+            <button
+              className="btn-apply-server-header"
+              onClick={handleApplyServerFilter}
+            >
+              Apply Server
             </button>
           )}
         </div>
@@ -318,129 +410,112 @@ export function FilterPanel({
 
       {isExpanded && (
         <div className="filter-content">
-          {/* Tab Switch */}
-          <div className="filter-tabs">
-            <button
-              className={`filter-tab ${activeTab === 'client' ? 'active' : ''}`}
-              onClick={() => setActiveTab('client')}
-            >
-              Client
-              {clientFilterCount > 0 && (
-                <span className="tab-badge">{clientFilterCount}</span>
-              )}
-            </button>
-            <button
-              className={`filter-tab ${activeTab === 'server' ? 'active' : ''}`}
-              onClick={() => setActiveTab('server')}
-            >
-              Server
-              {serverFilterCount > 0 && (
-                <span className="tab-badge">{serverFilterCount}</span>
-              )}
-              {hasUnsyncedServerChanges && <span className="unsync-indicator">*</span>}
-            </button>
+          {/* Tab Header Row */}
+          <div className="filter-tabs-row">
+            {/* Tab Switch */}
+            <div className="filter-tabs">
+              <button
+                className={`filter-tab ${activeTab === 'client' ? 'active' : ''}`}
+                onClick={() => setActiveTab('client')}
+              >
+                Client
+                {clientFilterCount > 0 && (
+                  <span className="tab-badge">{clientFilterCount}</span>
+                )}
+              </button>
+              <button
+                className={`filter-tab ${activeTab === 'server' ? 'active' : ''}`}
+                onClick={() => setActiveTab('server')}
+              >
+                Server
+                {serverFilterCount > 0 && (
+                  <span className="tab-badge">{serverFilterCount}</span>
+                )}
+                {hasUnsyncedServerChanges && <span className="unsync-indicator">*</span>}
+              </button>
+            </div>
+
+            {/* Tab description */}
+            <div className="filter-tab-info">
+              {activeTab === 'client'
+                ? 'Filters applied locally to fetched data. Changes take effect immediately.'
+                : 'Filters applied when fetching from GitLab. Changes require re-sync.'}
+            </div>
           </div>
 
-          {/* Client Tab Content */}
-          {activeTab === 'client' && (
-            <>
-              {/* Search */}
-              <div className="filter-section">
-                <label className="filter-label">Search</label>
-                <input
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search tasks..."
-                  className="filter-search"
-                />
-              </div>
+          {/* Tab Content Panel */}
+          <div className="filter-tab-panel">
+            {/* Client Tab Content */}
+            {activeTab === 'client' && (
+              <>
+                {/* Search */}
+                <div className="filter-search-section">
+                  <input
+                    type="text"
+                    value={filters.search}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Search tasks by title, description, labels..."
+                    className="filter-search-input"
+                  />
+                </div>
 
               {/* Main Filter Grid */}
               <div className="filter-grid">
-                {/* Milestones */}
-                {milestones && milestones.length > 0 && (
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Milestones ({milestones.length})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {milestones.map((milestone) => (
-                        <label key={milestone.id} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={filters.milestoneIds.includes(milestone.id)}
-                            onChange={() => handleMilestoneToggle(milestone.id)}
-                          />
-                          <span title={milestone.title}>{milestone.title}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Milestones - Client uses OR logic */}
+                <FilterMultiSelect
+                  title="Milestones (OR)"
+                  options={[
+                    // Add "None" option for tasks without milestone
+                    { value: 0, label: 'None (No Milestone)' },
+                    ...milestoneOptions,
+                  ]}
+                  selected={filters.milestoneIds}
+                  onChange={(values) => setFilters(prev => ({ ...prev, milestoneIds: values }))}
+                  placeholder="Search milestones..."
+                  emptyMessage="No milestones"
+                />
 
-                {/* Epics */}
-                {epics && epics.length > 0 && (
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Epics ({epics.length})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {epics.map((epic) => (
-                        <label key={epic.id} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={filters.epicIds.includes(epic.id)}
-                            onChange={() => handleEpicToggle(epic.id)}
-                          />
-                          <span title={epic.title}>{epic.title}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Epics - Client uses OR logic */}
+                <FilterMultiSelect
+                  title="Epics (OR)"
+                  options={[
+                    // Add "None" option for tasks without epic
+                    { value: 0, label: 'None (No Epic)' },
+                    ...epicOptions,
+                  ]}
+                  selected={filters.epicIds}
+                  onChange={(values) => setFilters(prev => ({ ...prev, epicIds: values }))}
+                  placeholder="Search epics..."
+                  emptyMessage="No epics"
+                />
 
-                {/* Labels */}
-                {availableLabels.length > 0 && (
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Labels ({availableLabels.length})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {availableLabels.map((label) => (
-                        <label key={label} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={filters.labels.includes(label)}
-                            onChange={() => handleLabelToggle(label)}
-                          />
-                          <span className="label-tag">{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Labels - Client uses OR logic */}
+                <FilterMultiSelect
+                  title="Labels (OR)"
+                  options={[
+                    // Add "None" option for tasks without labels
+                    { value: 'NONE', label: 'None (No Labels)' },
+                    ...labelOptions,
+                  ]}
+                  selected={filters.labels}
+                  onChange={(values) => setFilters(prev => ({ ...prev, labels: values }))}
+                  placeholder="Search labels..."
+                  emptyMessage="No labels"
+                />
 
-                {/* Assignees */}
-                {availableAssignees.length > 0 && (
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Assignees ({availableAssignees.length})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {availableAssignees.map((assignee) => (
-                        <label key={assignee} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={filters.assignees.includes(assignee)}
-                            onChange={() => handleAssigneeToggle(assignee)}
-                          />
-                          <span>{assignee}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Assignees - Client uses OR logic */}
+                <FilterMultiSelect
+                  title="Assignees (OR)"
+                  options={[
+                    // Add "None" option for unassigned tasks
+                    { value: 'NONE', label: 'None (Unassigned)' },
+                    ...assigneeOptions,
+                  ]}
+                  selected={filters.assignees}
+                  onChange={(values) => setFilters(prev => ({ ...prev, assignees: values }))}
+                  placeholder="Search assignees..."
+                  emptyMessage="No assignees"
+                />
               </div>
             </>
           )}
@@ -448,104 +523,65 @@ export function FilterPanel({
           {/* Server Tab Content */}
           {activeTab === 'server' && (
             <>
-              <div className="server-filter-info">
-                Server filters are applied when fetching data from GitLab.
-                Changes require re-sync to take effect.
-              </div>
-
               {filterOptionsLoading ? (
                 <div className="filter-loading">Loading filter options...</div>
               ) : (
                 <div className="filter-grid">
-                  {/* Labels */}
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Labels ({filterOptions?.labels?.length || 0})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {filterOptions?.labels?.map((label) => (
-                        <label key={label.title} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={serverFilters.labelNames?.includes(label.title)}
-                            onChange={() =>
-                              handleServerFilterChange(
-                                'labelNames',
-                                toggleArrayItem(serverFilters.labelNames || [], label.title)
-                              )
-                            }
-                          />
-                          <span
-                            className="label-tag"
-                            style={label.color ? { backgroundColor: label.color, color: '#fff' } : {}}
-                          >
-                            {label.title}
-                          </span>
-                        </label>
-                      ))}
-                      {(!filterOptions?.labels || filterOptions.labels.length === 0) && (
-                        <div className="no-options">No labels available</div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Labels - GitLab API uses AND logic for multiple labels */}
+                  {/* Note: GitLab GraphQL API does not support filtering for "no labels" */}
+                  <FilterMultiSelect
+                    title="Labels (AND)"
+                    options={(filterOptions?.labels || []).map(l => ({
+                      value: l.title,
+                      label: l.title,
+                      color: l.color || null,
+                    }))}
+                    selected={serverFilters.labelNames || []}
+                    onChange={(values) => handleServerFilterChange('labelNames', values)}
+                    placeholder="Search labels..."
+                    emptyMessage="No labels available"
+                  />
 
-                  {/* Milestones */}
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Milestones ({filterOptions?.milestones?.length || 0})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {filterOptions?.milestones?.map((milestone) => (
-                        <label key={milestone.iid} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={serverFilters.milestoneTitles?.includes(milestone.title)}
-                            onChange={() =>
-                              handleServerFilterChange(
-                                'milestoneTitles',
-                                toggleArrayItem(serverFilters.milestoneTitles || [], milestone.title)
-                              )
-                            }
-                          />
-                          <span title={milestone.title}>{milestone.title}</span>
-                        </label>
-                      ))}
-                      {(!filterOptions?.milestones || filterOptions.milestones.length === 0) && (
-                        <div className="no-options">No milestones available</div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Milestones - GitLab API uses OR logic for multiple milestones */}
+                  <FilterMultiSelect
+                    title="Milestones (OR)"
+                    options={[
+                      // Add "None" option for items without milestone
+                      { value: 'NONE', label: 'None (No Milestone)' },
+                      // Then all milestones
+                      ...(filterOptions?.milestones || []).map(m => ({
+                        value: m.title,
+                        label: m.title,
+                      })),
+                    ]}
+                    selected={serverFilters.milestoneTitles || []}
+                    onChange={(values) => handleServerFilterChange('milestoneTitles', values)}
+                    placeholder="Search milestones..."
+                    emptyMessage="No milestones available"
+                  />
 
-                  {/* Assignees */}
-                  <div className="filter-section">
-                    <label className="filter-label">
-                      Assignees ({filterOptions?.members?.length || 0})
-                    </label>
-                    <div className="filter-options scrollable">
-                      {filterOptions?.members?.map((member) => (
-                        <label key={member.username} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={serverFilters.assigneeUsernames?.includes(member.username)}
-                            onChange={() =>
-                              handleServerFilterChange(
-                                'assigneeUsernames',
-                                toggleArrayItem(serverFilters.assigneeUsernames || [], member.username)
-                              )
-                            }
-                          />
-                          <span title={`@${member.username}`}>{member.name}</span>
-                        </label>
-                      ))}
-                      {(!filterOptions?.members || filterOptions.members.length === 0) && (
-                        <div className="no-options">No members available</div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Assignees - GitLab API uses AND logic for multiple assignees */}
+                  <FilterMultiSelect
+                    title="Assignees (AND)"
+                    options={[
+                      // Add "None" option for unassigned issues
+                      { value: 'NONE', label: 'None (Unassigned)', subtitle: 'No assignee' },
+                      // Then all members
+                      ...(filterOptions?.members || []).map(m => ({
+                        value: m.username,
+                        label: m.name,
+                        subtitle: `@${m.username}`,
+                      })),
+                    ]}
+                    selected={serverFilters.assigneeUsernames || []}
+                    onChange={(values) => handleServerFilterChange('assigneeUsernames', values)}
+                    placeholder="Search assignees..."
+                    emptyMessage="No members available"
+                  />
 
                   {/* Date Range */}
-                  <div className="filter-section">
-                    <label className="filter-label">Created Date Range</label>
+                  <div className="date-range-section">
+                    <div className="date-range-header">Created Date Range</div>
                     <div className="date-range-inputs">
                       <div className="date-input-group">
                         <label>From:</label>
@@ -582,6 +618,7 @@ export function FilterPanel({
               </div>
             </>
           )}
+          </div>
         </div>
       )}
 
@@ -593,7 +630,6 @@ export function FilterPanel({
 
         .filter-header {
           display: flex;
-          justify-content: space-between;
           align-items: center;
           padding: 12px;
         }
@@ -602,12 +638,7 @@ export function FilterPanel({
           display: flex;
           align-items: center;
           gap: 12px;
-        }
-
-        .filter-header-right {
-          display: flex;
-          align-items: center;
-          gap: 8px;
+          flex-wrap: wrap;
         }
 
         .filter-toggle {
@@ -660,172 +691,132 @@ export function FilterPanel({
           background: #c82333;
         }
 
+        .btn-apply-server-header {
+          padding: 4px 12px;
+          background: #1f75cb;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-apply-server-header:hover {
+          background: #1a65b3;
+        }
+
         .filter-content {
           padding: 0 12px 12px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
+        }
+
+        .filter-search-section {
+          margin-bottom: 4px;
+        }
+
+        .filter-search-input {
+          width: 100%;
+          max-width: 400px;
+          padding: 6px 12px;
+          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border-radius: 4px;
+          background: var(--wx-gitlab-filter-input-background);
+          color: var(--wx-gitlab-filter-text);
+          font-size: 13px;
+        }
+
+        .filter-search-input:focus {
+          outline: none;
+          border-color: #1f75cb;
         }
 
         .filter-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 12px;
           align-items: start;
         }
 
-        @media (min-width: 1200px) {
+        @media (min-width: 1400px) {
+          .filter-grid {
+            grid-template-columns: repeat(5, 1fr);
+          }
+        }
+
+        @media (min-width: 1100px) and (max-width: 1399px) {
           .filter-grid {
             grid-template-columns: repeat(4, 1fr);
           }
         }
 
-        @media (min-width: 900px) and (max-width: 1199px) {
-          .filter-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-
-        @media (min-width: 600px) and (max-width: 899px) {
-          .filter-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        .filter-section {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          min-width: 0; /* Prevent grid blowout */
-        }
-
-        .filter-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--wx-gitlab-filter-text);
+        /* Tab row - contains tabs and info */
+        .filter-tabs-row {
           display: flex;
           align-items: center;
-          gap: 6px;
-        }
-
-        .filter-label i {
-          font-size: 11px;
-          opacity: 0.7;
-        }
-
-        .filter-search {
-          padding: 8px 12px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
-          background: var(--wx-gitlab-filter-input-background);
-          color: var(--wx-gitlab-filter-text);
-          font-size: 14px;
-        }
-
-        .filter-options {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .filter-options.scrollable {
-          max-height: 150px;
-          overflow-y: auto;
-          padding-right: 4px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
-          padding: 8px;
-          background: var(--wx-gitlab-filter-input-background);
-        }
-
-        .filter-options.scrollable::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .filter-options.scrollable::-webkit-scrollbar-track {
-          background: var(--wx-gitlab-filter-hover-background);
-          border-radius: 3px;
-        }
-
-        .filter-options.scrollable::-webkit-scrollbar-thumb {
-          background: var(--wx-gitlab-control-text);
-          border-radius: 3px;
-        }
-
-        .filter-options.scrollable::-webkit-scrollbar-thumb:hover {
-          background: var(--wx-gitlab-control-value);
-        }
-
-        .filter-checkbox {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          font-size: 13px;
-          padding: 4px 0;
-          color: var(--wx-gitlab-filter-text);
-        }
-
-        .filter-checkbox input[type="checkbox"] {
-          cursor: pointer;
-        }
-
-        .filter-checkbox span {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .label-tag {
-          background: var(--wx-gitlab-control-background);
-          color: var(--wx-gitlab-filter-text);
-          padding: 2px 8px;
-          border-radius: 3px;
-          font-size: 12px;
+          gap: 16px;
+          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+          margin-bottom: 12px;
         }
 
         /* Tab styles */
         .filter-tabs {
           display: flex;
-          gap: 4px;
-          margin-bottom: 8px;
+          gap: 0;
+          flex-shrink: 0;
         }
 
         .filter-tab {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 12px;
-          background: var(--wx-gitlab-filter-input-background);
-          border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
+          padding: 8px 16px;
+          background: transparent;
+          border: none;
+          border-bottom: 2px solid transparent;
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gitlab-control-text);
           cursor: pointer;
           transition: all 0.2s;
+          margin-bottom: -1px;
         }
 
         .filter-tab:hover {
+          color: var(--wx-gitlab-filter-text);
           background: var(--wx-gitlab-filter-hover-background);
         }
 
         .filter-tab.active {
-          background: #1f75cb;
-          border-color: #1f75cb;
-          color: white;
+          color: #1f75cb;
+          border-bottom-color: #1f75cb;
+          background: transparent;
+        }
+
+        .filter-tab-info {
+          font-size: 12px;
+          color: var(--wx-gitlab-control-text);
+          flex: 1;
+        }
+
+        .filter-tab-panel {
+          /* Content area styling */
         }
 
         .tab-badge {
-          background: rgba(255, 255, 255, 0.3);
-          padding: 1px 5px;
-          border-radius: 8px;
+          background: var(--wx-gitlab-filter-input-border);
+          color: var(--wx-gitlab-filter-text);
+          padding: 1px 6px;
+          border-radius: 10px;
           font-size: 11px;
           font-weight: 600;
         }
 
         .filter-tab.active .tab-badge {
-          background: rgba(255, 255, 255, 0.3);
+          background: #1f75cb;
+          color: white;
         }
 
         .unsync-indicator {
@@ -838,68 +829,62 @@ export function FilterPanel({
           color: #ffc107;
         }
 
-        /* Server filter styles */
-        .server-filter-info {
-          font-size: 12px;
-          color: var(--wx-gitlab-control-text);
-          padding: 8px 12px;
-          background: var(--wx-gitlab-filter-hover-background);
-          border-radius: 4px;
-          margin-bottom: 8px;
-        }
-
         .filter-loading {
           padding: 20px;
           text-align: center;
           color: var(--wx-gitlab-control-text);
         }
 
-        .no-options {
-          padding: 8px;
-          text-align: center;
-          color: var(--wx-gitlab-control-text);
+        .date-range-section {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .date-range-header {
           font-size: 12px;
-          font-style: italic;
+          font-weight: 600;
+          color: var(--wx-gitlab-filter-text);
+          margin-bottom: 2px;
         }
 
         .date-range-inputs {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .date-input-group {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
         }
 
         .date-input-group label {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--wx-gitlab-filter-text);
-          min-width: 40px;
+          min-width: 35px;
         }
 
         .filter-date-input {
           flex: 1;
-          padding: 6px 8px;
+          padding: 4px 6px;
           border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
+          border-radius: 3px;
           background: var(--wx-gitlab-filter-input-background);
           color: var(--wx-gitlab-filter-text);
-          font-size: 13px;
+          font-size: 12px;
         }
 
         .server-filter-actions {
           display: flex;
           gap: 8px;
-          margin-top: 8px;
-          padding-top: 12px;
+          padding-top: 8px;
           border-top: 1px solid var(--wx-gitlab-filter-border);
         }
 
         .btn-apply-server {
-          padding: 8px 16px;
+          padding: 6px 16px;
           background: #1f75cb;
           color: white;
           border: none;

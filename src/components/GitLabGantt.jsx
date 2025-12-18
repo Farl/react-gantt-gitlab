@@ -162,8 +162,16 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     // Clear filter options when switching project/group
     setFilterOptions({});
 
+    // Clear server filter options and active server filters
+    setServerFilterOptions(null);
+    setActiveServerFilters(null);
+
     // Clear last used preset ID (will be loaded from localStorage for new config)
     setLastUsedPresetId(null);
+
+    // Increment config version to signal that presets need to reload
+    // This prevents the initial sync from running with stale preset data
+    setConfigVersion(v => v + 1);
 
     const newProvider = new GitLabGraphQLProvider({
       gitlabUrl: config.gitlabUrl,
@@ -196,7 +204,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     }
   }, [initialConfigId, handleConfigChange]);
 
-  // Use sync hook
+  // Use sync hook (no auto-sync on provider change - we control initial sync timing)
   const {
     tasks: allTasks,
     links,
@@ -210,7 +218,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     deleteTask,
     createLink,
     deleteLink,
-  } = useGitLabSync(provider, autoSync);
+  } = useGitLabSync(provider, autoSync, 60000);
 
   // Get project path for holidays hook
   const projectPath = useMemo(() => {
@@ -309,9 +317,19 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   }, [currentConfig]);
 
   // Load last used preset ID from localStorage
-  const [lastUsedPresetId, setLastUsedPresetId] = useState(null);
+  // Initialize with the value from localStorage if available
+  const [lastUsedPresetId, setLastUsedPresetId] = useState(() => {
+    if (!currentConfig) return null;
+    let key = null;
+    if (currentConfig.type === 'project' && currentConfig.projectId) {
+      key = `gitlab-gantt-preset-project-${currentConfig.projectId}`;
+    } else if (currentConfig.type === 'group' && currentConfig.groupId) {
+      key = `gitlab-gantt-preset-group-${currentConfig.groupId}`;
+    }
+    return key ? localStorage.getItem(key) : null;
+  });
 
-  // Load preset ID when config changes
+  // Update preset ID when config changes
   useEffect(() => {
     const key = getPresetStorageKey();
     if (key) {
@@ -384,6 +402,32 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     saveFoldStateRef.current = saveFoldStateToStorage;
   }, [saveFoldStateToStorage]);
 
+  // Track if initial sync has been done for current provider
+  const initialSyncDoneRef = useRef(false);
+  // Track config version to ensure we wait for presets to reload after config change
+  const [configVersion, setConfigVersion] = useState(0);
+  const presetsLoadedForVersionRef = useRef(-1);
+
+  // Reset initial sync flag when provider changes
+  useEffect(() => {
+    initialSyncDoneRef.current = false;
+  }, [provider]);
+
+  // Track presetsLoading transitions to detect when presets finish loading for current config
+  // We only record the version when presetsLoading goes from true -> false,
+  // not when it's already false (which could be stale from previous config)
+  const prevPresetsLoadingRef = useRef(presetsLoading);
+  useEffect(() => {
+    const wasLoading = prevPresetsLoadingRef.current;
+    const isNowNotLoading = !presetsLoading;
+
+    if (wasLoading && isNowNotLoading && proxyConfig) {
+      presetsLoadedForVersionRef.current = configVersion;
+    }
+
+    prevPresetsLoadingRef.current = presetsLoading;
+  }, [presetsLoading, proxyConfig, configVersion]);
+
   // Wrapped sync function that preserves fold state
   // Automatically applies activeServerFilters if set
   const syncWithFoldState = useCallback(
@@ -422,6 +466,42 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     },
     [api, sync, saveFoldStateToStorage, activeServerFilters]
   );
+
+  // Trigger initial sync after presets are loaded
+  // This ensures server filters from saved preset are applied on first sync
+  useEffect(() => {
+    // Skip if not ready or already synced
+    if (!provider || presetsLoading || !proxyConfig || initialSyncDoneRef.current) {
+      return;
+    }
+
+    // Wait until presets have been loaded for the current config version
+    // This prevents using stale preset data from a previous project
+    if (presetsLoadedForVersionRef.current !== configVersion) {
+      return;
+    }
+
+    initialSyncDoneRef.current = true;
+
+    // Read preset ID directly from localStorage to avoid stale state issues
+    const presetStorageKey = getPresetStorageKey();
+    const savedPresetId = presetStorageKey ? localStorage.getItem(presetStorageKey) : null;
+
+    // Check if we have a saved preset with server filters
+    if (savedPresetId && filterPresets.length > 0) {
+      const savedPreset = filterPresets.find(p => p.id === savedPresetId);
+      if (savedPreset?.filters?.filterType === 'server' && savedPreset?.filters?.serverFilters) {
+        const gitlabFilters = toGitLabServerFilters(savedPreset.filters.serverFilters);
+        setActiveServerFilters(gitlabFilters);
+        setLastUsedPresetId(savedPresetId);
+        syncWithFoldState({ serverFilters: gitlabFilters });
+        return;
+      }
+    }
+
+    // No saved server preset - sync without filters
+    syncWithFoldState();
+  }, [provider, presetsLoading, proxyConfig, filterPresets, syncWithFoldState, getPresetStorageKey, configVersion]);
 
   // Update ref when allTasks changes
   useEffect(() => {
@@ -1836,6 +1916,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       )}
 
       <FilterPanel
+        key={currentConfig?.id || 'no-config'}
         milestones={milestones}
         epics={epics}
         tasks={allTasks}

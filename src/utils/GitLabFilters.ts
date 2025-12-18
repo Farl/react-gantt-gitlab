@@ -63,31 +63,47 @@ export function toGitLabServerFilters(
 
 export class GitLabFilters {
   /**
-   * Filter tasks by milestone
+   * Filter tasks by milestone using _gitlab.milestoneIid
+   * Supports "NONE" (as 0) to filter tasks without milestone
    *
-   * Note: We use the parent field to display Issues under Milestones
-   * When an Issue belongs to a Milestone in GitLab, we set parent = 10000 + milestone.iid
-   * This is purely for display hierarchy in Gantt - not a real parent relationship in GitLab
+   * Note: We no longer use the parent field (10000 + iid) for filtering.
+   * Instead, we use _gitlab.milestoneIid which is set when transforming work items.
    */
-  static filterByMilestone(tasks: ITask[], milestoneIds: number[]): ITask[] {
-    if (milestoneIds.length === 0) {
+  static filterByMilestone(tasks: ITask[], milestoneIids: number[]): ITask[] {
+    if (milestoneIids.length === 0) {
       return tasks;
     }
 
+    // Check if filtering for tasks without milestone (NONE = 0)
+    const includeNoMilestone = milestoneIids.includes(0);
+    const otherMilestoneIids = milestoneIids.filter((id) => id !== 0);
+
     return tasks.filter((task) => {
-      // Keep milestone summary tasks
+      // Skip milestone summary tasks when filtering for "no milestone"
       if (task._gitlab?.type === 'milestone') {
-        return milestoneIds.includes(task.id as number);
+        return otherMilestoneIids.includes(task._gitlab?.iid as number);
       }
 
-      // Filter issues by their milestone parent (parent field used for display hierarchy)
-      // Note: parent >= 10000 indicates a milestone relationship for display
-      return milestoneIds.includes(task.parent as number);
+      // Issue/Task - check by milestone association stored in _gitlab.milestoneIid
+      const taskMilestoneIid = task._gitlab?.milestoneIid;
+
+      // Check for no milestone
+      if (includeNoMilestone && !taskMilestoneIid) {
+        return true;
+      }
+
+      // Check for specific milestones
+      if (taskMilestoneIid && otherMilestoneIids.length > 0) {
+        return otherMilestoneIids.includes(taskMilestoneIid);
+      }
+
+      return false;
     });
   }
 
   /**
    * Filter tasks by epic
+   * Supports "NONE" (as 0) to filter tasks without epic
    *
    * Note: GitLab Issues can have Epic parents (actual parent relationship in GitLab)
    * Epic parent ID is stored in _gitlab.epicParentId when Issue has Epic parent
@@ -97,44 +113,88 @@ export class GitLabFilters {
       return tasks;
     }
 
+    // Check if filtering for tasks without epic (NONE = 0)
+    const includeNoEpic = epicIds.includes(0);
+    const otherEpicIds = epicIds.filter((id) => id !== 0);
+
     return tasks.filter((task) => {
       // Check if task has Epic parent ID stored
       const epicParentId = task._gitlab?.epicParentId;
-      return epicParentId ? epicIds.includes(epicParentId) : false;
+
+      // Check for no epic
+      if (includeNoEpic && !epicParentId) {
+        return true;
+      }
+
+      // Check for specific epics
+      if (epicParentId && otherEpicIds.length > 0) {
+        return otherEpicIds.includes(epicParentId);
+      }
+
+      return false;
     });
   }
 
   /**
    * Filter tasks by labels
+   * Supports "NONE" value to filter tasks without labels
    */
   static filterByLabels(tasks: ITask[], labels: string[]): ITask[] {
     if (labels.length === 0) {
       return tasks;
     }
 
-    return tasks.filter((task) => {
-      if (!task.labels) {
-        return false;
-      }
+    // Check if filtering for tasks without labels
+    const includeNoLabels = labels.includes('NONE');
+    const otherLabels = labels.filter((l) => l !== 'NONE');
 
+    return tasks.filter((task) => {
       const taskLabels =
         typeof task.labels === 'string'
-          ? task.labels.split(',').map((l) => l.trim())
-          : task.labels;
+          ? task.labels
+              .split(',')
+              .map((l) => l.trim())
+              .filter((l) => l)
+          : task.labels || [];
 
-      return labels.some((label) => taskLabels.includes(label));
+      // Check for no labels
+      if (includeNoLabels && taskLabels.length === 0) {
+        return true;
+      }
+
+      // Check for specific labels
+      if (otherLabels.length > 0 && taskLabels.length > 0) {
+        return otherLabels.some((label) => taskLabels.includes(label));
+      }
+
+      return false;
     });
   }
 
   /**
    * Filter tasks by assignees
+   * Supports "NONE" value to filter unassigned tasks
    */
   static filterByAssignees(tasks: ITask[], assignees: string[]): ITask[] {
     if (assignees.length === 0) {
       return tasks;
     }
 
+    // Check if filtering for unassigned tasks
+    const includeUnassigned = assignees.includes('NONE');
+    const otherAssignees = assignees.filter((a) => a !== 'NONE');
+
     return tasks.filter((task) => {
+      // Check for unassigned
+      if (includeUnassigned && !task.assigned) {
+        return true;
+      }
+
+      // If no other assignees to check, and task has assignees, exclude it
+      if (otherAssignees.length === 0) {
+        return false;
+      }
+
       if (!task.assigned) {
         return false;
       }
@@ -144,7 +204,7 @@ export class GitLabFilters {
           ? task.assigned.split(',').map((a) => a.trim())
           : [task.assigned];
 
-      return assignees.some((assignee) =>
+      return otherAssignees.some((assignee) =>
         taskAssignees.some((ta) =>
           ta.toLowerCase().includes(assignee.toLowerCase()),
         ),

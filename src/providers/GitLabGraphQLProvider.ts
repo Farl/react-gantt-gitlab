@@ -226,7 +226,9 @@ export class GitLabGraphQLProvider {
     // Fetching work items and milestones
 
     // Query for work items with pagination
-    // Supports server-side filtering via labelName, milestoneTitle, assigneeUsernames, createdAfter/Before
+    // Supports server-side filtering via labelName, milestoneTitle/milestoneWildcardId, assigneeUsernames/assigneeWildcardId, createdAfter/Before
+    // Note: milestoneTitle and milestoneWildcardId are mutually exclusive
+    // Note: assigneeUsernames and assigneeWildcardId are mutually exclusive
     const workItemsQuery = `
       query getWorkItems(
         $fullPath: ID!,
@@ -234,7 +236,9 @@ export class GitLabGraphQLProvider {
         $after: String,
         $labelName: [String!],
         $milestoneTitle: [String!],
+        $milestoneWildcardId: MilestoneWildcardId,
         $assigneeUsernames: [String!],
+        $assigneeWildcardId: AssigneeWildcardId,
         $createdAfter: Time,
         $createdBefore: Time
       ) {
@@ -246,7 +250,9 @@ export class GitLabGraphQLProvider {
             after: $after,
             labelName: $labelName,
             milestoneTitle: $milestoneTitle,
+            milestoneWildcardId: $milestoneWildcardId,
             assigneeUsernames: $assigneeUsernames,
+            assigneeWildcardId: $assigneeWildcardId,
             createdAfter: $createdAfter,
             createdBefore: $createdBefore
           ) {
@@ -372,6 +378,8 @@ export class GitLabGraphQLProvider {
 
     // Query for issues to get relativePosition (Issue API supports this field) with pagination
     // Also supports server-side filtering to match workItems query
+    // Note: milestoneTitle and milestoneWildcardId are mutually exclusive
+    // Note: assigneeUsernames and assigneeWildcardId are mutually exclusive
     const issuesQuery = `
       query getIssues(
         $fullPath: ID!,
@@ -379,7 +387,9 @@ export class GitLabGraphQLProvider {
         $after: String,
         $labelName: [String!],
         $milestoneTitle: String,
+        $milestoneWildcardId: MilestoneWildcardId,
         $assigneeUsernames: [String!],
+        $assigneeWildcardId: AssigneeWildcardId,
         $createdAfter: Time,
         $createdBefore: Time
       ) {
@@ -390,7 +400,9 @@ export class GitLabGraphQLProvider {
             after: $after,
             labelName: $labelName,
             milestoneTitle: $milestoneTitle,
+            milestoneWildcardId: $milestoneWildcardId,
             assigneeUsernames: $assigneeUsernames,
+            assigneeWildcardId: $assigneeWildcardId,
             createdAfter: $createdAfter,
             createdBefore: $createdBefore
           ) {
@@ -418,8 +430,21 @@ export class GitLabGraphQLProvider {
     if (serverFilters?.labelNames?.length) {
       baseVariables.labelName = serverFilters.labelNames;
     }
+    // Handle assignee filtering - assigneeUsernames and assigneeWildcardId are mutually exclusive
     if (serverFilters?.assigneeUsernames?.length) {
-      baseVariables.assigneeUsernames = serverFilters.assigneeUsernames;
+      const hasNone = serverFilters.assigneeUsernames.includes('NONE');
+      const otherUsernames = serverFilters.assigneeUsernames.filter(
+        (u) => u !== 'NONE',
+      );
+
+      if (hasNone && otherUsernames.length === 0) {
+        // Only NONE selected - use wildcard to find unassigned items
+        baseVariables.assigneeWildcardId = 'NONE';
+      } else if (otherUsernames.length > 0) {
+        // Has specific usernames - use assigneeUsernames (cannot combine with wildcard)
+        // Note: If NONE is also selected, we can only filter by usernames (API limitation)
+        baseVariables.assigneeUsernames = otherUsernames;
+      }
     }
     if (serverFilters?.createdAfter) {
       baseVariables.createdAfter = serverFilters.createdAfter;
@@ -428,21 +453,37 @@ export class GitLabGraphQLProvider {
       baseVariables.createdBefore = serverFilters.createdBefore;
     }
 
+    // Handle milestone filtering - milestoneTitle and milestoneWildcardId are mutually exclusive
+    // Check for NONE in milestoneTitles
+    const milestoneHasNone = serverFilters?.milestoneTitles?.includes('NONE');
+    const otherMilestoneTitles = serverFilters?.milestoneTitles?.filter(
+      (t) => t !== 'NONE',
+    );
+
     // Variables for workItems query (milestoneTitle accepts array)
     const variables: any = {
       ...baseVariables,
-      ...(serverFilters?.milestoneTitles?.length && {
-        milestoneTitle: serverFilters.milestoneTitles,
-      }),
     };
 
     // Variables for issues query (milestoneTitle accepts single string only)
     const issuesVariables: any = {
       ...baseVariables,
-      ...(serverFilters?.milestoneTitles?.length && {
-        milestoneTitle: serverFilters.milestoneTitles[0],
-      }),
     };
+
+    // Apply milestone filter based on selection
+    if (
+      milestoneHasNone &&
+      (!otherMilestoneTitles || otherMilestoneTitles.length === 0)
+    ) {
+      // Only NONE selected - use wildcard to find items without milestone
+      variables.milestoneWildcardId = 'NONE';
+      issuesVariables.milestoneWildcardId = 'NONE';
+    } else if (otherMilestoneTitles && otherMilestoneTitles.length > 0) {
+      // Has specific milestone titles - use milestoneTitle (cannot combine with wildcard)
+      // Note: If NONE is also selected, we can only filter by titles (API limitation)
+      variables.milestoneTitle = otherMilestoneTitles;
+      issuesVariables.milestoneTitle = otherMilestoneTitles[0]; // issues query only accepts single string
+    }
 
     // Fetch work items with optional pagination
     const enablePagination = options.enablePagination !== false; // Default to true
@@ -939,7 +980,7 @@ export class GitLabGraphQLProvider {
     const weightWidget = workItem.widgets.find((w) => w.weight !== undefined);
     const milestoneWidget = workItem.widgets.find(
       (w) => w.milestone !== undefined,
-    );
+    ) as { milestone?: { id: string; iid: string; title: string } } | undefined;
     const hierarchyWidget = workItem.widgets.find(
       (w) => w.parent !== undefined || w.children !== undefined,
     );
@@ -1095,6 +1136,11 @@ export class GitLabGraphQLProvider {
         dueDate: dateWidget?.dueDate, // Track if task has explicit due date
         epicParentId, // Store Epic parent ID if exists (for Issues without Milestone)
         web_url: workItem.webUrl, // GitLab web URL for opening in browser
+        // Milestone info for client-side filtering (not using parent field anymore)
+        milestoneIid: milestoneWidget?.milestone
+          ? Number(milestoneWidget.milestone.iid)
+          : undefined,
+        milestoneTitle: milestoneWidget?.milestone?.title,
       },
     };
 

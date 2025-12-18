@@ -22,8 +22,11 @@ export interface UseFilterPresetsResult {
   saving: boolean;
   /** Error message if any */
   error: string | null;
-  /** Create a new preset with current filters */
-  createNewPreset: (name: string, filters: FilterOptions) => Promise<void>;
+  /** Create a new preset with current filters, returns the new preset ID */
+  createNewPreset: (
+    name: string,
+    filters: FilterOptions,
+  ) => Promise<string | undefined>;
   /** Update an existing preset */
   updatePreset: (
     id: string,
@@ -47,7 +50,8 @@ export function useFilterPresets(
   canEdit: boolean,
 ): UseFilterPresetsResult {
   const [presets, setPresets] = useState<FilterPreset[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Initialize loading as true - we're loading until the first fetch completes
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +69,8 @@ export function useFilterPresets(
   const loadPresetsFromGitLab = useCallback(async () => {
     const currentProxyConfig = proxyConfigRef.current;
     if (!fullPath || !currentProxyConfig) {
+      // No path or config yet - keep loading as true to indicate "not ready"
+      // Don't set loading to false here, as proxyConfig might become available later
       return;
     }
 
@@ -126,10 +132,13 @@ export function useFilterPresets(
 
   // Create a new preset
   const createNewPreset = useCallback(
-    async (name: string, filters: FilterOptions) => {
+    async (
+      name: string,
+      filters: FilterOptions,
+    ): Promise<string | undefined> => {
       if (!canEdit) {
         setError('You do not have permission to create presets');
-        return;
+        return undefined;
       }
 
       const previousPresets = presetsRef.current;
@@ -141,6 +150,7 @@ export function useFilterPresets(
 
       try {
         await savePresetsToGitLab(newPresets);
+        return newPreset.id; // Return the new preset ID
       } catch (err) {
         // Rollback on error
         setPresets(previousPresets);
@@ -219,10 +229,15 @@ export function useFilterPresets(
     [updatePreset],
   );
 
-  // Load presets when path changes
+  // Load presets when path or proxyConfig changes
   useEffect(() => {
+    // Set loading to true synchronously when dependencies change
+    // This prevents race conditions where initial sync happens before presets are loaded
+    if (fullPath && proxyConfig) {
+      setLoading(true);
+    }
     loadPresetsFromGitLab();
-  }, [loadPresetsFromGitLab]);
+  }, [loadPresetsFromGitLab, proxyConfig, fullPath]);
 
   return {
     presets,

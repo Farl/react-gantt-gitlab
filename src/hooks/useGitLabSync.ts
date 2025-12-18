@@ -303,19 +303,36 @@ export function useGitLabSync(
   );
 
   /**
-   * Initial sync on mount
+   * Clear data when provider changes
+   * NOTE: Does NOT auto-sync - caller is responsible for triggering initial sync
+   * This allows caller to wait for other async operations (e.g., preset loading) before syncing
    */
   useEffect(() => {
     if (provider) {
-      sync();
+      // Clear old data immediately when provider changes
+      setTasks([]);
+      setLinks([]);
+      setMilestones([]);
+      setEpics([]);
+      setSyncState({
+        isLoading: true, // Show loading state, caller will trigger sync
+        isSyncing: false,
+        error: null,
+        lastSyncTime: null,
+      });
+      // Do NOT auto-sync - caller is responsible for calling sync()
     } else {
-      // No provider, set loading to false immediately
+      // No provider, clear data and set loading to false
+      setTasks([]);
+      setLinks([]);
+      setMilestones([]);
+      setEpics([]);
       setSyncState((prev) => ({
         ...prev,
         isLoading: false,
       }));
     }
-  }, [provider, sync]);
+  }, [provider]);
 
   /**
    * Auto-sync interval

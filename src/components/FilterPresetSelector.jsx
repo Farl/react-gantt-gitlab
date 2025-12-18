@@ -99,6 +99,8 @@ export function FilterPresetSelector({
   onCreatePreset,
   onRenamePreset,
   onDeletePreset,
+  selectedPresetId, // Explicit selected preset ID (preferred over filter matching)
+  serverFilterCount = 0, // Count of active server filters (for enabling save button)
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -117,8 +119,11 @@ export function FilterPresetSelector({
     setErrorMessage(null);
   }, []);
 
-  // Find if current filters match any preset
-  const matchingPreset = presets?.find(p => areFiltersEqual(p.filters, currentFilters));
+  // Use explicit selectedPresetId if provided (including null to indicate no selection)
+  // Only fall back to filter matching if selectedPresetId is undefined (not passed)
+  const matchingPreset = selectedPresetId !== undefined
+    ? (selectedPresetId ? presets?.find(p => p.id === selectedPresetId) : null)
+    : presets?.find(p => areFiltersEqual(p.filters, currentFilters));
 
   // Get active preset for menu actions
   const activePreset = activeMenuId ? presets?.find(p => p.id === activeMenuId) : null;
@@ -232,7 +237,8 @@ export function FilterPresetSelector({
     }
   }, [activeMenuId]);
 
-  const canSaveCurrentFilters = hasActiveFilters(currentFilters) && !matchingPreset;
+  // Can save if there are active client filters OR server filters, and no preset currently matches
+  const canSaveCurrentFilters = (hasActiveFilters(currentFilters) || serverFilterCount > 0) && !matchingPreset;
 
   return (
     <div className="filter-preset-container" ref={dropdownRef}>
