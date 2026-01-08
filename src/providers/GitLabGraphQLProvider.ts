@@ -1009,6 +1009,12 @@ export class GitLabGraphQLProvider {
       // DO NOT set open: true without data property - causes Gantt store error
       // Gantt will handle open state based on children
       details: milestone.description || '',
+      // Sorting defaults (see ColumnSettingsDropdown.jsx for SORTING SUPPORT docs)
+      displayOrder: 0,
+      issueId: 0,
+      iteration: '',
+      assigned: '',
+      weight: 0,
       $isMilestone: true, // Custom flag for identifying milestones (for CSS styling)
       _gitlab: {
         type: 'milestone',
@@ -1198,9 +1204,15 @@ export class GitLabGraphQLProvider {
       type: 'task', // Always 'task' to prevent auto-calculation
       details: description,
       parent,
-      assigned: assignees,
       labels,
-      weight: weightWidget?.weight,
+      // Sorting defaults (see ColumnSettingsDropdown.jsx for SORTING SUPPORT docs)
+      displayOrder: finalOrder ?? Number.MAX_SAFE_INTEGER,
+      issueId: Number(workItem.iid),
+      iteration: iterationWidget?.iteration
+        ? formatIterationTitle(iterationWidget.iteration)
+        : '',
+      assigned: assignees || '',
+      weight: weightWidget?.weight ?? 0,
       state: workItem.state,
       web_url: workItem.webUrl,
       $isIssue: isIssue, // Custom flag: true for GitLab Issue, false for GitLab Task

@@ -10,6 +10,7 @@ const STORAGE_KEY = 'gantt-column-settings';
 // All available columns with their default configuration
 // Order matters - this is the default order
 const ALL_COLUMNS = [
+  { key: 'displayOrder', label: 'Order', defaultVisible: false },
   { key: 'assignee', label: 'Assignee', defaultVisible: false },
   { key: 'issueId', label: 'Issue ID', defaultVisible: false },
   { key: 'iteration', label: 'Iteration', defaultVisible: false },
@@ -250,6 +251,20 @@ export function ColumnSettingsDropdown({
 
 /**
  * Cell components for columns
+ *
+ * SORTING SUPPORT:
+ * SVAR Gantt sorts using task[columnId], so column id must match task property name.
+ * - Strings: use localeCompare, empty string '' sorts first
+ * - Numbers: use (a??0)-(b??0), 0 sorts first
+ * - Dates: use getTime() comparison
+ *
+ * Default values for sorting (set in GitLabGraphQLProvider):
+ * - displayOrder: 0 for milestones, relativePosition for issues (sort by this to restore original order)
+ * - assigned: '' (empty string)
+ * - weight: 0
+ * - issueId: 0 for milestones, actual IID for issues
+ * - iteration: '' (empty string)
+ * - workdays: calculated in GitLabGantt tasksWithWorkdays
  */
 export const AssigneeCell = ({ row }) => {
   if (!row.assigned) return null;
@@ -257,29 +272,33 @@ export const AssigneeCell = ({ row }) => {
 };
 
 export const IssueIdCell = ({ row }) => {
-  if (row.$isMilestone || row._gitlab?.type === 'milestone') return null;
-  const iid = row._gitlab?.iid || row.id;
-  return <span style={{ color: '#666' }}>#{iid}</span>;
+  if (!row.issueId) return null;
+  return <span style={{ color: '#666' }}>#{row.issueId}</span>;
 };
 
 export const WeightCell = ({ row }) => {
-  if (row.weight === undefined || row.weight === null) return null;
+  if (!row.weight) return null;
   return <span>{row.weight}</span>;
 };
 
 export const IterationCell = ({ row }) => {
-  const iterationTitle = row._gitlab?.iterationTitle;
-  if (!iterationTitle) return null;
-  return <span title={iterationTitle}>{iterationTitle}</span>;
+  if (!row.iteration) return null;
+  return <span title={row.iteration}>{row.iteration}</span>;
 };
 
 /**
  * Column configurations
- * Note: start, end, workdays cells are provided externally (DateCell, WorkdaysCell)
+ * IMPORTANT: Column id must match task property name for sorting to work
  */
 export const COLUMN_CONFIGS = {
+  displayOrder: {
+    id: 'displayOrder',
+    header: '#',
+    width: 50,
+    // No cell - column is hidden, only used for sorting to restore original order
+  },
   assignee: {
-    id: 'assignee',
+    id: 'assigned',
     header: 'Assignee',
     width: 120,
     cell: AssigneeCell,
@@ -306,19 +325,16 @@ export const COLUMN_CONFIGS = {
     id: 'start',
     header: 'Start',
     width: 110,
-    // cell provided externally
   },
   end: {
     id: 'end',
     header: 'Due',
     width: 110,
-    // cell provided externally
   },
   workdays: {
     id: 'workdays',
     header: 'Workdays',
     width: 70,
-    // cell provided externally
   },
 };
 

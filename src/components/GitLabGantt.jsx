@@ -328,6 +328,13 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     setColorRules,
   } = useGitLabHolidays(projectPath, proxyConfig, canEditHolidays);
 
+  // Highlight time hook for workdays calculation and weekend/holiday highlighting
+  const {
+    highlightTime: highlightTimeFn,
+    countWorkdays,
+    calculateEndDateByWorkdays,
+  } = useHighlightTime({ holidays, workdays });
+
   // Filter presets hook
   const {
     presets: filterPresets,
@@ -579,10 +586,18 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     requestAnimationFrame(restoreFoldState);
   }, [allTasks, api]);
 
+  // Add workdays to tasks for sorting support
+  const tasksWithWorkdays = useMemo(() => {
+    return allTasks.map(task => ({
+      ...task,
+      workdays: task.start && task.end ? countWorkdays(task.start, task.end) : 0,
+    }));
+  }, [allTasks, countWorkdays]);
+
   // Apply filters to tasks
   const filteredTasks = useMemo(() => {
-    return GitLabFilters.applyFilters(allTasks, filterOptions);
-  }, [allTasks, filterOptions]);
+    return GitLabFilters.applyFilters(tasksWithWorkdays, filterOptions);
+  }, [tasksWithWorkdays, filterOptions]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -680,14 +695,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       alert(`Failed to create milestone: ${error.message}`);
     }
   }, [createMilestone]);
-
-  // Use shared highlight time hook for workdays calculation and highlighting
-  // Extract all needed functions here since init callback needs them
-  const {
-    highlightTime: highlightTimeFn,
-    countWorkdays,
-    calculateEndDateByWorkdays,
-  } = useHighlightTime({ holidays, workdays });
 
   // Use refs to store latest workdays functions for use in intercept closure
   // This prevents stale closure issues when holidays/workdays change
@@ -1579,23 +1586,11 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     return `${yy}/${mm}/${dd}`;
   }, []);
 
-  // Workdays cell component - calculates workdays between start and end
-  // GitLab milestones have start and end dates, so they also show workdays
-  const WorkdaysCell = useCallback(
-    ({ row }) => {
-      const start = row.start;
-      const end = row.end;
-
-      if (!start || !end) return '';
-
-      const startDate = start instanceof Date ? start : new Date(start);
-      const endDate = end instanceof Date ? end : new Date(end);
-
-      const days = countWorkdays(startDate, endDate);
-      return `${days}d`;
-    },
-    [countWorkdays],
-  );
+  // Workdays cell - uses pre-calculated workdays from tasksWithWorkdays
+  const WorkdaysCell = useCallback(({ row }) => {
+    if (!row.workdays) return '';
+    return `${row.workdays}d`;
+  }, []);
 
   // Custom cell component for Task Title with icons
   const TaskTitleCell = useCallback(({ row }) => {
