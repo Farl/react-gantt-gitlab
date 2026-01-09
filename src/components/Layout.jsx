@@ -276,6 +276,7 @@ function Layout(props) {
                   readonly={readonly}
                   fullHeight={fullHeight}
                   onTableAPIChange={onTableAPIChange}
+                  colorRules={colorRules}
                 />
                 <Resizer
                   value={gridWidth}

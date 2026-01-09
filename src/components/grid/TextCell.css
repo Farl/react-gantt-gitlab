@@ -3,6 +3,7 @@
   white-space: nowrap;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .wx-toggle-icon.wx-pqc08MHU {
@@ -15,6 +16,7 @@
   color: var(--wx-gantt-icon-color);
   cursor: pointer;
 }
+
 .wx-toggle-placeholder.wx-pqc08MHU {
   width: var(--wx-icon-size);
   height: 16px;
@@ -27,4 +29,28 @@
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Color indicators for matching color rules */
+.wx-color-indicators {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  padding-right: 4px;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wx-color-indicator {
+  width: 12px;
+  height: 16px;
+  border-radius: 1px;
 }

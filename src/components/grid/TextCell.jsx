@@ -1,3 +1,4 @@
+import { getMatchingRules } from '../../types/colorRule';
 import './TextCell.css';
 
 function TextCell({ row, column }) {
@@ -9,6 +10,8 @@ function TextCell({ row, column }) {
   }
 
   const CellComponent = column && column._cell;
+  const colorRules = column?.colorRules;
+  const matchedRules = colorRules ? getMatchingRules(row.text, colorRules) : [];
 
   return (
     <div className="wx-pqc08MHU wx-content" style={getStyle(row, column)}>
@@ -23,6 +26,18 @@ function TextCell({ row, column }) {
       <div className="wx-pqc08MHU wx-text">
         {CellComponent ? <CellComponent row={row} column={column} /> : row.text}
       </div>
+      {matchedRules.length > 0 && (
+        <div className="wx-color-indicators">
+          {matchedRules.map((rule) => (
+            <span
+              key={rule.id}
+              className="wx-color-indicator"
+              style={{ backgroundColor: rule.color, opacity: rule.opacity ?? 1 }}
+              title={rule.name}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

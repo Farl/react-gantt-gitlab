@@ -18,7 +18,7 @@ import storeContext from '../../context';
 import './Grid.css';
 
 export default function Grid(props) {
-  const { readonly, compactMode, width = 0, display = 'all', columnWidth: columnWidthProp = 0, onTableAPIChange } = props;
+  const { readonly, compactMode, width = 0, display = 'all', columnWidth: columnWidthProp = 0, onTableAPIChange, colorRules } = props;
   const [columnWidth, setColumnWidthProp] = useWritableProp(columnWidthProp);
   const [tableAPI, setTableAPI] = useState();
 
@@ -180,6 +180,7 @@ export default function Grid(props) {
     if (ti !== -1) {
       if (cols[ti].cell) cols[ti]._cell = cols[ti].cell;
       cols[ti].cell = TextCell;
+      cols[ti].colorRules = colorRules; // Pass colorRules to TextCell
     }
     if (ai !== -1) {
       cols[ai].cell = cols[ai].cell || ActionCell;
@@ -200,7 +201,7 @@ export default function Grid(props) {
 
     if (cols.length > 0) cols[cols.length - 1].resize = false;
     return cols;
-  }, [columnsVal, _, readonly, compactMode]);
+  }, [columnsVal, _, readonly, compactMode, colorRules]);
 
   const basis = useMemo(() => {
     if (display === 'all') return `${width}px`;
