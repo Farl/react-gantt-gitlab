@@ -14,6 +14,7 @@ const ALL_COLUMNS = [
   { key: 'assignee', label: 'Assignee', defaultVisible: false },
   { key: 'issueId', label: 'Issue ID', defaultVisible: false },
   { key: 'iteration', label: 'Iteration', defaultVisible: false },
+  { key: 'epic', label: 'Epic', defaultVisible: false },
   { key: 'weight', label: 'Weight', defaultVisible: false },
   { key: 'start', label: 'Start', defaultVisible: true },
   { key: 'end', label: 'Due', defaultVisible: true },
@@ -264,6 +265,7 @@ export function ColumnSettingsDropdown({
  * - weight: 0
  * - issueId: 0 for milestones, actual IID for issues
  * - iteration: '' (empty string)
+ * - epic: '' (empty string, title of parent Epic if exists)
  * - workdays: calculated in GitLabGantt tasksWithWorkdays
  */
 export const AssigneeCell = ({ row }) => {
@@ -284,6 +286,11 @@ export const WeightCell = ({ row }) => {
 export const IterationCell = ({ row }) => {
   if (!row.iteration) return null;
   return <span title={row.iteration}>{row.iteration}</span>;
+};
+
+export const EpicCell = ({ row }) => {
+  if (!row.epic) return null;
+  return <span title={row.epic}>{row.epic}</span>;
 };
 
 /**
@@ -314,6 +321,12 @@ export const COLUMN_CONFIGS = {
     header: 'Iteration',
     width: 120,
     cell: IterationCell,
+  },
+  epic: {
+    id: 'epic',
+    header: 'Epic',
+    width: 120,
+    cell: EpicCell,
   },
   weight: {
     id: 'weight',

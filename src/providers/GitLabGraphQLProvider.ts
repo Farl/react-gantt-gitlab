@@ -1013,6 +1013,7 @@ export class GitLabGraphQLProvider {
       displayOrder: 0,
       issueId: 0,
       iteration: '',
+      epic: '',
       assigned: '',
       weight: 0,
       $isMilestone: true, // Custom flag for identifying milestones (for CSS styling)
@@ -1129,6 +1130,7 @@ export class GitLabGraphQLProvider {
     let parent: number = 0;
     let parentIid: number | null = null;
     let epicParentId: number | null = null;
+    let epicTitle: string | null = null;
 
     // Determine work item type
     const isIssue = workItem.workItemType?.name !== 'Task';
@@ -1143,6 +1145,7 @@ export class GitLabGraphQLProvider {
         // Note: We use iid because Epic API and WorkItem API return different global IDs
         // but iid is consistent across both APIs
         epicParentId = Number(hierarchyWidget.parent.iid);
+        epicTitle = (hierarchyWidget.parent as any).title || null;
       }
     }
 
@@ -1211,6 +1214,7 @@ export class GitLabGraphQLProvider {
       iteration: iterationWidget?.iteration
         ? formatIterationTitle(iterationWidget.iteration)
         : '',
+      epic: epicTitle || '',
       assigned: assignees || '',
       weight: weightWidget?.weight ?? 0,
       state: workItem.state,
@@ -1228,6 +1232,7 @@ export class GitLabGraphQLProvider {
         startDate: dateWidget?.startDate, // Track if task has explicit start date
         dueDate: dateWidget?.dueDate, // Track if task has explicit due date
         epicParentId, // Store Epic parent ID if exists (for Issues without Milestone)
+        epicTitle: epicTitle || undefined, // Epic title for display
         web_url: workItem.webUrl, // GitLab web URL for opening in browser
         // Milestone info for client-side filtering (not using parent field anymore)
         milestoneIid: milestoneWidget?.milestone
