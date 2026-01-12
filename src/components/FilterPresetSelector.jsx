@@ -101,6 +101,7 @@ export function FilterPresetSelector({
   onDeletePreset,
   selectedPresetId, // Explicit selected preset ID (preferred over filter matching)
   serverFilterCount = 0, // Count of active server filters (for enabling save button)
+  isGroupMode = false, // Whether current config is a Group (Presets not supported)
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -323,7 +324,11 @@ export function FilterPresetSelector({
               ) : (
                 <div className="preset-permission-notice">
                   <i className="fas fa-lock"></i>
-                  <span>Create Snippet permission required to save presets</span>
+                  <span>
+                    {isGroupMode
+                      ? 'Filter Presets not available for Groups (GitLab limitation)'
+                      : 'Create Snippet permission required to save presets'}
+                  </span>
                 </div>
               )}
             </>

@@ -154,7 +154,8 @@ export function WorkloadView({ initialConfigId }) {
   const { holidays, workdays } = useGitLabHolidays(
     projectPath,
     proxyConfig,
-    canEditHolidays
+    canEditHolidays,
+    currentConfig?.type || 'project'
   );
 
   // Update ref when allTasks changes

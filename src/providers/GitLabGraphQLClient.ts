@@ -65,6 +65,10 @@ export class GitLabGraphQLClient {
 
   /**
    * Execute GraphQL query
+   *
+   * Error handling includes detection of common configuration issues:
+   * - "project not found" may indicate a group was configured as a project
+   * - "group not found" may indicate a project was configured as a group
    */
   async query<T>(query: string, variables?: Record<string, any>): Promise<T> {
     const endpoint = this.getEndpoint();
@@ -84,6 +88,33 @@ export class GitLabGraphQLClient {
 
     if (result.errors && result.errors.length > 0) {
       const errorMessage = result.errors.map((e) => e.message).join(', ');
+
+      // Check for common configuration type mismatch errors
+      // This helps users understand when they've configured a group as a project or vice versa
+      const lowerError = errorMessage.toLowerCase();
+      if (
+        lowerError.includes('project') &&
+        (lowerError.includes('not found') ||
+          lowerError.includes('does not exist'))
+      ) {
+        throw new Error(
+          `Project not found. If "${variables?.fullPath}" is a GitLab Group (not a Project), ` +
+            `please edit the configuration and change Type from "Project" to "Group". ` +
+            `Original error: ${errorMessage}`,
+        );
+      }
+      if (
+        lowerError.includes('group') &&
+        (lowerError.includes('not found') ||
+          lowerError.includes('does not exist'))
+      ) {
+        throw new Error(
+          `Group not found. If "${variables?.fullPath}" is a GitLab Project (not a Group), ` +
+            `please edit the configuration and change Type from "Group" to "Project". ` +
+            `Original error: ${errorMessage}`,
+        );
+      }
+
       throw new Error(`GraphQL errors: ${errorMessage}`);
     }
 

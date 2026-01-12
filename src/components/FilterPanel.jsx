@@ -68,6 +68,7 @@ export function FilterPanel({
   onDeletePreset,
   onPresetSelect,
   initialPresetId,
+  isGroupMode = false, // Whether current config is a Group (Presets not supported)
   // Server filter props
   filterOptions = null, // { members, labels, milestones } from getFilterOptions()
   filterOptionsLoading = false,
@@ -370,6 +371,7 @@ export function FilterPanel({
             onDeletePreset={onDeletePreset}
             selectedPresetId={selectedPresetId}
             serverFilterCount={serverFilterCount}
+            isGroupMode={isGroupMode}
           />
 
           {/* Clear and Apply buttons - grouped on left side */}

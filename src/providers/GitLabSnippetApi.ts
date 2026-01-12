@@ -1,6 +1,19 @@
 /**
- * GitLab Snippet API for storing project configuration
- * Uses Project Snippets to store holidays/workdays settings
+ * GitLab Snippet API for storing project/group configuration
+ * Uses Project/Group Snippets to store holidays/workdays/colorRules settings
+ *
+ * IMPORTANT: This module supports BOTH project and group configurations.
+ * =======================================================================
+ * When modifying or adding functions, always ensure:
+ * 1. Accept `configType: 'project' | 'group'` parameter
+ * 2. Use `getEndpointPrefix()` helper for API paths instead of hardcoding `/projects/`
+ * 3. Pass configType through the entire call chain
+ *
+ * GitLab API endpoint differences:
+ * - Project snippets: /projects/:id/snippets
+ * - Group snippets: /groups/:id/snippets
+ *
+ * See GitLabFilterPresetsApi.ts for similar pattern implementation.
  */
 
 import { gitlabRestRequest, type GitLabProxyConfig } from './GitLabApiUtils';
@@ -31,6 +44,19 @@ interface GitLabSnippetWithContent extends GitLabSnippet {
 
 const SNIPPET_TITLE = 'gantt-config';
 const SNIPPET_FILENAME = 'gantt-config.txt';
+
+/**
+ * Get the API endpoint prefix based on config type
+ */
+function getEndpointPrefix(
+  fullPath: string,
+  configType: 'project' | 'group',
+): string {
+  const encodedPath = encodeURIComponent(fullPath);
+  return configType === 'group'
+    ? `/groups/${encodedPath}`
+    : `/projects/${encodedPath}`;
+}
 
 /**
  * Parse a single line of config text
@@ -162,17 +188,23 @@ export function formatConfigText(config: GanttConfig): string {
 }
 
 /**
- * Find existing gantt-config snippet in project
+ * Find existing gantt-config snippet
  */
 export async function findGanttConfigSnippet(
-  projectPath: string,
+  fullPath: string,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<GitLabSnippet | null> {
-  const encodedPath = encodeURIComponent(projectPath);
+  const prefix = getEndpointPrefix(fullPath, configType);
+  console.log('[GitLabSnippetApi] findGanttConfigSnippet:', {
+    fullPath,
+    configType,
+    prefix,
+  });
 
   try {
     const snippets = await gitlabRestRequest<GitLabSnippet[]>(
-      `/projects/${encodedPath}/snippets`,
+      `${prefix}/snippets`,
       proxyConfig,
     );
 
@@ -187,15 +219,16 @@ export async function findGanttConfigSnippet(
  * Get snippet content by ID
  */
 export async function getSnippetContent(
-  projectPath: string,
+  fullPath: string,
   snippetId: number,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<string> {
-  const encodedPath = encodeURIComponent(projectPath);
+  const prefix = getEndpointPrefix(fullPath, configType);
 
   // Use raw endpoint to get content
   const content = await gitlabRestRequest<string>(
-    `/projects/${encodedPath}/snippets/${snippetId}/raw`,
+    `${prefix}/snippets/${snippetId}/raw`,
     proxyConfig,
   );
 
@@ -203,7 +236,12 @@ export async function getSnippetContent(
   // We need to handle the raw text response
   if (typeof content === 'object') {
     // Fetch raw content directly
-    const response = await fetchSnippetRaw(projectPath, snippetId, proxyConfig);
+    const response = await fetchSnippetRaw(
+      fullPath,
+      snippetId,
+      proxyConfig,
+      configType,
+    );
     return response;
   }
 
@@ -214,12 +252,13 @@ export async function getSnippetContent(
  * Fetch raw snippet content (handles non-JSON response)
  */
 async function fetchSnippetRaw(
-  projectPath: string,
+  fullPath: string,
   snippetId: number,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<string> {
-  const encodedPath = encodeURIComponent(projectPath);
-  const endpoint = `/projects/${encodedPath}/snippets/${snippetId}/raw`;
+  const prefix = getEndpointPrefix(fullPath, configType);
+  const endpoint = `${prefix}/snippets/${snippetId}/raw`;
 
   const isDev =
     proxyConfig.isDev ??
@@ -254,14 +293,15 @@ async function fetchSnippetRaw(
  * Create new gantt-config snippet
  */
 export async function createGanttConfigSnippet(
-  projectPath: string,
+  fullPath: string,
   content: string,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<GitLabSnippet> {
-  const encodedPath = encodeURIComponent(projectPath);
+  const prefix = getEndpointPrefix(fullPath, configType);
 
   const snippet = await gitlabRestRequest<GitLabSnippet>(
-    `/projects/${encodedPath}/snippets`,
+    `${prefix}/snippets`,
     proxyConfig,
     {
       method: 'POST',
@@ -281,42 +321,54 @@ export async function createGanttConfigSnippet(
  * Update existing snippet content
  */
 export async function updateSnippetContent(
-  projectPath: string,
+  fullPath: string,
   snippetId: number,
   content: string,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<void> {
-  const encodedPath = encodeURIComponent(projectPath);
+  const prefix = getEndpointPrefix(fullPath, configType);
 
-  await gitlabRestRequest(
-    `/projects/${encodedPath}/snippets/${snippetId}`,
-    proxyConfig,
-    {
-      method: 'PUT',
-      body: JSON.stringify({
-        content: content,
-      }),
-    },
-  );
+  await gitlabRestRequest(`${prefix}/snippets/${snippetId}`, proxyConfig, {
+    method: 'PUT',
+    body: JSON.stringify({
+      content: content,
+    }),
+  });
 }
 
 /**
  * Load gantt config from GitLab
  * Returns null if no config exists
+ *
+ * IMPORTANT: This function supports both project and group snippets.
+ * When adding new features that use snippets, ensure you pass the correct configType.
+ * - For projects: configType = 'project', fullPath = project path (e.g., 'group/project')
+ * - For groups: configType = 'group', fullPath = group path (e.g., 'group/subgroup')
  */
 export async function loadGanttConfig(
-  projectPath: string,
+  fullPath: string,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<GanttConfig | null> {
   // Find existing snippet
-  const snippet = await findGanttConfigSnippet(projectPath, proxyConfig);
+  const snippet = await findGanttConfigSnippet(
+    fullPath,
+    proxyConfig,
+    configType,
+  );
 
   if (!snippet) {
     return null;
   }
 
   // Get content
-  const content = await getSnippetContent(projectPath, snippet.id, proxyConfig);
+  const content = await getSnippetContent(
+    fullPath,
+    snippet.id,
+    proxyConfig,
+    configType,
+  );
 
   // Parse content
   return parseConfigText(content);
@@ -325,22 +377,38 @@ export async function loadGanttConfig(
 /**
  * Save gantt config to GitLab
  * Creates new snippet if not exists, updates if exists
+ *
+ * IMPORTANT: This function supports both project and group snippets.
+ * When adding new features that use snippets, ensure you pass the correct configType.
+ * - For projects: configType = 'project', fullPath = project path (e.g., 'group/project')
+ * - For groups: configType = 'group', fullPath = group path (e.g., 'group/subgroup')
  */
 export async function saveGanttConfig(
-  projectPath: string,
+  fullPath: string,
   config: GanttConfig,
   proxyConfig: GitLabProxyConfig,
+  configType: 'project' | 'group' = 'project',
 ): Promise<void> {
   const content = formatConfigText(config);
 
   // Find existing snippet
-  const snippet = await findGanttConfigSnippet(projectPath, proxyConfig);
+  const snippet = await findGanttConfigSnippet(
+    fullPath,
+    proxyConfig,
+    configType,
+  );
 
   if (snippet) {
     // Update existing
-    await updateSnippetContent(projectPath, snippet.id, content, proxyConfig);
+    await updateSnippetContent(
+      fullPath,
+      snippet.id,
+      content,
+      proxyConfig,
+      configType,
+    );
   } else {
     // Create new
-    await createGanttConfigSnippet(projectPath, content, proxyConfig);
+    await createGanttConfigSnippet(fullPath, content, proxyConfig, configType);
   }
 }

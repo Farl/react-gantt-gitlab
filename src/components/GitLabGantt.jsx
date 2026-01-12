@@ -342,7 +342,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     setHolidaysText,
     setWorkdaysText,
     setColorRules,
-  } = useGitLabHolidays(projectPath, proxyConfig, canEditHolidays);
+  } = useGitLabHolidays(projectPath, proxyConfig, canEditHolidays, currentConfig?.type || 'project');
 
   // Highlight time hook for workdays calculation and weekend/holiday highlighting
   const {
@@ -1888,7 +1888,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Holidays
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Create Snippet permission required
+                    <i className="fas fa-lock"></i>
+                    {currentConfig?.type === 'group'
+                      ? ' Not available for Groups (GitLab limitation)'
+                      : ' Create Snippet permission required'}
                   </span>
                 )}
                 {holidaysSaving && (
@@ -1929,7 +1932,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Extra Working Days
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Create Snippet permission required
+                    <i className="fas fa-lock"></i>
+                    {currentConfig?.type === 'group'
+                      ? ' Not available for Groups (GitLab limitation)'
+                      : ' Create Snippet permission required'}
                   </span>
                 )}
               </h4>
@@ -1960,7 +1966,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Color Rules
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Create Snippet permission required
+                    <i className="fas fa-lock"></i>
+                    {currentConfig?.type === 'group'
+                      ? ' Not available for Groups (GitLab limitation)'
+                      : ' Create Snippet permission required'}
                   </span>
                 )}
                 {holidaysSaving && (
@@ -1998,6 +2007,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         onDeletePreset={deletePreset}
         onPresetSelect={handlePresetSelect}
         initialPresetId={lastUsedPresetId}
+        isGroupMode={currentConfig?.type === 'group'}
         filterOptions={serverFilterOptions}
         filterOptionsLoading={serverFilterOptionsLoading}
         serverFilters={activeServerFilters}

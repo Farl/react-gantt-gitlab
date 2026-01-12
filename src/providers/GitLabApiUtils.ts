@@ -53,6 +53,10 @@ export function getRestHeaders(config: GitLabProxyConfig): HeadersInit {
 
 /**
  * Make a REST API request to GitLab with proxy support
+ *
+ * Error handling includes detection of common configuration issues:
+ * - 404 on /projects/:id/snippets may indicate the path is a Group, not a Project
+ * - 404 on /groups/:id/snippets may indicate the path is a Project, not a Group
  */
 export async function gitlabRestRequest<T = any>(
   endpoint: string,
@@ -79,6 +83,38 @@ export async function gitlabRestRequest<T = any>(
     } catch {
       errorMessage = errorText || response.statusText;
     }
+
+    // Provide clearer guidance for common 404 errors caused by configuration type mismatch
+    // This helps users understand when they've configured a group as a project or vice versa
+    if (response.status === 404) {
+      if (endpoint.includes('/projects/') && endpoint.includes('/snippets')) {
+        // Extract path from endpoint for clearer message
+        const pathMatch = endpoint.match(/\/projects\/([^/]+)/);
+        const path = pathMatch
+          ? decodeURIComponent(pathMatch[1])
+          : 'the configured path';
+        throw new Error(
+          `Project "${path}" not found (404). If this is a GitLab Group (not a Project), ` +
+            `please edit the configuration and change Type from "Project" to "Group".`,
+        );
+      }
+      if (endpoint.includes('/groups/') && endpoint.includes('/snippets')) {
+        // GitLab does NOT support Group Snippets - this is expected to fail.
+        // See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
+        // Group Snippets is a requested feature that has not been implemented.
+        // The calling code handles this by disabling Holidays/ColorRules/Presets for groups.
+        const pathMatch = endpoint.match(/\/groups\/([^/]+)/);
+        const path = pathMatch
+          ? decodeURIComponent(pathMatch[1])
+          : 'the configured path';
+
+        throw new Error(
+          `Group Snippets are not supported by GitLab. ` +
+            `Holidays, Color Rules, and Filter Presets are not available for group "${path}".`,
+        );
+      }
+    }
+
     throw new Error(`GitLab API error: ${errorMessage}`);
   }
 

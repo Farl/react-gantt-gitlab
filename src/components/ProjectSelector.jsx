@@ -267,6 +267,20 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
                   <option value="project">Project</option>
                   <option value="group">Group</option>
                 </select>
+                <small className="type-hint">
+                  {formData.type === 'project'
+                    ? 'Use "Project" for a single GitLab repository (gitlab.com/namespace/project-name)'
+                    : 'Use "Group" to view issues from all projects within a GitLab group (gitlab.com/group-name)'}
+                </small>
+                {formData.type === 'group' && (
+                  <small className="type-warning">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    <span>
+                      Group mode has limited functionality: Holidays, Color Rules, and Filter Presets
+                      are not available because GitLab does not support Group Snippets.
+                    </span>
+                  </small>
+                )}
               </div>
 
               {formData.type === 'project' && (
@@ -508,6 +522,33 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
           margin-top: 4px;
           color: var(--wx-gitlab-modal-hint-text);
           font-size: 12px;
+        }
+
+        .form-group small.type-hint {
+          padding: 6px 8px;
+          background: var(--wx-gitlab-filter-background, #f8f9fa);
+          border-radius: 4px;
+          border-left: 3px solid #1f75cb;
+          font-style: italic;
+        }
+
+        .form-group small.type-warning {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          padding: 8px 10px;
+          margin-top: 8px;
+          background: #fff3cd;
+          border-radius: 4px;
+          border-left: 3px solid #d97706;
+          color: #856404;
+          font-style: normal;
+        }
+
+        .form-group small.type-warning i {
+          color: #d97706;
+          margin-top: 2px;
+          flex-shrink: 0;
         }
 
         .connection-status {

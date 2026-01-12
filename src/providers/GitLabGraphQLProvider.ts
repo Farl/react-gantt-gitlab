@@ -1,6 +1,33 @@
 /**
  * GitLab GraphQL Provider
  * Pure GraphQL implementation for GitLab integration
+ *
+ * IMPORTANT: GitLab API differences between Project and Group
+ * ===========================================================
+ * This provider supports both project and group configurations.
+ * There are subtle but critical differences in the GitLab GraphQL API:
+ *
+ * 1. Endpoint root:
+ *    - Project: query { project(fullPath: "...") { ... } }
+ *    - Group: query { group(fullPath: "...") { ... } }
+ *
+ * 2. milestoneTitle filter type (Issues query):
+ *    - Project issues: milestoneTitle accepts String (single value)
+ *    - Group issues: milestoneTitle accepts [String] (array)
+ *    This difference requires dynamic query generation based on config.type.
+ *
+ * 3. Work Items API:
+ *    - Both project and group use the same workItems query structure
+ *    - milestoneTitle accepts [String!] for both
+ *    - Group-level workItem(iid:) returns null, must query at project level
+ *
+ * 4. Snippets API (REST, not GraphQL):
+ *    - Project: /projects/:id/snippets - SUPPORTED
+ *    - Group: NOT SUPPORTED by GitLab!
+ *    See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
+ *    For groups, Holidays/ColorRules/FilterPresets features are disabled.
+ *
+ * When adding new features, always test with BOTH project and group configurations.
  */
 
 import type { ITask, ILink, TID } from '@svar-ui/gantt-store';
@@ -446,13 +473,25 @@ export class GitLabGraphQLProvider {
     // Also supports server-side filtering to match workItems query
     // Note: milestoneTitle and milestoneWildcardId are mutually exclusive
     // Note: assigneeUsernames and assigneeWildcardId are mutually exclusive
+    //
+    // IMPORTANT: GitLab API difference between project and group:
+    // - Project issues: milestoneTitle accepts String (single value)
+    // - Group issues: milestoneTitle accepts [String] (array)
+    const milestoneTitleType =
+      this.config.type === 'group' ? '[String!]' : 'String';
+    console.log(
+      '[GitLabGraphQL] issuesQuery configType:',
+      this.config.type,
+      'milestoneTitleType:',
+      milestoneTitleType,
+    );
     const issuesQuery = `
       query getIssues(
         $fullPath: ID!,
         $state: IssuableState,
         $after: String,
         $labelName: [String!],
-        $milestoneTitle: String,
+        $milestoneTitle: ${milestoneTitleType},
         $milestoneWildcardId: MilestoneWildcardId,
         $assigneeUsernames: [String!],
         $assigneeWildcardId: AssigneeWildcardId,
@@ -548,7 +587,11 @@ export class GitLabGraphQLProvider {
       // Has specific milestone titles - use milestoneTitle (cannot combine with wildcard)
       // Note: If NONE is also selected, we can only filter by titles (API limitation)
       variables.milestoneTitle = otherMilestoneTitles;
-      issuesVariables.milestoneTitle = otherMilestoneTitles[0]; // issues query only accepts single string
+      // Project issues accept String (single), Group issues accept [String] (array)
+      issuesVariables.milestoneTitle =
+        this.config.type === 'group'
+          ? otherMilestoneTitles
+          : otherMilestoneTitles[0];
     }
 
     // Fetch work items with optional pagination
@@ -590,6 +633,463 @@ export class GitLabGraphQLProvider {
     console.log(
       `[GitLabGraphQL] Fetched ${allWorkItems.length} work items in ${pageCount} page(s)`,
     );
+
+    // IMPORTANT: Group Work Items API Fallback
+    // ========================================
+    // GitLab's group-level workItems query may return empty results in some cases:
+    // 1. GitLab version doesn't support group-level work items
+    // 2. Group work items feature is disabled
+    // 3. Permission restrictions
+    //
+    // When this happens, we fall back to using the Issues API which has better
+    // group-level support. The Issues API returns basic issue data, and we
+    // construct a minimal workItem-like structure for consistency.
+    if (allWorkItems.length === 0 && this.config.type === 'group') {
+      console.log(
+        '[GitLabGraphQL] No work items from Group API, attempting Issues API fallback...',
+      );
+
+      // Fetch full issue data as fallback for groups
+      const fallbackIssuesQuery = `
+        query getGroupIssuesFallback(
+          $fullPath: ID!,
+          $state: IssuableState,
+          $after: String,
+          $labelName: [String!],
+          $milestoneTitle: [String!],
+          $milestoneWildcardId: MilestoneWildcardId,
+          $assigneeUsernames: [String!],
+          $assigneeWildcardId: AssigneeWildcardId,
+          $createdAfter: Time,
+          $createdBefore: Time
+        ) {
+          group(fullPath: $fullPath) {
+            issues(
+              state: $state,
+              first: 100,
+              after: $after,
+              labelName: $labelName,
+              milestoneTitle: $milestoneTitle,
+              milestoneWildcardId: $milestoneWildcardId,
+              assigneeUsernames: $assigneeUsernames,
+              assigneeWildcardId: $assigneeWildcardId,
+              createdAfter: $createdAfter,
+              createdBefore: $createdBefore
+            ) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                iid
+                title
+                description
+                createdAt
+                closedAt
+                state
+                webUrl
+                relativePosition
+                dueDate
+                weight
+                assignees {
+                  nodes {
+                    id
+                    name
+                    username
+                  }
+                }
+                labels {
+                  nodes {
+                    id
+                    title
+                  }
+                }
+                milestone {
+                  id
+                  iid
+                  title
+                  description
+                  state
+                  dueDate
+                  startDate
+                  webPath
+                  createdAt
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      // Fetch issues using the group-compatible variables
+      hasNextPage = true;
+      endCursor = null;
+      pageCount = 0;
+      const MAX_FALLBACK_PAGES = 20;
+
+      while (hasNextPage && pageCount < MAX_FALLBACK_PAGES) {
+        try {
+          const fallbackResult = await this.graphqlClient.query<any>(
+            fallbackIssuesQuery,
+            { ...issuesVariables, after: endCursor },
+          );
+
+          const issuesData = fallbackResult.group?.issues;
+          if (issuesData && issuesData.nodes.length > 0) {
+            // Convert Issue format to WorkItem-like format for consistency
+            for (const issue of issuesData.nodes) {
+              const workItemLike: WorkItem = {
+                id: `gid://gitlab/Issue/${issue.iid}`, // Synthetic ID
+                iid: String(issue.iid),
+                title: issue.title,
+                createdAt: issue.createdAt,
+                closedAt: issue.closedAt,
+                state: issue.state,
+                webUrl: issue.webUrl,
+                workItemType: { name: 'Issue' }, // Issues are always type Issue
+                widgets: [
+                  {
+                    __typename: 'WorkItemWidgetDescription',
+                    description: issue.description,
+                  },
+                  {
+                    __typename: 'WorkItemWidgetStartAndDueDate',
+                    startDate: null,
+                    dueDate: issue.dueDate,
+                  },
+                  {
+                    __typename: 'WorkItemWidgetAssignees',
+                    assignees: { nodes: issue.assignees?.nodes || [] },
+                  },
+                  {
+                    __typename: 'WorkItemWidgetLabels',
+                    labels: { nodes: issue.labels?.nodes || [] },
+                  },
+                  {
+                    __typename: 'WorkItemWidgetWeight',
+                    weight: issue.weight,
+                  },
+                  ...(issue.milestone
+                    ? [
+                        {
+                          __typename: 'WorkItemWidgetMilestone',
+                          milestone: issue.milestone,
+                        },
+                      ]
+                    : []),
+                ],
+              };
+              allWorkItems.push(workItemLike);
+            }
+            hasNextPage = issuesData.pageInfo?.hasNextPage || false;
+            endCursor = issuesData.pageInfo?.endCursor || null;
+            pageCount++;
+          } else {
+            hasNextPage = false;
+          }
+        } catch (fallbackError) {
+          console.warn(
+            '[GitLabGraphQL] Issues API fallback failed:',
+            fallbackError,
+          );
+          hasNextPage = false;
+        }
+      }
+
+      console.log(
+        `[GitLabGraphQL] Fallback: Fetched ${allWorkItems.length} issues as work items`,
+      );
+
+      // IMPORTANT: Group Work Items API Limitation
+      // ==========================================
+      // GitLab's group-level workItem(iid:) query returns null for all items.
+      // This is a known limitation - Work Items API at group level is restricted.
+      //
+      // Solution: Extract Project path from each issue's webUrl and query at PROJECT level.
+      // Issues in a group come from different projects, so we need to:
+      // 1. Group issues by their source project (extracted from webUrl)
+      // 2. Query each project's workItem API to get hierarchy and tasks
+      //
+      // Example webUrl: https://gitlab.com/group/project/-/issues/123
+      // Extracted project path: group/project
+      console.log(
+        '[GitLabGraphQL] Fetching work item details from source projects for hierarchy...',
+      );
+
+      // Helper function to extract project path from webUrl
+      const extractProjectPath = (webUrl: string): string | null => {
+        // Pattern: https://gitlab.com/namespace/project/-/issues/123
+        // or: https://gitlab.example.com/group/subgroup/project/-/issues/123
+        // or: https://gitlab.example.com/group/subgroup/project/-/work_items/123
+        const match = webUrl.match(
+          /^https?:\/\/[^/]+\/(.+?)\/-\/(?:issues|work_items)\/\d+/,
+        );
+        return match ? match[1] : null;
+      };
+
+      // Query to get work items with children by IIDs (PROJECT level, not group)
+      // NOTE: We use workItems(iids: [...]) instead of workItem(iid:) because:
+      // 1. workItem(iid:) is a newer API that may not exist in older GitLab versions
+      // 2. workItems with iids filter allows batch querying multiple items at once
+      const workItemsByIidsQuery = `
+        query getWorkItemsByIids($fullPath: ID!, $iids: [String!]) {
+          project(fullPath: $fullPath) {
+            workItems(iids: $iids, first: 100) {
+              nodes {
+                id
+                iid
+                title
+                createdAt
+                closedAt
+                state
+                webUrl
+                workItemType {
+                  name
+                }
+                widgets {
+                  __typename
+                  ... on WorkItemWidgetDescription {
+                    description
+                  }
+                  ... on WorkItemWidgetStartAndDueDate {
+                    startDate
+                    dueDate
+                  }
+                  ... on WorkItemWidgetAssignees {
+                    assignees {
+                      nodes {
+                        id
+                        name
+                        username
+                      }
+                    }
+                  }
+                  ... on WorkItemWidgetLabels {
+                    labels {
+                      nodes {
+                        id
+                        title
+                      }
+                    }
+                  }
+                  ... on WorkItemWidgetWeight {
+                    weight
+                  }
+                  ... on WorkItemWidgetMilestone {
+                    milestone {
+                      id
+                      iid
+                      title
+                      description
+                      state
+                      dueDate
+                      startDate
+                      webPath
+                      createdAt
+                    }
+                  }
+                  ... on WorkItemWidgetHierarchy {
+                    parent {
+                      id
+                      iid
+                      title
+                      workItemType {
+                        name
+                      }
+                    }
+                    children {
+                      nodes {
+                        id
+                        iid
+                        title
+                        createdAt
+                        closedAt
+                        state
+                        webUrl
+                        workItemType {
+                          name
+                        }
+                        widgets {
+                          __typename
+                          ... on WorkItemWidgetDescription {
+                            description
+                          }
+                          ... on WorkItemWidgetStartAndDueDate {
+                            startDate
+                            dueDate
+                          }
+                          ... on WorkItemWidgetAssignees {
+                            assignees {
+                              nodes {
+                                id
+                                name
+                                username
+                              }
+                            }
+                          }
+                          ... on WorkItemWidgetLabels {
+                            labels {
+                              nodes {
+                                id
+                                title
+                              }
+                            }
+                          }
+                          ... on WorkItemWidgetWeight {
+                            weight
+                          }
+                          ... on WorkItemWidgetMilestone {
+                            milestone {
+                              id
+                              iid
+                              title
+                            }
+                          }
+                          ... on WorkItemWidgetHierarchy {
+                            parent {
+                              id
+                              iid
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      // Collect all tasks from issue children
+      const allTasks: WorkItem[] = [];
+
+      // Group issues by their source project (extracted from webUrl)
+      // This is necessary because group-level workItem(iid:) returns null,
+      // so we must query at project level instead.
+      const issuesByProject = new Map<
+        string,
+        Array<{ iid: string; index: number }>
+      >();
+
+      for (let i = 0; i < allWorkItems.length; i++) {
+        const wi = allWorkItems[i];
+        const projectPath = extractProjectPath(wi.webUrl);
+        if (projectPath) {
+          if (!issuesByProject.has(projectPath)) {
+            issuesByProject.set(projectPath, []);
+          }
+          issuesByProject.get(projectPath)!.push({ iid: wi.iid, index: i });
+        } else {
+          console.warn(
+            `[GitLabGraphQL] Could not extract project path from webUrl: ${wi.webUrl}`,
+          );
+        }
+      }
+
+      console.log(
+        `[GitLabGraphQL] Will fetch work item details from ${issuesByProject.size} projects for ${allWorkItems.length} issues`,
+      );
+
+      // Batch fetch work items to get hierarchy
+      // Using workItems(iids: [...]) for batch querying (more efficient and compatible with older GitLab)
+      const BATCH_SIZE = 50; // Can fetch more at once with batch query
+      let successCount = 0;
+      let failCount = 0;
+
+      // Build a map of iid -> index for quick lookup
+      const iidToIndexMap = new Map<string, number>();
+      for (let i = 0; i < allWorkItems.length; i++) {
+        iidToIndexMap.set(allWorkItems[i].iid, i);
+      }
+
+      // Process each project's issues
+      for (const [projectPath, issues] of issuesByProject.entries()) {
+        console.log(
+          `[GitLabGraphQL] Fetching ${issues.length} work items from project: ${projectPath}`,
+        );
+
+        // Batch within each project
+        for (let i = 0; i < issues.length; i += BATCH_SIZE) {
+          const batch = issues.slice(i, i + BATCH_SIZE);
+          const iids = batch.map((b) => b.iid);
+          console.log(
+            `[GitLabGraphQL] Project ${projectPath} batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(issues.length / BATCH_SIZE)}, ${iids.length} iids`,
+          );
+
+          try {
+            const result = await this.graphqlClient.query<any>(
+              workItemsByIidsQuery,
+              { fullPath: projectPath, iids },
+            );
+
+            // IMPORTANT: Use result.project (not result.group) because we're querying at project level
+            const workItems = result.project?.workItems?.nodes || [];
+            console.log(
+              `[GitLabGraphQL] Got ${workItems.length} work items from project ${projectPath}`,
+            );
+
+            for (const workItem of workItems) {
+              if (!workItem) continue;
+
+              successCount++;
+
+              // Find and update the corresponding issue in allWorkItems
+              const index = iidToIndexMap.get(workItem.iid);
+              if (index !== undefined) {
+                allWorkItems[index] = workItem;
+              }
+
+              // Extract child tasks
+              const hierarchyWidget = workItem.widgets?.find(
+                (w: any) => w.__typename === 'WorkItemWidgetHierarchy',
+              );
+              const children = hierarchyWidget?.children?.nodes || [];
+
+              for (const child of children) {
+                // Only add if not already in the list
+                if (!allWorkItems.some((wi) => wi.iid === child.iid)) {
+                  allTasks.push(child);
+                }
+              }
+            }
+
+            // Count items that weren't returned
+            const returnedIids = new Set(workItems.map((wi: any) => wi.iid));
+            for (const iid of iids) {
+              if (!returnedIids.has(iid)) {
+                failCount++;
+              }
+            }
+          } catch (err) {
+            // Batch fetch failed, count all as failed
+            failCount += iids.length;
+            console.warn(
+              `[GitLabGraphQL] Failed to fetch work items batch from project ${projectPath}:`,
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
+      }
+
+      // Summary of work item fetch results
+      console.log(
+        `[GitLabGraphQL] Work item details fetch complete: ${successCount} success, ${failCount} not found/failed`,
+      );
+
+      // Add all tasks to work items
+      if (allTasks.length > 0) {
+        console.log(
+          `[GitLabGraphQL] Found ${allTasks.length} child tasks from hierarchy`,
+        );
+        allWorkItems.push(...allTasks);
+      } else {
+        console.log(
+          '[GitLabGraphQL] No child tasks found from hierarchy queries',
+        );
+      }
+    }
 
     // Fetch milestones (usually fewer, so use smaller limit)
     const allMilestones: GitLabMilestone[] = [];
@@ -3068,16 +3568,33 @@ export class GitLabGraphQLProvider {
   }
 
   /**
-   * Check if current user has edit permissions for the project
-   * Uses userPermissions.createSnippet as the permission indicator
-   * Note: The required role may vary depending on project settings
+   * Check if current user has edit permissions for the project/group
+   *
+   * IMPORTANT: GitLab does NOT support Group Snippets!
+   * See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
+   *
+   * For group configurations, this always returns false because:
+   * - Holidays, Workdays, ColorRules, and FilterPresets are stored in Snippets
+   * - GitLab only supports Personal Snippets and Project Snippets
+   * - Group Snippets is a requested feature that has not been implemented
+   *
+   * For project configurations, we check the createSnippet permission.
    */
   async checkCanEdit(): Promise<boolean> {
+    // Group mode: GitLab does not support Group Snippets
+    // Always return false to disable Holidays/ColorRules/Presets editing
+    if (this.config.type === 'group') {
+      console.log(
+        '[GitLabGraphQL] checkCanEdit: Group mode - returning false (GitLab does not support Group Snippets)',
+      );
+      return false;
+    }
+
+    // Project mode: check createSnippet permission
     const query = `
-      query checkProjectPermissions($fullPath: ID!) {
-        ${this.config.type}(fullPath: $fullPath) {
+      query checkPermissions($fullPath: ID!) {
+        project(fullPath: $fullPath) {
           userPermissions {
-            pushCode
             createSnippet
           }
         }
@@ -3088,25 +3605,12 @@ export class GitLabGraphQLProvider {
       const result = await this.graphqlClient.query<{
         project?: {
           userPermissions: {
-            pushCode: boolean;
-            createSnippet: boolean;
-          };
-        };
-        group?: {
-          userPermissions: {
-            pushCode: boolean;
-            createSnippet: boolean;
+            createSnippet?: boolean;
           };
         };
       }>(query, { fullPath: this.getFullPath() });
 
-      const permissions =
-        this.config.type === 'group'
-          ? result.group?.userPermissions
-          : result.project?.userPermissions;
-
-      // User can edit if they can create snippets (permission level depends on project settings)
-      return permissions?.createSnippet ?? false;
+      return result.project?.userPermissions?.createSnippet ?? false;
     } catch (error) {
       console.error('[GitLabGraphQL] Failed to check permissions:', error);
       return false;
@@ -3125,14 +3629,22 @@ export class GitLabGraphQLProvider {
   }
 
   /**
-   * Fetch project members (for Workload View)
-   * Returns list of member names who have access to the project
+   * Fetch project/group members (for Workload View)
+   * Returns list of member names who have access to the project/group
+   *
+   * IMPORTANT: GitLab API difference between Project and Group:
+   * - Project: uses projectMembers field
+   * - Group: uses groupMembers field
    */
   async getProjectMembers(): Promise<string[]> {
+    // Different member field for project vs group
+    const membersField =
+      this.config.type === 'group' ? 'groupMembers' : 'projectMembers';
+
     const query = `
-      query getProjectMembers($fullPath: ID!) {
+      query getMembers($fullPath: ID!) {
         ${this.config.type}(fullPath: $fullPath) {
-          projectMembers(first: 100) {
+          ${membersField}(first: 100) {
             nodes {
               user {
                 name
@@ -3151,7 +3663,7 @@ export class GitLabGraphQLProvider {
 
       const members =
         this.config.type === 'group'
-          ? result.group?.projectMembers?.nodes || []
+          ? result.group?.groupMembers?.nodes || []
           : result.project?.projectMembers?.nodes || [];
 
       // Extract unique member names
@@ -3161,7 +3673,7 @@ export class GitLabGraphQLProvider {
 
       return [...new Set(names)].sort() as string[];
     } catch (error) {
-      console.warn('[GitLabGraphQL] Failed to fetch project members:', error);
+      console.warn('[GitLabGraphQL] Failed to fetch members:', error);
       return [];
     }
   }

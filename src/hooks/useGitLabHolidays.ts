@@ -1,6 +1,9 @@
 /**
  * React Hook for managing GitLab-stored holidays
  * Handles loading, saving, and permission checking for project holidays
+ *
+ * NOTE: Group configurations do NOT support this feature because GitLab
+ * does not have Group Snippets. See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -75,12 +78,21 @@ function textToEntries(text: string): HolidayEntry[] {
 }
 
 /**
- * Hook for managing GitLab-stored holidays
+ * Hook for managing GitLab-stored holidays, workdays, and color rules
+ *
+ * IMPORTANT: Group configurations do NOT support Snippets (GitLab limitation).
+ * See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
+ *
+ * When configType = 'group':
+ * - Loading is skipped entirely (returns empty data)
+ * - Saving is disabled
+ * - Holidays, Workdays, and ColorRules features are unavailable
  */
 export function useGitLabHolidays(
-  projectPath: string | null,
+  fullPath: string | null,
   proxyConfig: GitLabProxyConfig | null,
-  canEditProject: boolean,
+  canEdit: boolean,
+  configType: 'project' | 'group' = 'project',
 ): UseGitLabHolidaysResult {
   const [holidays, setHolidays] = useState<HolidayEntry[]>([]);
   const [workdays, setWorkdays] = useState<HolidayEntry[]>([]);
@@ -98,6 +110,9 @@ export function useGitLabHolidays(
   const proxyConfigRef = useRef(proxyConfig);
   proxyConfigRef.current = proxyConfig;
 
+  const configTypeRef = useRef(configType);
+  configTypeRef.current = configType;
+
   const holidaysRef = useRef(holidays);
   holidaysRef.current = holidays;
 
@@ -110,7 +125,21 @@ export function useGitLabHolidays(
   // Load config from GitLab
   const loadConfig = useCallback(async () => {
     const currentProxyConfig = proxyConfigRef.current;
-    if (!projectPath || !currentProxyConfig) {
+    if (!fullPath || !currentProxyConfig) {
+      return;
+    }
+
+    // Group mode: GitLab does not support Group Snippets
+    // Skip loading and return empty data
+    if (configTypeRef.current === 'group') {
+      console.log(
+        '[useGitLabHolidays] Group mode: Holidays/ColorRules not supported (GitLab limitation)',
+      );
+      setHolidays([]);
+      setWorkdays([]);
+      setColorRulesState([]);
+      setHolidaysTextState('');
+      setWorkdaysTextState('');
       return;
     }
 
@@ -118,7 +147,11 @@ export function useGitLabHolidays(
     setError(null);
 
     try {
-      const config = await loadGanttConfig(projectPath, currentProxyConfig);
+      const config = await loadGanttConfig(
+        fullPath,
+        currentProxyConfig,
+        configTypeRef.current,
+      );
 
       if (config) {
         setHolidays(config.holidays);
@@ -140,13 +173,13 @@ export function useGitLabHolidays(
     } finally {
       setLoading(false);
     }
-  }, [projectPath]);
+  }, [fullPath]);
 
   // Save config to GitLab (debounced)
   const saveConfig = useCallback(
     async (config: GanttConfig) => {
       const currentProxyConfig = proxyConfigRef.current;
-      if (!projectPath || !currentProxyConfig || !canEditProject) {
+      if (!fullPath || !currentProxyConfig || !canEdit) {
         return;
       }
 
@@ -154,7 +187,12 @@ export function useGitLabHolidays(
       setError(null);
 
       try {
-        await saveGanttConfig(projectPath, config, currentProxyConfig);
+        await saveGanttConfig(
+          fullPath,
+          config,
+          currentProxyConfig,
+          configTypeRef.current,
+        );
         console.log('[useGitLabHolidays] Config saved to GitLab');
       } catch (err) {
         console.error('[useGitLabHolidays] Failed to save config:', err);
@@ -165,7 +203,7 @@ export function useGitLabHolidays(
         setSaving(false);
       }
     },
-    [projectPath, canEditProject],
+    [fullPath, canEdit],
   );
 
   // Update holidays text and trigger save
@@ -180,7 +218,7 @@ export function useGitLabHolidays(
         clearTimeout(saveTimerRef.current);
       }
 
-      if (canEditProject) {
+      if (canEdit) {
         saveTimerRef.current = setTimeout(() => {
           saveConfig({
             holidays: entries,
@@ -190,7 +228,7 @@ export function useGitLabHolidays(
         }, 500);
       }
     },
-    [canEditProject, saveConfig],
+    [canEdit, saveConfig],
   );
 
   // Update workdays text and trigger save
@@ -205,7 +243,7 @@ export function useGitLabHolidays(
         clearTimeout(saveTimerRef.current);
       }
 
-      if (canEditProject) {
+      if (canEdit) {
         saveTimerRef.current = setTimeout(() => {
           saveConfig({
             holidays: holidaysRef.current,
@@ -215,7 +253,7 @@ export function useGitLabHolidays(
         }, 500);
       }
     },
-    [canEditProject, saveConfig],
+    [canEdit, saveConfig],
   );
 
   // Update color rules and trigger save
@@ -228,7 +266,7 @@ export function useGitLabHolidays(
         clearTimeout(saveTimerRef.current);
       }
 
-      if (canEditProject) {
+      if (canEdit) {
         saveTimerRef.current = setTimeout(() => {
           saveConfig({
             holidays: holidaysRef.current,
@@ -238,7 +276,7 @@ export function useGitLabHolidays(
         }, 500);
       }
     },
-    [canEditProject, saveConfig],
+    [canEdit, saveConfig],
   );
 
   // Load config when project changes

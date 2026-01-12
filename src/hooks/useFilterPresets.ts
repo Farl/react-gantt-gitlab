@@ -1,6 +1,9 @@
 /**
  * React Hook for managing GitLab-stored filter presets
  * Handles loading, saving, and CRUD operations for filter presets
+ *
+ * NOTE: Group configurations do NOT support this feature because GitLab
+ * does not have Group Snippets. See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -42,6 +45,14 @@ export interface UseFilterPresetsResult {
 
 /**
  * Hook for managing GitLab-stored filter presets
+ *
+ * IMPORTANT: Group configurations do NOT support Snippets (GitLab limitation).
+ * See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
+ *
+ * When configType = 'group':
+ * - Loading is skipped entirely (returns empty presets)
+ * - Saving is disabled
+ * - Filter Presets feature is unavailable
  */
 export function useFilterPresets(
   fullPath: string | null,
@@ -71,6 +82,17 @@ export function useFilterPresets(
     if (!fullPath || !currentProxyConfig) {
       // No path or config yet - keep loading as true to indicate "not ready"
       // Don't set loading to false here, as proxyConfig might become available later
+      return;
+    }
+
+    // Group mode: GitLab does not support Group Snippets
+    // Skip loading and return empty presets
+    if (configTypeRef.current === 'group') {
+      console.log(
+        '[useFilterPresets] Group mode: Filter Presets not supported (GitLab limitation)',
+      );
+      setPresets([]);
+      setLoading(false);
       return;
     }
 
