@@ -116,8 +116,9 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
       // Update existing
       gitlabConfigManager.updateConfig(editingConfig.id, formData);
     } else {
-      // Add new
+      // Add new and set as active
       const newConfig = gitlabConfigManager.addConfig(formData);
+      gitlabConfigManager.setActiveConfig(newConfig.id);
       if (onProjectChange) {
         onProjectChange(newConfig);
       }

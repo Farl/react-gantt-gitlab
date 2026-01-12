@@ -463,29 +463,24 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     saveFoldStateRef.current = saveFoldStateToStorage;
   }, [saveFoldStateToStorage]);
 
-  // Track if initial sync has been done for current provider
+  // Initial sync state tracking
   const initialSyncDoneRef = useRef(false);
-  // Track config version to ensure we wait for presets to reload after config change
   const [configVersion, setConfigVersion] = useState(0);
   const presetsLoadedForVersionRef = useRef(-1);
+  const prevPresetsLoadingRef = useRef(true);
 
-  // Reset initial sync flag when provider changes
+  // Reset sync state when provider changes
   useEffect(() => {
     initialSyncDoneRef.current = false;
+    prevPresetsLoadingRef.current = true;
   }, [provider]);
 
-  // Track presetsLoading transitions to detect when presets finish loading for current config
-  // We only record the version when presetsLoading goes from true -> false,
-  // not when it's already false (which could be stale from previous config)
-  const prevPresetsLoadingRef = useRef(presetsLoading);
+  // Track presetsLoading: true -> false transition to detect when presets finish loading
   useEffect(() => {
-    const wasLoading = prevPresetsLoadingRef.current;
-    const isNowNotLoading = !presetsLoading;
-
-    if (wasLoading && isNowNotLoading && proxyConfig) {
+    const transitionedToLoaded = prevPresetsLoadingRef.current && !presetsLoading;
+    if (transitionedToLoaded && proxyConfig) {
       presetsLoadedForVersionRef.current = configVersion;
     }
-
     prevPresetsLoadingRef.current = presetsLoading;
   }, [presetsLoading, proxyConfig, configVersion]);
 
