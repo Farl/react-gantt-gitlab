@@ -2346,11 +2346,43 @@ export class GitLabGraphQLProvider {
           '[GitLabGraphQL] Failed to link subtask to parent:',
           error,
         );
-        // Don't fail the whole operation if linking fails
+
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const userMessage = this.formatLinkingErrorMessage(
+          errorMessage,
+          task.parent as number,
+        );
+
+        createdTask._gitlab = {
+          ...createdTask._gitlab,
+          linkingError: userMessage,
+        };
       }
     }
 
     return createdTask;
+  }
+
+  /**
+   * Format user-friendly error message for subtask linking failures
+   */
+  private formatLinkingErrorMessage(
+    errorMessage: string,
+    parentIid: number,
+  ): string {
+    const suffix = 'Please link the task manually in GitLab.';
+
+    if (errorMessage.includes('No matching work item found')) {
+      return `Subtask was created but could not be linked to parent Issue. This may be due to insufficient permissions or the parent Issue not supporting Work Item hierarchy. ${suffix}`;
+    }
+    if (
+      errorMessage.includes('not found') ||
+      errorMessage.includes('does not exist')
+    ) {
+      return `Subtask was created but the parent Issue (IID: ${parentIid}) could not be found or you don't have permission to access it. ${suffix}`;
+    }
+    return `Subtask was created but could not be linked to parent Issue: ${errorMessage}. ${suffix}`;
   }
 
   /**
@@ -3036,8 +3068,9 @@ export class GitLabGraphQLProvider {
   }
 
   /**
-   * Check if current user has edit permissions (Maintainer+) for the project
-   * Uses userPermissions.pushCode as proxy for Maintainer access
+   * Check if current user has edit permissions for the project
+   * Uses userPermissions.createSnippet as the permission indicator
+   * Note: The required role may vary depending on project settings
    */
   async checkCanEdit(): Promise<boolean> {
     const query = `
@@ -3072,7 +3105,7 @@ export class GitLabGraphQLProvider {
           ? result.group?.userPermissions
           : result.project?.userPermissions;
 
-      // User can edit if they can create snippets (Maintainer+ permission)
+      // User can edit if they can create snippets (permission level depends on project settings)
       return permissions?.createSnippet ?? false;
     } catch (error) {
       console.error('[GitLabGraphQL] Failed to check permissions:', error);

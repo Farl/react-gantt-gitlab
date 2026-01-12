@@ -309,7 +309,7 @@ export function FilterPresetSelector({
                 <div className="preset-empty">No presets saved</div>
               )}
 
-              {canEdit && (
+              {canEdit ? (
                 <div className="preset-actions">
                   <button
                     className="btn-save-preset"
@@ -319,6 +319,11 @@ export function FilterPresetSelector({
                   >
                     <i className="fas fa-plus"></i> Save Current Filters
                   </button>
+                </div>
+              ) : (
+                <div className="preset-permission-notice">
+                  <i className="fas fa-lock"></i>
+                  <span>Create Snippet permission required to save presets</span>
                 </div>
               )}
             </>
@@ -575,6 +580,22 @@ export function FilterPresetSelector({
           background: var(--wx-gitlab-control-background);
           color: var(--wx-gitlab-control-text);
           cursor: not-allowed;
+        }
+
+        .preset-permission-notice {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 12px;
+          font-size: 12px;
+          color: var(--wx-gitlab-control-text);
+          border-top: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gitlab-filter-hover-background);
+        }
+
+        .preset-permission-notice i {
+          color: #d97706;
+          font-size: 14px;
         }
 
         /* Dialog Overlay */

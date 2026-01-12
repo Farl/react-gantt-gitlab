@@ -132,7 +132,9 @@ const Gantt = forwardRef(function Gantt(
     if (!initOnceRef.current) {
       if (init) init(api);
     } else {
-      // const prev = dataStore.getState();
+      // Preserve sort state before re-init (dataStore.init resets it)
+      const currentSort = dataStore.getState()._sort;
+
       dataStore.init({
         tasks,
         links,
@@ -154,6 +156,19 @@ const Gantt = forwardRef(function Gantt(
         markers,
         durationUnit,
       });
+
+      // Restore sort state (use setTimeout to avoid re-triggering this effect)
+      if (currentSort?.length > 0) {
+        setTimeout(() => {
+          currentSort.forEach((sortItem, index) => {
+            api.exec('sort-tasks', {
+              key: sortItem.key,
+              order: sortItem.order,
+              add: index > 0,
+            });
+          });
+        }, 0);
+      }
     }
     initOnceRef.current++;
   }, [

@@ -10,6 +10,7 @@ import Editor from './Editor.jsx';
 import Toolbar from './Toolbar.jsx';
 import ContextMenu from './ContextMenu.jsx';
 import SmartTaskContent from './SmartTaskContent.jsx';
+import { Toast } from './Toast.jsx';
 import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider.ts';
 import { gitlabConfigManager } from '../config/GitLabConfigManager.ts';
 import { useGitLabSync } from '../hooks/useGitLabSync.ts';
@@ -120,8 +121,21 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     }, 100);
   }, []);
 
-  // canEditHolidays: whether user has permission to edit holidays (Maintainer+)
+  // canEditHolidays: whether user has permission to edit holidays and other project settings
   const [canEditHolidays, setCanEditHolidays] = useState(false);
+
+  // Toast notification state
+  const [toastState, setToastState] = useState({ message: null, type: 'error' });
+
+  // Show toast notification helper
+  const showToast = useCallback((message, type = 'error') => {
+    setToastState({ message, type });
+  }, []);
+
+  // Clear toast notification
+  const clearToast = useCallback(() => {
+    setToastState({ message: null, type: 'error' });
+  }, []);
 
   const [lengthUnit, setLengthUnit] = useState(() => {
     const saved = localStorage.getItem('gantt-length-unit');
@@ -254,7 +268,9 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     deleteTask,
     createLink,
     deleteLink,
-  } = useGitLabSync(provider, autoSync, 60000);
+  } = useGitLabSync(provider, autoSync, 60000, {
+    onWarning: (message) => showToast(message, 'warning'),
+  });
 
   // Get project path for holidays hook
   const projectPath = useMemo(() => {
@@ -692,7 +708,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       await createMilestone(milestone);
     } catch (error) {
       console.error('[GitLabGantt] Failed to create milestone:', error);
-      alert(`Failed to create milestone: ${error.message}`);
+      showToast(`Failed to create milestone: ${error.message}`, 'error');
     }
   }, [createMilestone]);
 
@@ -835,7 +851,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               ganttApi.exec('close-editor');
             } catch (error) {
               console.error('Failed to sync task:', error);
-              alert(`Failed to save changes: ${error.message}`);
+              showToast(`Failed to save changes: ${error.message}`, 'error');
             }
           } else {
             // No changes, just close
@@ -1110,7 +1126,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               await syncTask(ev.id, taskChanges);
             } catch (error) {
               console.error('Failed to sync task update:', error);
-              alert(`Failed to sync task: ${error.message}`);
+              showToast(`Failed to sync task: ${error.message}`, 'error');
               // Revert by reloading from GitLab
               syncWithFoldState();
             }
@@ -1163,7 +1179,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           const isParentGitLabTask = parentTask && !parentTask.$isIssue && !parentTask.$isMilestone;
 
           if (isParentGitLabTask) {
-            alert('Cannot create subtasks under a GitLab Task. Only Issues can have Tasks as children.');
+            showToast('Cannot create subtasks under a GitLab Task. Only Issues can have Tasks as children.', 'warning');
             return false;
           }
 
@@ -1290,7 +1306,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
         } catch (error) {
           console.error('Failed to create task:', error);
-          alert(`Failed to create task: ${error.message}`);
+          showToast(`Failed to create task: ${error.message}`, 'error');
           // Remove the temporary task
           ganttApi.exec('delete-task', { id: ev.id, skipHandler: true });
         }
@@ -1346,7 +1362,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           await deleteTask(ev.id, task);
         } catch (error) {
           console.error('Failed to delete task:', error);
-          alert(`Failed to delete task: ${error.message}`);
+          showToast(`Failed to delete task: ${error.message}`, 'error');
           // Reload data to restore the task
           syncWithFoldState();
         }
@@ -1537,7 +1553,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           await createLink(ev.link);
         } catch (error) {
           console.error('Failed to create link:', error);
-          alert(`Failed to create link: ${error.message}`);
+          showToast(`Failed to create link: ${error.message}`, 'error');
           ganttApi.exec('delete-link', { id: ev.id });
         }
       });
@@ -1551,7 +1567,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           }
         } catch (error) {
           console.error('Failed to delete link:', error);
-          alert(`Failed to delete link: ${error.message}`);
+          showToast(`Failed to delete link: ${error.message}`, 'error');
           syncWithFoldState();
         }
       });
@@ -1688,6 +1704,17 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
   return (
     <div className="gitlab-gantt-container">
+      {/* Toast notification */}
+      {toastState.message && (
+        <Toast
+          message={toastState.message}
+          type={toastState.type}
+          onClose={clearToast}
+          duration={5000}
+          position="top-right"
+        />
+      )}
+
       <div className="gitlab-gantt-header">
         <div className="project-switcher">
           <select
@@ -1866,7 +1893,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Holidays
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Maintainer permission required
+                    <i className="fas fa-lock"></i> Create Snippet permission required
                   </span>
                 )}
                 {holidaysSaving && (
@@ -1907,7 +1934,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Extra Working Days
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Maintainer permission required
+                    <i className="fas fa-lock"></i> Create Snippet permission required
                   </span>
                 )}
               </h4>
@@ -1938,7 +1965,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
                 Color Rules
                 {!canEditHolidays && (
                   <span className="permission-warning">
-                    <i className="fas fa-lock"></i> Maintainer permission required
+                    <i className="fas fa-lock"></i> Create Snippet permission required
                   </span>
                 )}
                 {holidaysSaving && (

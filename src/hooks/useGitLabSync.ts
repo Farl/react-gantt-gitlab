@@ -20,6 +20,11 @@ export interface SyncState {
   lastSyncTime: Date | null;
 }
 
+export interface UseGitLabSyncOptions {
+  /** Callback for non-fatal warnings (e.g., subtask linking failed) */
+  onWarning?: (message: string) => void;
+}
+
 export interface GitLabSyncResult {
   tasks: ITask[];
   links: ILink[];
@@ -42,7 +47,9 @@ export function useGitLabSync(
   provider: GitLabDataProvider | GitLabGraphQLProvider | null,
   autoSync = false,
   syncInterval = 60000, // 60 seconds
+  options: UseGitLabSyncOptions = {},
 ): GitLabSyncResult {
+  const { onWarning } = options;
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [links, setLinks] = useState<ILink[]>([]);
   const [milestones, setMilestones] = useState<GitLabMilestone[]>([]);
@@ -57,6 +64,12 @@ export function useGitLabSync(
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const tasksRef = useRef<ITask[]>(tasks);
+  const onWarningRef = useRef(onWarning);
+
+  // Keep refs in sync
+  useEffect(() => {
+    onWarningRef.current = onWarning;
+  }, [onWarning]);
 
   // Keep tasksRef in sync with tasks state
   useEffect(() => {
@@ -180,8 +193,13 @@ export function useGitLabSync(
           createdTask.parent = task.parent;
         }
 
-        // Always add the new task to local state immediately
-        // This provides instant feedback without waiting for sync
+        // Handle linking error: clear parent and notify user
+        if (createdTask._gitlab?.linkingError) {
+          createdTask.parent = 0;
+          onWarningRef.current?.(createdTask._gitlab.linkingError);
+        }
+
+        // Add to local state for instant feedback
         setTasks((prevTasks) => [...prevTasks, createdTask]);
 
         return createdTask;
