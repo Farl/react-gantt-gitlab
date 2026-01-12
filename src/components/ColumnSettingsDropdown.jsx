@@ -16,6 +16,7 @@ const ALL_COLUMNS = [
   { key: 'iteration', label: 'Iteration', defaultVisible: false },
   { key: 'epic', label: 'Epic', defaultVisible: false },
   { key: 'weight', label: 'Weight', defaultVisible: false },
+  { key: 'labels', label: 'Labels', defaultVisible: false },
   { key: 'start', label: 'Start', defaultVisible: true },
   { key: 'end', label: 'Due', defaultVisible: true },
   { key: 'workdays', label: 'Workdays', defaultVisible: true },
@@ -294,6 +295,35 @@ export const EpicCell = ({ row }) => {
 };
 
 /**
+ * LabelCell - Renders labels with GitLab colors
+ * @param {Object} row - Task row data with labels as comma-separated string
+ * @param {Map} labelColorMap - Map of label title to color (injected via buildColumnsFromSettings)
+ */
+export const LabelCell = ({ row, labelColorMap }) => {
+  if (!row.labels) return null;
+  const labelTitles = row.labels.split(', ').filter(Boolean);
+  if (labelTitles.length === 0) return null;
+
+  return (
+    <div className="label-cell-container">
+      {labelTitles.map((title, index) => {
+        const color = labelColorMap?.get(title) || '#6b7280';
+        return (
+          <span
+            key={index}
+            className="label-cell-tag"
+            style={{ backgroundColor: color }}
+            title={title}
+          >
+            {title}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+/**
  * Column configurations
  * IMPORTANT: Column id must match task property name for sorting to work
  */
@@ -334,6 +364,12 @@ export const COLUMN_CONFIGS = {
     width: 60,
     cell: WeightCell,
   },
+  labels: {
+    id: 'labelPriority', // Sort by labelPriority field (lowest priority number = highest priority)
+    header: 'Labels',
+    width: 150,
+    // cell is injected by buildColumnsFromSettings with labelColorMap
+  },
   start: {
     id: 'start',
     header: 'Start',
@@ -354,11 +390,11 @@ export const COLUMN_CONFIGS = {
 /**
  * Build columns array based on settings and external cell components
  * @param {Object} columnSettings - Column settings from useColumnSettings
- * @param {Object} cellComponents - External cell components { DateCell, WorkdaysCell }
+ * @param {Object} cellComponents - External cell components { DateCell, WorkdaysCell, labelColorMap }
  * @returns {Array} Ordered array of visible column configs
  */
 export function buildColumnsFromSettings(columnSettings, cellComponents) {
-  const { DateCell, WorkdaysCell } = cellComponents;
+  const { DateCell, WorkdaysCell, labelColorMap } = cellComponents;
 
   return columnSettings.columns
     .filter(col => col.visible)
@@ -369,6 +405,9 @@ export function buildColumnsFromSettings(columnSettings, cellComponents) {
         config.cell = DateCell;
       } else if (col.key === 'workdays') {
         config.cell = WorkdaysCell;
+      } else if (col.key === 'labels') {
+        // Inject LabelCell with labelColorMap for colored label tags
+        config.cell = (props) => <LabelCell {...props} labelColorMap={labelColorMap} />;
       }
       return config;
     });

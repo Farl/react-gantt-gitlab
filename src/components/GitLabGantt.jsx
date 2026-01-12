@@ -4,6 +4,7 @@
  */
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import './LabelCell.css';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Gantt from './Gantt.jsx';
 import Editor from './Editor.jsx';
@@ -597,13 +598,49 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     requestAnimationFrame(restoreFoldState);
   }, [allTasks, api]);
 
-  // Add workdays to tasks for sorting support
+  // Create label priority map for sorting (lower number = higher priority)
+  const labelPriorityMap = useMemo(() => {
+    const map = new Map();
+    (serverFilterOptions?.labels || []).forEach(label => {
+      if (label.priority != null) {
+        map.set(label.title, label.priority);
+      }
+    });
+    return map;
+  }, [serverFilterOptions?.labels]);
+
+  // Create label color map for LabelCell rendering
+  const labelColorMap = useMemo(() => {
+    const map = new Map();
+    (serverFilterOptions?.labels || []).forEach(label => {
+      if (label.color) {
+        map.set(label.title, label.color);
+      }
+    });
+    return map;
+  }, [serverFilterOptions?.labels]);
+
+  // Add workdays and labelPriority to tasks for sorting support
   const tasksWithWorkdays = useMemo(() => {
-    return allTasks.map(task => ({
-      ...task,
-      workdays: task.start && task.end ? countWorkdays(task.start, task.end) : 0,
-    }));
-  }, [allTasks, countWorkdays]);
+    return allTasks.map(task => {
+      // Parse labels and find highest priority (lowest number)
+      const taskLabels = task.labels ? task.labels.split(', ').filter(Boolean) : [];
+      let labelPriority = Number.MAX_SAFE_INTEGER; // Default: unprioritized (sorts last)
+
+      taskLabels.forEach(labelTitle => {
+        const priority = labelPriorityMap.get(labelTitle);
+        if (priority !== undefined && priority < labelPriority) {
+          labelPriority = priority;
+        }
+      });
+
+      return {
+        ...task,
+        workdays: task.start && task.end ? countWorkdays(task.start, task.end) : 0,
+        labelPriority,
+      };
+    });
+  }, [allTasks, countWorkdays, labelPriorityMap]);
 
   // Apply filters to tasks
   const filteredTasks = useMemo(() => {
@@ -1638,6 +1675,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     const configurableCols = buildColumnsFromSettings(columnSettings, {
       DateCell,
       WorkdaysCell,
+      labelColorMap,
     });
 
     return [
@@ -1657,7 +1695,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         width: 50,
       },
     ];
-  }, [DateCell, TaskTitleCell, WorkdaysCell, columnSettings]);
+  }, [DateCell, TaskTitleCell, WorkdaysCell, columnSettings, labelColorMap]);
 
   // Editor items configuration - customized for GitLab
   const editorItems = useMemo(() => {

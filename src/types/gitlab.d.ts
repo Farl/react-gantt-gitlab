@@ -141,7 +141,7 @@ export interface GitLabServerFilters {
  */
 export interface GitLabFilterOptionsData {
   members: Array<{ username: string; name: string }>;
-  labels: Array<{ title: string; color?: string }>;
+  labels: Array<{ title: string; color?: string; priority?: number | null }>;
   milestones: Array<{ iid: number; title: string }>;
 }
 

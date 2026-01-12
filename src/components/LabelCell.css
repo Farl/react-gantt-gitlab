@@ -1,0 +1,21 @@
+/**
+ * LabelCell styles for displaying GitLab labels with colors
+ */
+.label-cell-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.label-cell-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}

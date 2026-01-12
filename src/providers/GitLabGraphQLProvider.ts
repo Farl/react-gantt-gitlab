@@ -201,7 +201,8 @@ export class GitLabGraphQLProvider {
   async getFilterOptions(): Promise<GitLabFilterOptionsData> {
     const fullPath = this.getFullPath();
 
-    // Query to get members, labels, and milestones in one request
+    // Query to get members and milestones via GraphQL
+    // Labels are fetched via REST API to get priority field
     const filterOptionsQuery = `
       query getFilterOptions($fullPath: ID!) {
         ${this.config.type}(fullPath: $fullPath) {
@@ -211,12 +212,6 @@ export class GitLabGraphQLProvider {
                 username
                 name
               }
-            }
-          }
-          labels(first: 100) {
-            nodes {
-              title
-              color
             }
           }
           milestones(state: active, first: 100) {
@@ -234,25 +229,44 @@ export class GitLabGraphQLProvider {
         projectMembers?: {
           nodes: Array<{ user: { username: string; name: string } | null }>;
         };
-        labels?: { nodes: Array<{ title: string; color: string }> };
         milestones?: { nodes: Array<{ iid: string; title: string }> };
       };
       group?: {
         groupMembers?: {
           nodes: Array<{ user: { username: string; name: string } | null }>;
         };
-        labels?: { nodes: Array<{ title: string; color: string }> };
         milestones?: { nodes: Array<{ iid: string; title: string }> };
       };
     }
 
-    try {
-      const result = await this.graphqlClient.query<FilterOptionsResponse>(
-        filterOptionsQuery,
-        { fullPath },
-      );
+    // GitLab REST API label response type
+    interface GitLabRestLabel {
+      name: string;
+      color: string;
+      priority: number | null;
+    }
 
-      const data = this.config.type === 'group' ? result.group : result.project;
+    try {
+      // Fetch members and milestones via GraphQL, labels via REST API in parallel
+      const labelsEndpoint =
+        this.config.type === 'project'
+          ? `/projects/${encodeURIComponent(fullPath)}/labels?per_page=100`
+          : `/groups/${encodeURIComponent(fullPath)}/labels?per_page=100&include_ancestor_groups=true`;
+
+      const [graphqlResult, labelsFromRest] = await Promise.all([
+        this.graphqlClient.query<FilterOptionsResponse>(filterOptionsQuery, {
+          fullPath,
+        }),
+        gitlabRestRequest<GitLabRestLabel[]>(labelsEndpoint, {
+          gitlabUrl: this.config.gitlabUrl,
+          token: this.config.token,
+        }),
+      ]);
+
+      const data =
+        this.config.type === 'group'
+          ? graphqlResult.group
+          : graphqlResult.project;
 
       const membersKey =
         this.config.type === 'group' ? 'groupMembers' : 'projectMembers';
@@ -270,12 +284,13 @@ export class GitLabGraphQLProvider {
           name: node.user!.name,
         }));
 
-      // Extract labels
+      // Extract labels from REST API (includes priority for projects)
       const labels: GitLabFilterOptionsData['labels'] = (
-        data?.labels?.nodes || []
-      ).map((node) => ({
-        title: node.title,
-        color: node.color,
+        labelsFromRest || []
+      ).map((label) => ({
+        title: label.name,
+        color: label.color,
+        priority: label.priority ?? null, // Group labels don't have priority
       }));
 
       // Extract milestones
