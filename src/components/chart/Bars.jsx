@@ -122,13 +122,13 @@ function Bars(props) {
   );
 
   const down = useCallback(
-    (node, point) => {
+    (node, point, isCascadeMode = false) => {
       const { clientX } = point;
       const id = getID(node);
       const task = api.getTask(id);
 
       if (!readonly) {
-        const mode = getMoveMode(node, point, task) || 'move';
+        const mode = isCascadeMode ? 'cascade' : (getMoveMode(node, point, task) || 'move');
 
         setTaskMove({
           id,
@@ -137,6 +137,7 @@ function Bars(props) {
           dx: 0,
           l: task.$x,
           w: task.$w,
+          isCascadeMode,
         });
         startDrag();
       }
@@ -151,9 +152,13 @@ function Bars(props) {
       const node = locate(e);
       if (!node) return;
 
-      down(node, e);
+      // Check if clicking on cascade trigger
+      const cascadeTrigger = e.target.closest('[data-cascade="true"]');
+      const isCascadeMode = !!cascadeTrigger;
+
+      down(node, e, isCascadeMode);
     },
-    [readonly, lengthUnitWidth, totalWidth, taskMove, linkFrom],
+    [readonly, lengthUnitWidth, totalWidth, taskMove, linkFrom, down],
   );
 
   const touchstart = useCallback(
@@ -172,7 +177,7 @@ function Bars(props) {
 
   const up = useCallback(() => {
     if (taskMove) {
-      const { id, mode, dx, l, w, start } = taskMove;
+      const { id, mode, dx, l, w, start, isCascadeMode } = taskMove;
       setTaskMove(null);
       if (start) {
         const diff = Math.round(dx / lengthUnitWidth);
@@ -184,10 +189,13 @@ function Bars(props) {
             left: l,
             inProgress: false,
           });
+        } else if (isCascadeMode) {
+          // Trigger cascade-move-task event for moving parent with all children
+          api.exec('cascade-move-task', { id, diff });
         } else {
           let update = {};
           let task = api.getTask(id);
-          if (mode == 'move') {
+          if (mode == 'move' || mode === 'cascade') {
             update.start = task.start;
             update.end = task.end;
           } else update[mode] = task[mode];
@@ -196,7 +204,7 @@ function Bars(props) {
             id,
             task: update,
             diff,
-            mode,  // 'move', 'start', or 'end'
+            mode: mode === 'cascade' ? 'move' : mode,  // 'move', 'start', or 'end'
           });
         }
         ignoreNextClickRef.current = true;
@@ -218,7 +226,7 @@ function Bars(props) {
             (!start && Math.abs(dx) < 20) ||
             (mode === 'start' && w - dx < lengthUnitWidth) ||
             (mode === 'end' && w + dx < lengthUnitWidth) ||
-            (mode == 'move' &&
+            ((mode == 'move' || mode === 'cascade') &&
               ((dx < 0 && l + dx < 0) || (dx > 0 && l + w + dx > totalWidth)))
           )
             return;
@@ -232,7 +240,7 @@ function Bars(props) {
           } else if (mode === 'end') {
             left = l;
             width = w + dx;
-          } else if (mode === 'move' || mode === 'move-baseline') {
+          } else if (mode === 'move' || mode === 'move-baseline' || mode === 'cascade') {
             left = l + dx;
             width = w;
           }
@@ -249,8 +257,8 @@ function Bars(props) {
           const task = api.getTask(id);
           if (
             !nextTaskMove.start &&
-            ((mode == 'move' && task.$x == l) ||
-              (mode != 'move' && task.$w == w))
+            (((mode == 'move' || mode === 'cascade') && task.$x == l) ||
+              (mode != 'move' && mode !== 'cascade' && task.$w == w))
           ) {
             ignoreNextClickRef.current = true;
             up();
@@ -562,6 +570,19 @@ function Bars(props) {
                     <div className="wx-GKbcLEGA wx-text-out">{task.text}</div>
                   )}
                 </>
+              )}
+
+              {/* Cascade move trigger - only show for bars with children */}
+              {!readonly && task.data && task.data.length > 0 && (
+                <div
+                  className="wx-GKbcLEGA wx-cascade-trigger"
+                  data-cascade="true"
+                  title="Drag to move with all children"
+                >
+                  <svg viewBox="0 0 10 8" width="10" height="8">
+                    <polygon points="0,0 10,0 5,8" fill="currentColor" stroke="#333" strokeWidth="0.5"/>
+                  </svg>
+                </div>
               )}
 
               {!readonly ? (

@@ -1603,7 +1603,154 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           syncWithFoldState();
         }
       });
+
+      // Handle cascade move - move parent with all children while preserving workdays
+      ganttApi.on('cascade-move-task', async (ev) => {
+        const { id: parentId, diff } = ev;
+        const parentTask = ganttApi.getTask(parentId);
+
+        if (!parentTask) {
+          console.error('Parent task not found:', parentId);
+          return;
+        }
+
+        // Helper function to recursively get all descendants
+        const getAllDescendants = (taskId) => {
+          const result = [];
+          const task = ganttApi.getTask(taskId);
+          if (task?.data?.length) {
+            for (const child of task.data) {
+              result.push(child);
+              result.push(...getAllDescendants(child.id));
+            }
+          }
+          return result;
+        };
+
+        // Helper function to calculate start date from link
+        const calculateStartFromLink = (link, sourceData) => {
+          const { newStart, newEnd } = sourceData;
+          switch (link.type) {
+            case 'e2s': // End-to-Start: target starts day after source ends
+              const next = new Date(newEnd);
+              next.setDate(next.getDate() + 1);
+              return next;
+            case 's2s': // Start-to-Start: target starts same day as source
+              return new Date(newStart);
+            case 'e2e': // End-to-End: complex, need to reverse calculate
+            case 's2e': // Start-to-End: complex, need to reverse calculate
+            default:
+              return new Date(newStart);
+          }
+        };
+
+        // If no children, just do normal move
+        if (!parentTask.data?.length) {
+          ganttApi.exec('update-task', {
+            id: parentId,
+            task: { start: parentTask.start, end: parentTask.end },
+            diff,
+            mode: 'move',
+          });
+          return;
+        }
+
+        try {
+          // 1. Calculate parent new dates
+          const parentOriginalStart = new Date(parentTask.start);
+          const parentWorkdays = countWorkdaysRef.current(parentTask.start, parentTask.end);
+          const newParentStart = new Date(parentOriginalStart);
+          newParentStart.setDate(newParentStart.getDate() + diff);
+          const newParentEnd = calculateEndDateByWorkdaysRef.current(newParentStart, parentWorkdays);
+
+          // 2. Collect all descendants and calculate original offset
+          const descendants = getAllDescendants(parentId);
+          const currentLinks = links || [];
+          const descendantIds = new Set(descendants.map(d => d.id));
+          descendantIds.add(parentId); // Include parent in the set for link calculation
+
+          const childData = descendants.map(child => {
+            const childTask = ganttApi.getTask(child.id);
+            if (!childTask || !childTask.start) return null;
+
+            const offsetMs = childTask.start.getTime() - parentOriginalStart.getTime();
+            const offsetDays = Math.round(offsetMs / (1000 * 60 * 60 * 24));
+            const workdays = countWorkdaysRef.current(childTask.start, childTask.end);
+
+            // Find inbound links from other cascade members to this task
+            const inboundLinks = currentLinks.filter(link =>
+              link.target === child.id && descendantIds.has(link.source)
+            );
+
+            return {
+              id: child.id,
+              offsetDays,
+              workdays,
+              inboundLinks,
+              _gitlab: childTask._gitlab,
+            };
+          }).filter(Boolean);
+
+          // 3. Sort by start date (earliest first)
+          childData.sort((a, b) => a.offsetDays - b.offsetDays);
+
+          // 4. Process each child
+          const processed = new Map(); // id -> { newStart, newEnd }
+          processed.set(parentId, { newStart: newParentStart, newEnd: newParentEnd });
+
+          const updates = [];
+          for (const child of childData) {
+            let newStart;
+
+            // Check if there's a processed link source
+            const linkedSource = child.inboundLinks.find(l => processed.has(l.source));
+            if (linkedSource) {
+              // Use link to calculate new start
+              newStart = calculateStartFromLink(linkedSource, processed.get(linkedSource.source));
+            } else {
+              // Preserve original offset from parent
+              newStart = new Date(newParentStart);
+              newStart.setDate(newStart.getDate() + child.offsetDays);
+            }
+
+            const newEnd = calculateEndDateByWorkdaysRef.current(newStart, child.workdays);
+            processed.set(child.id, { newStart, newEnd });
+            updates.push({ id: child.id, start: newStart, end: newEnd, _gitlab: child._gitlab });
+          }
+
+          // 5. Batch update UI (skip workdays adjust since we calculated correctly)
+          ganttApi.exec('update-task', {
+            id: parentId,
+            task: { start: newParentStart, end: newParentEnd },
+            skipWorkdaysAdjust: true,
+            skipSync: true,
+          });
+
+          for (const u of updates) {
+            ganttApi.exec('update-task', {
+              id: u.id,
+              task: { start: u.start, end: u.end },
+              skipWorkdaysAdjust: true,
+              skipSync: true,
+            });
+          }
+
+          // 6. Batch sync to GitLab
+          await syncTask(parentId, { start: newParentStart, end: newParentEnd, _gitlab: parentTask._gitlab });
+
+          for (const u of updates) {
+            await syncTask(u.id, { start: u.start, end: u.end, _gitlab: u._gitlab });
+          }
+
+          showToast(`Moved ${updates.length + 1} items`, 'success');
+        } catch (error) {
+          console.error('Cascade move failed:', error);
+          showToast(`Cascade move failed: ${error.message}`, 'error');
+          syncWithFoldState(); // Reload to revert
+        }
+      });
     },
+    // Note: countWorkdays/calculateEndDateByWorkdays not needed here as we use refs (countWorkdaysRef, calculateEndDateByWorkdaysRef)
     [syncTask, createTask, createMilestone, deleteTask, createLink, deleteLink, links, syncWithFoldState]
   );
 
@@ -1634,11 +1781,13 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     return `${yy}/${mm}/${dd}`;
   }, []);
 
-  // Workdays cell - uses pre-calculated workdays from tasksWithWorkdays
+  // Workdays cell - dynamically calculates workdays from row's current start/end
+  // This ensures the display updates immediately when user drags to resize the bar
   const WorkdaysCell = useCallback(({ row }) => {
-    if (!row.workdays) return '';
-    return `${row.workdays}d`;
-  }, []);
+    if (!row.start || !row.end) return '';
+    const days = countWorkdays(row.start, row.end);
+    return days ? `${days}d` : '';
+  }, [countWorkdays]);
 
   // Custom cell component for Task Title with icons
   const TaskTitleCell = useCallback(({ row }) => {

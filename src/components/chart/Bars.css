@@ -234,3 +234,35 @@
   outline: 1px solid var(--wx-color-primary);
   outline-offset: 1.6px;
 }
+
+/* Cascade move trigger - triangle icon for moving parent with all children */
+.wx-cascade-trigger.wx-GKbcLEGA {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  z-index: 5;
+  color: rgba(255, 255, 255, 0.95);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+  transition: opacity 0.15s ease;
+}
+
+.wx-bar:hover .wx-cascade-trigger.wx-GKbcLEGA {
+  opacity: 0.6;
+}
+
+.wx-cascade-trigger.wx-GKbcLEGA:hover {
+  opacity: 1;
+}
+
+.wx-cascade-trigger.wx-GKbcLEGA:active {
+  cursor: grabbing;
+}
