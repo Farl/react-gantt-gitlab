@@ -305,17 +305,33 @@ function Editor({
     return t;
   }, [unscheduledTasks, unit]);
 
+  /**
+   * Set end date time to 23:59:59 to make the date inclusive.
+   * Gantt bars are drawn based on time difference, so end dates at 00:00:00
+   * would visually end on the previous day. Setting to 23:59:59 ensures
+   * the bar includes the full end date.
+   */
+  const setEndOfDay = useCallback((date) => {
+    if (date instanceof Date) {
+      date.setHours(23, 59, 59, 0);
+    }
+    return date;
+  }, []);
+
   const handleChange = useCallback((ev) => {
     let { update, key, value } = ev;
 
     // Handle workdays change - calculate new end date
     if (key === 'workdays' && workdaysHelpers?.calculateEndDateByWorkdays && update.start) {
       const newEndDate = workdaysHelpers.calculateEndDateByWorkdays(update.start, value);
-      // Set end date time to 23:59:59 to match Gantt convention
-      newEndDate.setHours(23, 59, 59, 0);
-      update.end = newEndDate;
+      update.end = setEndOfDay(newEndDate);
       ev.update = normalizeTask({ ...update }, 'end');
       return;
+    }
+
+    // Handle end date change - ensure bar draws through the entire day
+    if (key === 'end') {
+      setEndOfDay(update.end);
     }
 
     ev.update = normalizeTask({ ...update }, key);
@@ -323,7 +339,7 @@ function Editor({
     if (!autoSave) {
       if (key === 'type') setTaskType(value);
     }
-  }, [autoSave, workdaysHelpers, normalizeTask]);
+  }, [autoSave, workdaysHelpers, normalizeTask, setEndOfDay]);
 
   const handleSave = useCallback((ev) => {
     let { values } = ev;
