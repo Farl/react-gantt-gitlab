@@ -20,6 +20,15 @@ import { useFilterPresets } from '../hooks/useFilterPresets.ts';
 import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
 import { useHighlightTime } from '../hooks/useHighlightTime.ts';
 import { GitLabFilters, toGitLabServerFilters } from '../utils/GitLabFilters.ts';
+import {
+  loadProjectSettings,
+  updateProjectFilterSettings,
+  createStoredFilters,
+  restoreFilterOptions,
+  isFilterEmpty,
+  hasServerFilters as checkHasServerFilters,
+  hasClientFilters as checkHasClientFilters,
+} from '../types/projectSettings.ts';
 import { ProjectSelector } from './ProjectSelector.jsx';
 import { SyncButton } from './SyncButton.jsx';
 import { FilterPanel } from './FilterPanel.jsx';
@@ -211,14 +220,16 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     setCurrentConfig(config);
 
     // Clear filter options when switching project/group
+    // These will be restored from project settings after presets are loaded
     setFilterOptions({});
 
     // Clear server filter options and active server filters
     setServerFilterOptions(null);
     setActiveServerFilters(null);
 
-    // Clear last used preset ID (will be loaded from localStorage for new config)
-    setLastUsedPresetId(null);
+    // Clear preset state - will be loaded from project settings
+    // Note: We don't clear lastUsedPresetId and filterDirty here
+    // They will be set by the effect that watches getConfigIdentifier
 
     // Increment config version to signal that presets need to reload
     // This prevents the initial sync from running with stale preset data
@@ -358,6 +369,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     loading: presetsLoading,
     saving: presetsSaving,
     createNewPreset,
+    updatePreset,
     renamePreset,
     deletePreset,
   } = useFilterPresets(
@@ -367,53 +379,130 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     canEditHolidays
   );
 
-  // Generate localStorage key for last used preset
-  const getPresetStorageKey = useCallback(() => {
+  // ============================================================
+  // Project Settings: Filter State Persistence
+  // ============================================================
+
+  // Get config identifier for project settings
+  const getConfigIdentifier = useCallback(() => {
     if (!currentConfig) return null;
     if (currentConfig.type === 'project' && currentConfig.projectId) {
-      return `gitlab-gantt-preset-project-${currentConfig.projectId}`;
+      return { type: 'project', id: currentConfig.projectId };
     } else if (currentConfig.type === 'group' && currentConfig.groupId) {
-      return `gitlab-gantt-preset-group-${currentConfig.groupId}`;
+      return { type: 'group', id: currentConfig.groupId };
     }
     return null;
   }, [currentConfig]);
 
-  // Load last used preset ID from localStorage
-  // Initialize with the value from localStorage if available
-  const [lastUsedPresetId, setLastUsedPresetId] = useState(() => {
-    if (!currentConfig) return null;
-    let key = null;
-    if (currentConfig.type === 'project' && currentConfig.projectId) {
-      key = `gitlab-gantt-preset-project-${currentConfig.projectId}`;
-    } else if (currentConfig.type === 'group' && currentConfig.groupId) {
-      key = `gitlab-gantt-preset-group-${currentConfig.groupId}`;
-    }
-    return key ? localStorage.getItem(key) : null;
-  });
+  // Current preset ID and dirty state
+  const [lastUsedPresetId, setLastUsedPresetId] = useState(null);
+  const [filterDirty, setFilterDirty] = useState(false);
 
-  // Update preset ID when config changes
+  // Ref to track if we're in the middle of a preset switch
+  // This prevents filter changes from marking dirty during preset application
+  const isApplyingPresetRef = useRef(false);
+
+  // Load project settings when config changes
   useEffect(() => {
-    const key = getPresetStorageKey();
-    if (key) {
-      const savedId = localStorage.getItem(key);
-      setLastUsedPresetId(savedId);
+    const identifier = getConfigIdentifier();
+    if (!identifier) {
+      setLastUsedPresetId(null);
+      setFilterDirty(false);
+      return;
+    }
+
+    const settings = loadProjectSettings(identifier.type, identifier.id);
+    if (settings?.filter) {
+      if (settings.filter.mode === 'preset') {
+        setLastUsedPresetId(settings.filter.presetId || null);
+        setFilterDirty(settings.filter.dirty || false);
+      } else {
+        setLastUsedPresetId(null);
+        setFilterDirty(false);
+      }
     } else {
       setLastUsedPresetId(null);
+      setFilterDirty(false);
     }
-  }, [getPresetStorageKey]);
+  }, [getConfigIdentifier]);
 
-  // Save preset ID when user selects a preset
-  const handlePresetSelect = useCallback((presetId) => {
-    const key = getPresetStorageKey();
-    if (key) {
-      if (presetId) {
-        localStorage.setItem(key, presetId);
-      } else {
-        localStorage.removeItem(key);
-      }
-      setLastUsedPresetId(presetId);
+  // Save filter settings helper
+  const saveFilterSettings = useCallback((presetId, dirty, filters) => {
+    const identifier = getConfigIdentifier();
+    if (!identifier) return;
+
+    if (presetId) {
+      // Preset mode
+      const settings = {
+        mode: 'preset',
+        presetId,
+        dirty: dirty || false,
+        filters: dirty ? filters : undefined,
+      };
+      updateProjectFilterSettings(identifier.type, identifier.id, settings);
+    } else if (filters && !isFilterEmpty(filters)) {
+      // Custom mode (no preset selected, but has filters)
+      const settings = {
+        mode: 'custom',
+        filters,
+      };
+      updateProjectFilterSettings(identifier.type, identifier.id, settings);
+    } else {
+      // Clear filter settings
+      updateProjectFilterSettings(identifier.type, identifier.id, undefined);
     }
-  }, [getPresetStorageKey]);
+  }, [getConfigIdentifier]);
+
+  // Handle preset selection
+  const handlePresetSelect = useCallback((presetId) => {
+    // Set flag to prevent filter changes from marking dirty during preset application
+    isApplyingPresetRef.current = true;
+
+    setLastUsedPresetId(presetId);
+    setFilterDirty(false);
+    saveFilterSettings(presetId, false, null);
+
+    // Clear the flag after a microtask to allow React state updates to settle
+    // Using queueMicrotask ensures the flag is cleared after the current render cycle
+    queueMicrotask(() => {
+      isApplyingPresetRef.current = false;
+    });
+  }, [saveFilterSettings]);
+
+  // Handle filter change (from FilterPanel)
+  // @param newFilters - The new filter state
+  // @param isUserAction - true if this change was triggered by user interaction (should mark dirty)
+  const handleFilterChange = useCallback((newFilters, isUserAction = true) => {
+    setFilterOptions(newFilters);
+
+    // Skip saving during initial load to prevent overwriting saved settings
+    if (skipFilterSaveRef.current) {
+      return;
+    }
+
+    // Skip saving if this is not a user action (e.g., preset application, sync from parent)
+    if (!isUserAction) {
+      return;
+    }
+
+    // Skip saving if we're in the middle of a preset switch
+    // This is a secondary guard in case isUserAction wasn't properly set
+    if (isApplyingPresetRef.current) {
+      return;
+    }
+
+    // Only save client filters here - server filters are saved in handleServerFilterApplyWithSave
+    const stored = createStoredFilters(newFilters, null);
+
+    // If a preset is selected, mark as dirty
+    if (lastUsedPresetId) {
+      setFilterDirty(true);
+      saveFilterSettings(lastUsedPresetId, true, stored);
+    } else {
+      // No preset - save as custom
+      saveFilterSettings(null, false, stored);
+    }
+  }, [lastUsedPresetId, saveFilterSettings, getConfigIdentifier]);
 
   // Ref to store fold state before data updates
   const openStateRef = useRef(new Map());
@@ -470,10 +559,15 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const presetsLoadedForVersionRef = useRef(-1);
   const prevPresetsLoadingRef = useRef(true);
 
+  // Flag to skip saving filter settings during initial load
+  // This prevents FilterPanel's initial mount from clearing saved settings
+  const skipFilterSaveRef = useRef(true);
+
   // Reset sync state when provider changes
   useEffect(() => {
     initialSyncDoneRef.current = false;
     prevPresetsLoadingRef.current = true;
+    skipFilterSaveRef.current = true; // Re-enable skip on provider change
   }, [provider]);
 
   // Track presetsLoading: true -> false transition to detect when presets finish loading
@@ -504,8 +598,36 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     [sync, activeServerFilters]
   );
 
+  // Handle server filter apply (from FilterPanel)
+  // Wrapper around the original sync handler that also saves settings to localStorage
+  // @param serverFilters - The server filter state
+  // @param isUserAction - true if this change was triggered by user interaction (should mark dirty)
+  const handleServerFilterApplyWithSave = useCallback(async (serverFilters, isUserAction = true) => {
+    const gitlabFilters = toGitLabServerFilters(serverFilters);
+    setActiveServerFilters(gitlabFilters);
+
+    // Skip saving if this is not a user action (e.g., preset application)
+    if (!isUserAction) {
+      await syncWithFoldState({ serverFilters: gitlabFilters });
+      return;
+    }
+
+    // If a preset is selected, mark as dirty
+    if (lastUsedPresetId) {
+      setFilterDirty(true);
+      const stored = createStoredFilters({}, serverFilters);
+      saveFilterSettings(lastUsedPresetId, true, stored);
+    } else {
+      // No preset - save as custom
+      const stored = createStoredFilters({}, serverFilters);
+      saveFilterSettings(null, false, stored);
+    }
+
+    await syncWithFoldState({ serverFilters: gitlabFilters });
+  }, [lastUsedPresetId, saveFilterSettings, syncWithFoldState]);
+
   // Trigger initial sync after presets are loaded
-  // This ensures server filters from saved preset are applied on first sync
+  // This ensures server filters from saved preset or custom settings are applied on first sync
   useEffect(() => {
     // Skip if not ready or already synced
     if (!provider || presetsLoading || !proxyConfig || initialSyncDoneRef.current) {
@@ -520,25 +642,117 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
     initialSyncDoneRef.current = true;
 
-    // Read preset ID directly from localStorage to avoid stale state issues
-    const presetStorageKey = getPresetStorageKey();
-    const savedPresetId = presetStorageKey ? localStorage.getItem(presetStorageKey) : null;
+    // Allow saving after a short delay to let FilterPanel's initial effect run
+    // This prevents the initial mount from overwriting saved settings
+    setTimeout(() => {
+      skipFilterSaveRef.current = false;
+    }, 100);
 
-    // Check if we have a saved preset with server filters
-    if (savedPresetId && filterPresets.length > 0) {
-      const savedPreset = filterPresets.find(p => p.id === savedPresetId);
-      if (savedPreset?.filters?.filterType === 'server' && savedPreset?.filters?.serverFilters) {
-        const gitlabFilters = toGitLabServerFilters(savedPreset.filters.serverFilters);
-        setActiveServerFilters(gitlabFilters);
-        setLastUsedPresetId(savedPresetId);
-        syncWithFoldState({ serverFilters: gitlabFilters });
-        return;
-      }
+    // Load project settings to determine initial filters
+    const identifier = getConfigIdentifier();
+    if (!identifier) {
+      syncWithFoldState();
+      return;
     }
 
-    // No saved server preset - sync without filters
-    syncWithFoldState();
-  }, [provider, presetsLoading, proxyConfig, filterPresets, syncWithFoldState, getPresetStorageKey, configVersion]);
+    const settings = loadProjectSettings(identifier.type, identifier.id);
+
+    if (settings?.filter) {
+      const { mode, presetId, dirty, filters } = settings.filter;
+
+      if (mode === 'preset' && presetId) {
+        // Preset mode
+        if (dirty && filters) {
+          // Preset is dirty - use stored filters (modified from preset)
+          // Support both client and server filters simultaneously
+          const hasServer = checkHasServerFilters(filters);
+          const hasClient = checkHasClientFilters(filters);
+
+          if (hasServer) {
+            const gitlabFilters = toGitLabServerFilters(filters.serverFilters);
+            setActiveServerFilters(gitlabFilters);
+          }
+          if (hasClient) {
+            setFilterOptions(restoreFilterOptions(filters));
+          }
+
+          setLastUsedPresetId(presetId);
+          setFilterDirty(true);
+
+          if (hasServer) {
+            const gitlabFilters = toGitLabServerFilters(filters.serverFilters);
+            syncWithFoldState({ serverFilters: gitlabFilters });
+          } else {
+            syncWithFoldState();
+          }
+        } else {
+          // Preset is not dirty - load from preset itself
+          const savedPreset = filterPresets.find(p => p.id === presetId);
+          if (savedPreset?.filters) {
+            const presetFilters = savedPreset.filters;
+            const hasServer = presetFilters.serverFilters &&
+              ((presetFilters.serverFilters.labelNames?.length ?? 0) > 0 ||
+               (presetFilters.serverFilters.milestoneTitles?.length ?? 0) > 0 ||
+               (presetFilters.serverFilters.assigneeUsernames?.length ?? 0) > 0 ||
+               presetFilters.serverFilters.dateRange?.createdAfter ||
+               presetFilters.serverFilters.dateRange?.createdBefore);
+            const hasClient =
+              (presetFilters.milestoneIds?.length ?? 0) > 0 ||
+              (presetFilters.epicIds?.length ?? 0) > 0 ||
+              (presetFilters.labels?.length ?? 0) > 0 ||
+              (presetFilters.assignees?.length ?? 0) > 0 ||
+              (presetFilters.states?.length ?? 0) > 0 ||
+              !!presetFilters.search;
+
+            if (hasServer) {
+              const gitlabFilters = toGitLabServerFilters(presetFilters.serverFilters);
+              setActiveServerFilters(gitlabFilters);
+            }
+            if (hasClient) {
+              setFilterOptions(presetFilters);
+            }
+
+            setLastUsedPresetId(presetId);
+
+            if (hasServer) {
+              const gitlabFilters = toGitLabServerFilters(presetFilters.serverFilters);
+              syncWithFoldState({ serverFilters: gitlabFilters });
+            } else {
+              syncWithFoldState();
+            }
+          } else {
+            // Preset not found - sync without filters
+            syncWithFoldState();
+          }
+        }
+      } else if (mode === 'custom' && filters) {
+        // Custom mode - use stored filters
+        // Support both client and server filters simultaneously
+        const hasServer = checkHasServerFilters(filters);
+        const hasClient = checkHasClientFilters(filters);
+
+        if (hasServer) {
+          const gitlabFilters = toGitLabServerFilters(filters.serverFilters);
+          setActiveServerFilters(gitlabFilters);
+        }
+        if (hasClient) {
+          setFilterOptions(restoreFilterOptions(filters));
+        }
+
+        if (hasServer) {
+          const gitlabFilters = toGitLabServerFilters(filters.serverFilters);
+          syncWithFoldState({ serverFilters: gitlabFilters });
+        } else {
+          syncWithFoldState();
+        }
+      } else {
+        syncWithFoldState();
+      }
+    } else {
+      // No saved filter settings - sync without filters
+      syncWithFoldState();
+    }
+  }, [provider, presetsLoading, proxyConfig, filterPresets, syncWithFoldState, getConfigIdentifier, configVersion]);
 
   // Update ref when allTasks changes
   useEffect(() => {
@@ -710,13 +924,6 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     }),
     []
   );
-
-  // Handler for applying server filters and triggering sync
-  const handleServerFilterApply = useCallback(async (serverFilters) => {
-    const gitlabFilters = toGitLabServerFilters(serverFilters);
-    setActiveServerFilters(gitlabFilters);
-    await syncWithFoldState({ serverFilters: gitlabFilters });
-  }, [syncWithFoldState]);
 
   // Handler for adding a new milestone
   const handleAddMilestone = useCallback(async () => {
@@ -2184,12 +2391,14 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         milestones={milestones}
         epics={epics}
         tasks={allTasks}
-        onFilterChange={setFilterOptions}
+        onFilterChange={handleFilterChange}
+        initialFilters={filterOptions}
         presets={filterPresets}
         presetsLoading={presetsLoading}
         presetsSaving={presetsSaving}
         canEditPresets={canEditHolidays}
         onCreatePreset={createNewPreset}
+        onUpdatePreset={updatePreset}
         onRenamePreset={renamePreset}
         onDeletePreset={deletePreset}
         onPresetSelect={handlePresetSelect}
@@ -2198,7 +2407,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         filterOptions={serverFilterOptions}
         filterOptionsLoading={serverFilterOptionsLoading}
         serverFilters={activeServerFilters}
-        onServerFilterApply={handleServerFilterApply}
+        onServerFilterApply={handleServerFilterApplyWithSave}
+        isDirty={filterDirty}
       />
 
       {syncState.error && (

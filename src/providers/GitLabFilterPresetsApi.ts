@@ -227,7 +227,8 @@ export async function loadFilterPresets(
   );
 
   // Parse content
-  return parseFilterPresetsConfig(content);
+  const config = parseFilterPresetsConfig(content);
+  return config;
 }
 
 /**

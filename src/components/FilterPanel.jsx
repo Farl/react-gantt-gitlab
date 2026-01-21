@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { GitLabFilters } from '../utils/GitLabFilters';
 import { FilterPresetSelector } from './FilterPresetSelector';
 import { FilterMultiSelect } from './FilterMultiSelect';
+import { presetHasServerFilters, presetHasClientFilters } from '../types/projectSettings';
 
 // Default empty server filters
 const DEFAULT_SERVER_FILTERS = {
@@ -64,6 +65,7 @@ export function FilterPanel({
   presetsSaving = false,
   canEditPresets = false,
   onCreatePreset,
+  onUpdatePreset,
   onRenamePreset,
   onDeletePreset,
   onPresetSelect,
@@ -74,6 +76,8 @@ export function FilterPanel({
   filterOptionsLoading = false,
   serverFilters: initialServerFilters = null, // Initial server filters (from parent state)
   onServerFilterApply, // Callback to apply server filters and trigger sync
+  // Dirty state for preset modification indicator
+  isDirty = false, // Whether preset has been modified
 }) {
   // Tab state: 'client' or 'server'
   const [activeTab, setActiveTab] = useState('client');
@@ -98,6 +102,7 @@ export function FilterPanel({
 
   // Track if initial preset has been applied
   const initialPresetAppliedRef = useRef(false);
+
 
   // Build label options - merge from tasks (client) and filterOptions (server)
   const labelOptions = useMemo(() => {
@@ -226,17 +231,29 @@ export function FilterPanel({
       const preset = presets.find(p => p.id === initialPresetId);
       if (preset) {
         const presetFilters = preset.filters;
-        const isServerPreset = presetFilters.filterType === 'server' && presetFilters.serverFilters;
+        // Check for server filters using helper function
+        const hasServerFilters = presetHasServerFilters(presetFilters);
 
-        if (isServerPreset) {
-          setActiveTab('server');
+        // Check for client filters using helper function
+        const hasClientFilters = presetHasClientFilters(presetFilters);
+
+        // Apply both client and server filters if they exist
+        if (hasServerFilters) {
           const parsedServerFilters = parseServerFiltersFromPreset(presetFilters.serverFilters);
           setServerFilters(parsedServerFilters);
-          // Don't call onServerFilterApply here - GitLabGantt handles initial sync
-        } else {
-          setActiveTab('client');
+        }
+
+        if (hasClientFilters) {
           setFilters(parseClientFiltersFromPreset(presetFilters));
         }
+
+        // Set active tab based on which filters exist (prefer server if both exist)
+        if (hasServerFilters) {
+          setActiveTab('server');
+        } else if (hasClientFilters) {
+          setActiveTab('client');
+        }
+
         // Set the selected preset ID to show it's active in the UI
         setSelectedPresetId(initialPresetId);
         initialPresetAppliedRef.current = true;
@@ -244,60 +261,106 @@ export function FilterPanel({
     }
   }, [initialPresetId, presets, presetsLoading]);
 
+  // Track previous initialFilters to detect external changes
+  const prevInitialFiltersRef = useRef(initialFilters);
+
+  // Sync internal state when initialFilters changes from parent
+  // This handles restoration of saved filters after project switch
   useEffect(() => {
-    // Notify parent of filter changes
-    if (onFilterChange) {
-      onFilterChange(filters);
+    // Skip if initialFilters hasn't actually changed (shallow compare)
+    const prev = prevInitialFiltersRef.current;
+    const hasChanged = prev !== initialFilters && (
+      prev?.search !== initialFilters?.search ||
+      JSON.stringify(prev?.milestoneIds) !== JSON.stringify(initialFilters?.milestoneIds) ||
+      JSON.stringify(prev?.epicIds) !== JSON.stringify(initialFilters?.epicIds) ||
+      JSON.stringify(prev?.labels) !== JSON.stringify(initialFilters?.labels) ||
+      JSON.stringify(prev?.assignees) !== JSON.stringify(initialFilters?.assignees) ||
+      JSON.stringify(prev?.states) !== JSON.stringify(initialFilters?.states)
+    );
+
+    if (hasChanged && initialFilters && Object.keys(initialFilters).length > 0) {
+      // Programmatic change from parent - just update local state, don't notify back
+      setFilters(parseClientFiltersFromPreset(initialFilters));
     }
+
+    prevInitialFiltersRef.current = initialFilters;
+  }, [initialFilters]);
+
+  // Handle filter changes from user interactions
+  // This is the idiomatic React way - update state and notify parent in the same handler
+  const handleFilterFieldChange = useCallback((field, value) => {
+    const newFilters = { ...filters, [field]: value };
+    setFilters(newFilters);
+    onFilterChange?.(newFilters, true);
   }, [filters, onFilterChange]);
 
   const handleSearchChange = (search) => {
-    setFilters((prev) => ({ ...prev, search }));
+    handleFilterFieldChange('search', search);
   };
 
   // Apply preset filters
+  // This is a programmatic change, so we notify parent with isUserAction=false
+  // Supports presets with both client and server filters
   const handleApplyPreset = useCallback((preset) => {
     const presetFilters = preset.filters;
-    const isServerPreset = presetFilters.filterType === 'server' && presetFilters.serverFilters;
 
-    if (isServerPreset) {
-      setActiveTab('server');
+    // Notify parent about preset selection FIRST, so isApplyingPresetRef is set
+    setSelectedPresetId(preset.id);
+    onPresetSelect?.(preset.id);
+
+    // Check if preset has server filters using helper function
+    const hasServerFilters = presetHasServerFilters(presetFilters);
+
+    // Check if preset has client filters using helper function
+    const hasClientFilters = presetHasClientFilters(presetFilters);
+
+    // Apply server filters (or clear them)
+    if (hasServerFilters) {
       const parsedServerFilters = parseServerFiltersFromPreset(presetFilters.serverFilters);
       setServerFilters(parsedServerFilters);
       setHasUnsyncedServerChanges(false);
-      onServerFilterApply?.(parsedServerFilters);
+      onServerFilterApply?.(parsedServerFilters, false);
+    } else {
+      setServerFilters(DEFAULT_SERVER_FILTERS);
+      setHasUnsyncedServerChanges(false);
+      onServerFilterApply?.(DEFAULT_SERVER_FILTERS, false);
+    }
+
+    // Apply client filters (or clear them)
+    if (hasClientFilters) {
+      const parsedFilters = parseClientFiltersFromPreset(presetFilters);
+      setFilters(parsedFilters);
+      onFilterChange?.(parsedFilters, false);
+    } else {
+      setFilters(DEFAULT_CLIENT_FILTERS);
+      onFilterChange?.(DEFAULT_CLIENT_FILTERS, false);
+    }
+
+    // Set active tab based on which filters exist
+    // If only server filters exist, show server tab; otherwise show client tab
+    if (hasServerFilters && !hasClientFilters) {
+      setActiveTab('server');
     } else {
       setActiveTab('client');
-      setFilters(parseClientFiltersFromPreset(presetFilters));
     }
-    setSelectedPresetId(preset.id); // Update local state
-    onPresetSelect?.(preset.id); // Notify parent
-  }, [onPresetSelect, onServerFilterApply]);
+  }, [onPresetSelect, onServerFilterApply, onFilterChange]);
 
-  // Create preset with current filters
+  // Create preset with current filters (saves both client and server filters)
   const handleCreatePreset = useCallback(async (name) => {
     if (onCreatePreset) {
-      let newPresetId;
-      if (activeTab === 'server') {
-        // Save as server filter preset
-        newPresetId = await onCreatePreset(name, {
-          filterType: 'server',
-          serverFilters: serverFilters,
-        });
-      } else {
-        // Save as client filter preset
-        newPresetId = await onCreatePreset(name, {
-          filterType: 'client',
-          ...filters,
-        });
-      }
+      // Save both client and server filters
+      const newPresetId = await onCreatePreset(name, {
+        ...filters,
+        serverFilters: serverFilters,
+      });
+
       // Select the newly created preset
       if (newPresetId) {
         setSelectedPresetId(newPresetId);
         onPresetSelect?.(newPresetId);
       }
     }
-  }, [onCreatePreset, filters, serverFilters, activeTab, onPresetSelect]);
+  }, [onCreatePreset, filters, serverFilters, onPresetSelect]);
 
   // Client filter count
   const clientFilterCount =
@@ -317,6 +380,34 @@ export function FilterPanel({
 
   // Total active filter count based on current tab
   const activeFilterCount = activeTab === 'server' ? serverFilterCount : clientFilterCount;
+
+  // Check if local server filters differ from preset's server filters
+  // This allows showing "modified" immediately when server filter is changed (before Apply)
+  const isLocalServerFilterDirty = useMemo(() => {
+    if (!selectedPresetId || !presets) return false;
+    const preset = presets.find(p => p.id === selectedPresetId);
+    if (!preset?.filters) return false;
+
+    const presetServerFilters = preset.filters.serverFilters;
+
+    // If preset has no server filters, check if current has any
+    if (!presetServerFilters) {
+      return serverFilterCount > 0;
+    }
+
+    // Compare each field
+    const presetParsed = parseServerFiltersFromPreset(presetServerFilters);
+    return (
+      JSON.stringify(serverFilters.labelNames || []) !== JSON.stringify(presetParsed.labelNames || []) ||
+      JSON.stringify(serverFilters.milestoneTitles || []) !== JSON.stringify(presetParsed.milestoneTitles || []) ||
+      JSON.stringify(serverFilters.assigneeUsernames || []) !== JSON.stringify(presetParsed.assigneeUsernames || []) ||
+      (serverFilters.dateRange?.createdAfter || '') !== (presetParsed.dateRange?.createdAfter || '') ||
+      (serverFilters.dateRange?.createdBefore || '') !== (presetParsed.dateRange?.createdBefore || '')
+    );
+  }, [selectedPresetId, presets, serverFilters, serverFilterCount]);
+
+  // Effective dirty state: parent's isDirty OR local server filter changes
+  const effectiveDirty = isDirty || isLocalServerFilterDirty;
 
   // Server filter handlers
   const handleServerFilterChange = (field, value) => {
@@ -347,40 +438,23 @@ export function FilterPanel({
   return (
     <div className="gitlab-filter-panel">
       <div className="filter-header">
-        <div className="filter-header-left">
+        <div className="filter-actions-group">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="filter-toggle"
           >
             <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>
             Filters
-            {activeFilterCount > 0 && (
-              <span className="filter-badge">{activeFilterCount}</span>
-            )}
           </button>
 
-          <FilterPresetSelector
-            presets={presets}
-            currentFilters={filters}
-            loading={presetsLoading}
-            saving={presetsSaving}
-            canEdit={canEditPresets}
-            onSelectPreset={handleApplyPreset}
-            onCreatePreset={handleCreatePreset}
-            onRenamePreset={onRenamePreset}
-            onDeletePreset={onDeletePreset}
-            selectedPresetId={selectedPresetId}
-            serverFilterCount={serverFilterCount}
-            isGroupMode={isGroupMode}
-          />
-
-          {/* Clear and Apply buttons - grouped on left side */}
+          {/* Clear and Apply buttons */}
           {clientFilterCount > 0 && (
             <button
               onClick={() => {
                 setFilters(DEFAULT_CLIENT_FILTERS);
-                setSelectedPresetId(null); // Clear local state
-                onPresetSelect?.(null); // Notify parent
+                onFilterChange?.(DEFAULT_CLIENT_FILTERS, true);
+                setSelectedPresetId(null);
+                onPresetSelect?.(null);
               }}
               className="btn-clear"
             >
@@ -391,8 +465,8 @@ export function FilterPanel({
             <button
               onClick={() => {
                 handleClearServerFilters();
-                setSelectedPresetId(null); // Clear local state
-                onPresetSelect?.(null); // Notify parent
+                setSelectedPresetId(null);
+                onPresetSelect?.(null);
               }}
               className="btn-clear btn-clear-server"
             >
@@ -407,6 +481,78 @@ export function FilterPanel({
               Apply Server
             </button>
           )}
+
+          {/* Preset management - inline after Clear/Apply buttons */}
+          <div className="preset-control-group">
+            <FilterPresetSelector
+              presets={presets}
+              currentFilters={filters}
+              currentServerFilters={serverFilters}
+              activeTab={activeTab}
+              loading={presetsLoading}
+              saving={presetsSaving}
+              canEdit={canEditPresets}
+              onSelectPreset={handleApplyPreset}
+              onCreatePreset={handleCreatePreset}
+              onUpdatePreset={onUpdatePreset}
+              onRenamePreset={onRenamePreset}
+              onDeletePreset={onDeletePreset}
+              selectedPresetId={selectedPresetId}
+              serverFilterCount={serverFilterCount}
+              isGroupMode={isGroupMode}
+              isDirty={effectiveDirty}
+            />
+
+            {/* Dirty badge */}
+            {effectiveDirty && selectedPresetId && (
+              <span className="preset-dirty-badge">modified</span>
+            )}
+
+            {/* Revert button */}
+            {effectiveDirty && selectedPresetId && (
+              <button
+                className="btn-revert"
+                onClick={() => {
+                  const preset = presets.find((p) => p.id === selectedPresetId);
+                  if (preset) {
+                    handleApplyPreset(preset);
+                  }
+                }}
+              >
+                Revert
+              </button>
+            )}
+
+            {/* Save button */}
+            {effectiveDirty && selectedPresetId && canEditPresets && (
+              <button
+                className="btn-save"
+                onClick={async () => {
+                  try {
+                    // Build complete filter object with both client and server filters
+                    const newFilters = {
+                      ...filters,
+                      serverFilters: serverFilters,
+                    };
+
+                    await onUpdatePreset?.(selectedPresetId, { filters: newFilters });
+
+                    // Re-apply preset to clear dirty state
+                    const preset = presets.find((p) => p.id === selectedPresetId);
+                    if (preset) {
+                      // Update the preset object with new filters before re-applying
+                      const updatedPreset = { ...preset, filters: newFilters };
+                      handleApplyPreset(updatedPreset);
+                    }
+                  } catch (err) {
+                    console.error('[FilterPanel] Failed to save preset:', err);
+                  }
+                }}
+              >
+                Save
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -433,7 +579,7 @@ export function FilterPanel({
                 {serverFilterCount > 0 && (
                   <span className="tab-badge">{serverFilterCount}</span>
                 )}
-                {hasUnsyncedServerChanges && <span className="unsync-indicator">*</span>}
+                {hasUnsyncedServerChanges && <span className="unsync-indicator">unapplied</span>}
               </button>
             </div>
 
@@ -472,7 +618,7 @@ export function FilterPanel({
                     ...milestoneOptions,
                   ]}
                   selected={filters.milestoneIds}
-                  onChange={(values) => setFilters(prev => ({ ...prev, milestoneIds: values }))}
+                  onChange={(values) => handleFilterFieldChange('milestoneIds', values)}
                   placeholder="Search milestones..."
                   emptyMessage="No milestones"
                 />
@@ -486,7 +632,7 @@ export function FilterPanel({
                     ...epicOptions,
                   ]}
                   selected={filters.epicIds}
-                  onChange={(values) => setFilters(prev => ({ ...prev, epicIds: values }))}
+                  onChange={(values) => handleFilterFieldChange('epicIds', values)}
                   placeholder="Search epics..."
                   emptyMessage="No epics"
                 />
@@ -500,7 +646,7 @@ export function FilterPanel({
                     ...labelOptions,
                   ]}
                   selected={filters.labels}
-                  onChange={(values) => setFilters(prev => ({ ...prev, labels: values }))}
+                  onChange={(values) => handleFilterFieldChange('labels', values)}
                   placeholder="Search labels..."
                   emptyMessage="No labels"
                 />
@@ -514,7 +660,7 @@ export function FilterPanel({
                     ...assigneeOptions,
                   ]}
                   selected={filters.assignees}
-                  onChange={(values) => setFilters(prev => ({ ...prev, assignees: values }))}
+                  onChange={(values) => handleFilterFieldChange('assignees', values)}
                   placeholder="Search assignees..."
                   emptyMessage="No assignees"
                 />
@@ -636,11 +782,17 @@ export function FilterPanel({
           padding: 6px 12px;
         }
 
-        .filter-header-left {
+        .filter-actions-group {
           display: flex;
           align-items: center;
           gap: 8px;
           flex-wrap: wrap;
+        }
+
+        .preset-control-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
 
         .filter-toggle {
@@ -665,17 +817,6 @@ export function FilterPanel({
         .toggle-icon {
           font-size: 10px;
           color: var(--wx-gitlab-control-text);
-        }
-
-        .filter-badge {
-          background: #1f75cb;
-          color: white;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 6px;
-          border-radius: 10px;
-          min-width: 18px;
-          text-align: center;
         }
 
         .btn-clear {
@@ -706,6 +847,48 @@ export function FilterPanel({
 
         .btn-apply-server-header:hover {
           background: #1a65b3;
+        }
+
+        /* Preset dirty badge */
+        .preset-dirty-badge {
+          background: rgba(252, 109, 38, 0.15);
+          color: #fc6d26;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        /* Revert button */
+        .btn-revert {
+          padding: 2px 8px;
+          background: transparent;
+          color: var(--wx-gitlab-filter-text);
+          border: 1px solid var(--wx-gitlab-filter-border, #ddd);
+          border-radius: 4px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-revert:hover {
+          background: var(--wx-gitlab-filter-hover-background);
+        }
+
+        /* Save button */
+        .btn-save {
+          padding: 2px 8px;
+          background: var(--wx-gitlab-accent-color, #fc6d26);
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-save:hover {
+          background: #e55b1d;
         }
 
         .filter-content {
@@ -822,13 +1005,18 @@ export function FilterPanel({
         }
 
         .unsync-indicator {
-          color: #ffc107;
-          font-weight: bold;
-          margin-left: 2px;
+          background: rgba(255, 193, 7, 0.15);
+          color: #b8860b;
+          padding: 1px 5px;
+          border-radius: 3px;
+          font-size: 10px;
+          font-weight: 500;
+          margin-left: 4px;
         }
 
         .filter-tab.active .unsync-indicator {
-          color: #ffc107;
+          background: rgba(255, 193, 7, 0.2);
+          color: #9a7209;
         }
 
         .filter-loading {

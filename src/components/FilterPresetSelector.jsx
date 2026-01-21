@@ -1,15 +1,16 @@
 /**
  * Filter Preset Selector Component
  * Provides dropdown for selecting, creating, and managing filter presets
+ * Features: Search, folder structure (using "/" delimiter), override save
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Toast } from './Toast.jsx';
 
 /**
  * Simple dialog component for preset name input
  */
-function PresetDialog({ title, label, placeholder, value, onChange, onSubmit, onCancel, submitLabel, saving }) {
+function PresetDialog({ title, label, placeholder, value, onChange, onSubmit, onCancel, submitLabel, saving, hint }) {
   return (
     <div className="preset-dialog-overlay" onClick={onCancel}>
       <div className="preset-dialog" onClick={e => e.stopPropagation()}>
@@ -27,6 +28,7 @@ function PresetDialog({ title, label, placeholder, value, onChange, onSubmit, on
               if (e.key === 'Escape') onCancel();
             }}
           />
+          {hint && <div className="dialog-hint">{hint}</div>}
         </div>
         <div className="dialog-footer">
           <button className="btn-cancel" onClick={onCancel}>
@@ -43,6 +45,72 @@ function PresetDialog({ title, label, placeholder, value, onChange, onSubmit, on
       </div>
     </div>
   );
+}
+
+/**
+ * Parse preset name into folder path and display name
+ * e.g., "ui/design/dark" -> { folders: ["ui", "design"], name: "dark" }
+ */
+function parsePresetPath(fullName) {
+  const parts = fullName.split('/').map(p => p.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    return { folders: [], name: fullName };
+  }
+  return {
+    folders: parts.slice(0, -1),
+    name: parts[parts.length - 1],
+  };
+}
+
+/**
+ * Build a tree structure from flat preset list
+ * Handles case where a preset name matches a folder name (e.g., "unovel" when "unovel/xxx" exists)
+ */
+function buildPresetTree(presets) {
+  const root = { folders: {}, presets: [] };
+
+  // First pass: identify all folder names
+  const folderNames = new Set();
+  presets.forEach(preset => {
+    const { folders } = parsePresetPath(preset.name);
+    if (folders.length > 0) {
+      // Add top-level folder name
+      folderNames.add(folders[0]);
+    }
+  });
+
+  // Second pass: build the tree
+  presets.forEach(preset => {
+    const { folders, name } = parsePresetPath(preset.name);
+
+    // If this preset has no folder path but its name matches a folder name,
+    // treat it as a special "root" preset inside that folder
+    if (folders.length === 0 && folderNames.has(preset.name)) {
+      // Ensure the folder exists
+      if (!root.folders[preset.name]) {
+        root.folders[preset.name] = { folders: {}, presets: [] };
+      }
+      // Add as a special root item with a distinctive display name
+      root.folders[preset.name].presets.unshift({
+        ...preset,
+        displayName: `${preset.name}`,
+        isRootPreset: true, // Mark as root preset for styling
+      });
+      return;
+    }
+
+    let current = root;
+    folders.forEach(folderName => {
+      if (!current.folders[folderName]) {
+        current.folders[folderName] = { folders: {}, presets: [] };
+      }
+      current = current.folders[folderName];
+    });
+
+    current.presets.push({ ...preset, displayName: name });
+  });
+
+  return root;
 }
 
 /**
@@ -89,19 +157,127 @@ function hasActiveFilters(filters) {
   );
 }
 
+/**
+ * Folder component for tree view
+ */
+function PresetFolder({ name, node, level, matchingPresetId, canEdit, onSelectPreset, onMenuToggle, menuButtonRefs, searchQuery, expandedFolders, toggleFolder }) {
+  const folderPath = name;
+  const isExpanded = expandedFolders.has(folderPath);
+  const hasContent = Object.keys(node.folders).length > 0 || node.presets.length > 0;
+
+  // Filter presets based on search
+  const filteredPresets = searchQuery
+    ? node.presets.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : node.presets;
+
+  // Check if any child matches search (for folders)
+  const hasMatchingChildren = searchQuery
+    ? filteredPresets.length > 0 || Object.entries(node.folders).some(([_, childNode]) =>
+        childNode.presets.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : true;
+
+  if (!hasContent || (searchQuery && !hasMatchingChildren)) return null;
+
+  return (
+    <div className="preset-folder">
+      <button
+        className="preset-folder-header"
+        onClick={() => toggleFolder(folderPath)}
+        style={{ paddingLeft: `${12 + level * 16}px` }}
+      >
+        <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} folder-arrow`}></i>
+        <i className="fas fa-folder folder-icon"></i>
+        <span className="folder-name">{name}</span>
+        <span className="folder-count">{node.presets.length}</span>
+      </button>
+
+      {isExpanded && (
+        <div className="preset-folder-content">
+          {/* Subfolders */}
+          {Object.entries(node.folders).map(([subName, subNode]) => (
+            <PresetFolder
+              key={subName}
+              name={subName}
+              node={subNode}
+              level={level + 1}
+              matchingPresetId={matchingPresetId}
+              canEdit={canEdit}
+              onSelectPreset={onSelectPreset}
+              onMenuToggle={onMenuToggle}
+              menuButtonRefs={menuButtonRefs}
+              searchQuery={searchQuery}
+              expandedFolders={expandedFolders}
+              toggleFolder={toggleFolder}
+            />
+          ))}
+
+          {/* Presets in this folder */}
+          {filteredPresets.map(preset => (
+            <PresetItem
+              key={preset.id}
+              preset={preset}
+              level={level + 1}
+              isActive={matchingPresetId === preset.id}
+              canEdit={canEdit}
+              onSelect={onSelectPreset}
+              onMenuToggle={onMenuToggle}
+              menuButtonRefs={menuButtonRefs}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Individual preset item component
+ */
+function PresetItem({ preset, level, isActive, canEdit, onSelect, onMenuToggle, menuButtonRefs }) {
+  return (
+    <div className={`preset-item ${isActive ? 'active' : ''}`}>
+      <button
+        className="preset-select-btn"
+        onClick={() => onSelect(preset)}
+        title={preset.name}
+        style={{ paddingLeft: `${12 + (level || 0) * 16}px` }}
+      >
+        <span className="preset-item-name">{preset.displayName || preset.name}</span>
+        {isActive && <i className="fas fa-check preset-check"></i>}
+      </button>
+
+      {canEdit && (
+        <button
+          ref={(el) => { menuButtonRefs.current[preset.id] = el; }}
+          className="preset-menu-btn"
+          onClick={(e) => onMenuToggle(e, preset.id)}
+          title="More options"
+        >
+          <i className="fas fa-ellipsis-v"></i>
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function FilterPresetSelector({
   presets,
   currentFilters,
+  currentServerFilters,
+  activeTab = 'client',
   loading,
   saving,
   canEdit,
   onSelectPreset,
   onCreatePreset,
+  onUpdatePreset,
   onRenamePreset,
   onDeletePreset,
   selectedPresetId, // Explicit selected preset ID (preferred over filter matching)
   serverFilterCount = 0, // Count of active server filters (for enabling save button)
   isGroupMode = false, // Whether current config is a Group (Presets not supported)
+  isDirty = false, // Whether the selected preset has been modified
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -111,14 +287,28 @@ export function FilterPresetSelector({
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [errorMessage, setErrorMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
   const menuButtonRefs = useRef({});
+  const searchInputRef = useRef(null);
 
   // Clear error handler
   const clearError = useCallback(() => {
     setErrorMessage(null);
   }, []);
+
+  // Build tree structure from presets
+  const presetTree = useMemo(() => buildPresetTree(presets || []), [presets]);
+
+  // Get root-level presets (no folder)
+  const rootPresets = useMemo(() => {
+    const filtered = presetTree.presets.filter(p =>
+      !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    return filtered;
+  }, [presetTree, searchQuery]);
 
   // Use explicit selectedPresetId if provided (including null to indicate no selection)
   // Only fall back to filter matching if selectedPresetId is undefined (not passed)
@@ -128,6 +318,35 @@ export function FilterPresetSelector({
 
   // Get active preset for menu actions
   const activePreset = activeMenuId ? presets?.find(p => p.id === activeMenuId) : null;
+
+  // Toggle folder expansion
+  const toggleFolder = useCallback((folderPath) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) {
+        next.delete(folderPath);
+      } else {
+        next.add(folderPath);
+      }
+      return next;
+    });
+  }, []);
+
+  // Expand all folders that contain the selected preset
+  useEffect(() => {
+    if (matchingPreset) {
+      const { folders } = parsePresetPath(matchingPreset.name);
+      if (folders.length > 0) {
+        setExpandedFolders(prev => {
+          const next = new Set(prev);
+          folders.forEach((_, idx) => {
+            next.add(folders.slice(0, idx + 1).join('/'));
+          });
+          return next;
+        });
+      }
+    }
+  }, [matchingPreset]);
 
   // Close dropdown and menu when clicking outside
   useEffect(() => {
@@ -142,6 +361,7 @@ export function FilterPresetSelector({
       if (!isInsideDropdown && !isInsideMenu) {
         setIsOpen(false);
         setActiveMenuId(null);
+        setSearchQuery('');
       } else if (isInsideDropdown && !isInsideMenu && activeMenuId) {
         // Click inside dropdown but outside menu - close only menu
         setActiveMenuId(null);
@@ -158,21 +378,38 @@ export function FilterPresetSelector({
     };
   }, [isOpen, activeMenuId]);
 
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
   const handleToggle = useCallback(() => {
     setIsOpen(prev => !prev);
     setActiveMenuId(null);
-  }, []);
+    if (!isOpen) {
+      setSearchQuery('');
+    }
+  }, [isOpen]);
 
   const handleSelectPreset = useCallback((preset) => {
     onSelectPreset(preset);
     setIsOpen(false);
+    setSearchQuery('');
   }, [onSelectPreset]);
 
   const handleOpenCreateDialog = useCallback(() => {
-    setNewPresetName('');
+    // If a preset is selected, use its folder path as default
+    if (matchingPreset) {
+      const { folders } = parsePresetPath(matchingPreset.name);
+      setNewPresetName(folders.length > 0 ? folders.join('/') + '/' : '');
+    } else {
+      setNewPresetName('');
+    }
     setShowCreateDialog(true);
     setIsOpen(false);
-  }, []);
+  }, [matchingPreset]);
 
   const handleCreatePreset = useCallback(async () => {
     if (!newPresetName.trim()) return;
@@ -241,17 +478,25 @@ export function FilterPresetSelector({
   // Can save if there are active client filters OR server filters, and no preset currently matches
   const canSaveCurrentFilters = (hasActiveFilters(currentFilters) || serverFilterCount > 0) && !matchingPreset;
 
+  // Get display name for the selected preset
+  const selectedDisplayName = matchingPreset
+    ? parsePresetPath(matchingPreset.name).name
+    : null;
+
   return (
     <div className="filter-preset-container" ref={dropdownRef}>
       <button
         onClick={handleToggle}
-        className="btn-filter-preset"
-        title="Filter Presets"
+        className={`btn-filter-preset ${matchingPreset ? 'has-preset' : ''}`}
+        title={matchingPreset ? matchingPreset.name : 'Filter Presets'}
         disabled={loading}
       >
         <i className="fas fa-bookmark"></i>
-        {matchingPreset && <span className="preset-name">{matchingPreset.name}</span>}
-        {saving && <i className="fas fa-spinner fa-spin" style={{ marginLeft: 4 }}></i>}
+        {matchingPreset && (
+          <span className="preset-name">{selectedDisplayName}</span>
+        )}
+        {saving && <i className="fas fa-spinner fa-spin preset-spinner"></i>}
+        <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} preset-chevron`}></i>
       </button>
 
       {/* Error Toast - rendered via portal */}
@@ -267,7 +512,26 @@ export function FilterPresetSelector({
 
       {isOpen && (
         <div className="filter-preset-dropdown">
-          <div className="preset-header">Presets</div>
+          {/* Search Input */}
+          <div className="preset-search">
+            <i className="fas fa-search search-icon"></i>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search presets..."
+              className="preset-search-input"
+            />
+            {searchQuery && (
+              <button
+                className="search-clear"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
 
           {loading ? (
             <div className="preset-loading">
@@ -277,34 +541,42 @@ export function FilterPresetSelector({
             <>
               {presets && presets.length > 0 ? (
                 <div className="preset-list">
-                  {presets.map((preset) => (
-                    <div
-                      key={preset.id}
-                      className={`preset-item ${matchingPreset?.id === preset.id ? 'active' : ''}`}
-                    >
-                      <button
-                        className="preset-select-btn"
-                        onClick={() => handleSelectPreset(preset)}
-                        title={preset.name}
-                      >
-                        <span className="preset-item-name">{preset.name}</span>
-                        {matchingPreset?.id === preset.id && (
-                          <i className="fas fa-check" style={{ color: '#28a745' }}></i>
-                        )}
-                      </button>
-
-                      {canEdit && (
-                        <button
-                          ref={(el) => { menuButtonRefs.current[preset.id] = el; }}
-                          className="preset-menu-btn"
-                          onClick={(e) => handleMenuToggle(e, preset.id)}
-                          title="More options"
-                        >
-                          <i className="fas fa-ellipsis-v"></i>
-                        </button>
-                      )}
-                    </div>
+                  {/* Folders */}
+                  {Object.entries(presetTree.folders).map(([folderName, node]) => (
+                    <PresetFolder
+                      key={folderName}
+                      name={folderName}
+                      node={node}
+                      level={0}
+                      matchingPresetId={matchingPreset?.id}
+                      canEdit={canEdit}
+                      onSelectPreset={handleSelectPreset}
+                      onMenuToggle={handleMenuToggle}
+                      menuButtonRefs={menuButtonRefs}
+                      searchQuery={searchQuery}
+                      expandedFolders={expandedFolders}
+                      toggleFolder={toggleFolder}
+                    />
                   ))}
+
+                  {/* Root-level presets */}
+                  {rootPresets.map((preset) => (
+                    <PresetItem
+                      key={preset.id}
+                      preset={preset}
+                      level={0}
+                      isActive={matchingPreset?.id === preset.id}
+                      canEdit={canEdit}
+                      onSelect={handleSelectPreset}
+                      onMenuToggle={handleMenuToggle}
+                      menuButtonRefs={menuButtonRefs}
+                    />
+                  ))}
+
+                  {/* No results message */}
+                  {searchQuery && rootPresets.length === 0 && Object.keys(presetTree.folders).length === 0 && (
+                    <div className="preset-empty">No presets match "{searchQuery}"</div>
+                  )}
                 </div>
               ) : (
                 <div className="preset-empty">No presets saved</div>
@@ -315,10 +587,10 @@ export function FilterPresetSelector({
                   <button
                     className="btn-save-preset"
                     onClick={handleOpenCreateDialog}
-                    disabled={!canSaveCurrentFilters}
-                    title={canSaveCurrentFilters ? 'Save current filters as preset' : 'No active filters to save'}
+                    disabled={!canSaveCurrentFilters && !isDirty}
+                    title={canSaveCurrentFilters ? 'Save current filters as new preset' : (isDirty ? 'Save modified filters as new preset' : 'No active filters to save')}
                   >
-                    <i className="fas fa-plus"></i> Save Current Filters
+                    <i className="fas fa-plus"></i> Save as New Preset
                   </button>
                 </div>
               ) : (
@@ -362,13 +634,14 @@ export function FilterPresetSelector({
         <PresetDialog
           title="Save Filter Preset"
           label="Preset Name"
-          placeholder="Enter preset name..."
+          placeholder="e.g., ui/design/dark-theme"
           value={newPresetName}
           onChange={setNewPresetName}
           onSubmit={handleCreatePreset}
           onCancel={() => setShowCreateDialog(false)}
           submitLabel="Save"
           saving={saving}
+          hint="Use '/' to organize into folders (e.g., ui/buttons)"
         />
       )}
 
@@ -377,34 +650,38 @@ export function FilterPresetSelector({
         <PresetDialog
           title="Rename Preset"
           label="New Name"
-          placeholder="Enter new name..."
+          placeholder="e.g., ui/design/light-theme"
           value={newPresetName}
           onChange={setNewPresetName}
           onSubmit={handleRenamePreset}
           onCancel={() => setShowRenameDialog(false)}
           submitLabel="Rename"
           saving={saving}
+          hint="Use '/' to organize into folders"
         />
       )}
 
       <style>{`
         .filter-preset-container {
           position: relative;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
         }
 
         .btn-filter-preset {
           display: flex;
           align-items: center;
-          gap: 4px;
-          padding: 2px 6px;
-          background: none;
+          gap: 6px;
+          padding: 4px 8px;
+          background: var(--wx-gitlab-filter-input-background);
           border: 1px solid var(--wx-gitlab-filter-input-border);
           border-radius: 4px;
           font-size: 12px;
           color: var(--wx-gitlab-filter-text);
           cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
+          transition: all 0.2s;
+          min-width: 36px;
         }
 
         .btn-filter-preset:hover:not(:disabled) {
@@ -417,11 +694,26 @@ export function FilterPresetSelector({
           cursor: not-allowed;
         }
 
+        .btn-filter-preset.has-preset {
+          background: rgba(31, 117, 203, 0.1);
+          border-color: rgba(31, 117, 203, 0.3);
+        }
+
         .btn-filter-preset .preset-name {
-          max-width: 120px;
+          max-width: 140px;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          font-weight: 500;
+        }
+
+        .btn-filter-preset .preset-spinner {
+          font-size: 10px;
+        }
+
+        .btn-filter-preset .preset-chevron {
+          font-size: 10px;
+          opacity: 0.6;
         }
 
         .filter-preset-dropdown {
@@ -429,27 +721,59 @@ export function FilterPresetSelector({
           top: 100%;
           left: 0;
           margin-top: 4px;
-          min-width: 220px;
-          max-width: 280px;
+          min-width: 280px;
+          max-width: 360px;
           background: var(--wx-gitlab-filter-input-background);
           border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 6px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          border-radius: 8px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
           z-index: 1000;
           overflow: hidden;
         }
 
-        .preset-header {
-          padding: 10px 12px;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--wx-gitlab-control-text);
+        .preset-search {
+          display: flex;
+          align-items: center;
+          padding: 8px 12px;
           border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
           background: var(--wx-gitlab-filter-hover-background);
         }
 
+        .preset-search .search-icon {
+          color: var(--wx-gitlab-control-text);
+          font-size: 12px;
+          margin-right: 8px;
+        }
+
+        .preset-search-input {
+          flex: 1;
+          background: none;
+          border: none;
+          outline: none;
+          font-size: 13px;
+          color: var(--wx-gitlab-filter-text);
+        }
+
+        .preset-search-input::placeholder {
+          color: var(--wx-gitlab-control-text);
+        }
+
+        .search-clear {
+          background: none;
+          border: none;
+          padding: 2px 4px;
+          color: var(--wx-gitlab-control-text);
+          cursor: pointer;
+          border-radius: 4px;
+        }
+
+        .search-clear:hover {
+          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gitlab-filter-input-border);
+        }
+
         .preset-loading {
-          padding: 16px;
+          padding: 20px;
           text-align: center;
           color: var(--wx-gitlab-control-text);
           font-size: 13px;
@@ -464,10 +788,66 @@ export function FilterPresetSelector({
         }
 
         .preset-list {
-          max-height: 200px;
+          max-height: 300px;
           overflow-y: auto;
         }
 
+        /* Folder styles */
+        .preset-folder {
+          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+        }
+
+        .preset-folder:last-child {
+          border-bottom: none;
+        }
+
+        .preset-folder-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 12px;
+          background: none;
+          border: none;
+          font-size: 13px;
+          color: var(--wx-gitlab-filter-text);
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .preset-folder-header:hover {
+          background: var(--wx-gitlab-filter-hover-background);
+        }
+
+        .preset-folder-header .folder-arrow {
+          font-size: 10px;
+          color: var(--wx-gitlab-control-text);
+          width: 10px;
+        }
+
+        .preset-folder-header .folder-icon {
+          font-size: 12px;
+          color: #f0ad4e;
+        }
+
+        .preset-folder-header .folder-name {
+          flex: 1;
+          font-weight: 500;
+        }
+
+        .preset-folder-header .folder-count {
+          font-size: 11px;
+          color: var(--wx-gitlab-control-text);
+          background: var(--wx-gitlab-filter-input-border);
+          padding: 1px 6px;
+          border-radius: 10px;
+        }
+
+        .preset-folder-content {
+          background: rgba(0, 0, 0, 0.02);
+        }
+
+        /* Preset item styles */
         .preset-item {
           display: flex;
           align-items: center;
@@ -480,7 +860,7 @@ export function FilterPresetSelector({
         }
 
         .preset-item.active {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: rgba(31, 117, 203, 0.1);
         }
 
         .preset-select-btn {
@@ -508,6 +888,11 @@ export function FilterPresetSelector({
           white-space: nowrap;
         }
 
+        .preset-check {
+          color: #28a745;
+          font-size: 12px;
+        }
+
         .preset-menu-btn {
           padding: 6px 8px;
           background: none;
@@ -515,6 +900,12 @@ export function FilterPresetSelector({
           color: var(--wx-gitlab-control-text);
           cursor: pointer;
           border-radius: 4px;
+          opacity: 0.5;
+          transition: opacity 0.2s;
+        }
+
+        .preset-item:hover .preset-menu-btn {
+          opacity: 1;
         }
 
         .preset-menu-btn:hover {
@@ -525,8 +916,8 @@ export function FilterPresetSelector({
         .preset-menu-fixed {
           background: var(--wx-gitlab-filter-input-background);
           border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           overflow: hidden;
         }
 
@@ -535,7 +926,7 @@ export function FilterPresetSelector({
           align-items: center;
           gap: 8px;
           width: 100%;
-          padding: 8px 12px;
+          padding: 10px 14px;
           background: none;
           border: none;
           font-size: 13px;
@@ -559,6 +950,7 @@ export function FilterPresetSelector({
         .preset-actions {
           padding: 8px;
           border-top: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gitlab-filter-hover-background);
         }
 
         .btn-save-preset {
@@ -567,12 +959,13 @@ export function FilterPresetSelector({
           justify-content: center;
           gap: 6px;
           width: 100%;
-          padding: 8px 12px;
+          padding: 10px 12px;
           background: #1f75cb;
           color: white;
           border: none;
-          border-radius: 4px;
+          border-radius: 6px;
           font-size: 13px;
+          font-weight: 500;
           cursor: pointer;
           transition: background 0.2s;
         }
@@ -591,7 +984,7 @@ export function FilterPresetSelector({
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 12px;
+          padding: 12px;
           font-size: 12px;
           color: var(--wx-gitlab-control-text);
           border-top: 1px solid var(--wx-gitlab-filter-input-border);
@@ -616,14 +1009,14 @@ export function FilterPresetSelector({
 
         .preset-dialog {
           background: var(--wx-gitlab-filter-input-background);
-          border-radius: 8px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-          width: 320px;
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          width: 360px;
           max-width: 90vw;
         }
 
         .dialog-header {
-          padding: 16px;
+          padding: 16px 20px;
           font-size: 16px;
           font-weight: 600;
           color: var(--wx-gitlab-filter-text);
@@ -631,21 +1024,22 @@ export function FilterPresetSelector({
         }
 
         .dialog-body {
-          padding: 16px;
+          padding: 20px;
         }
 
         .dialog-body label {
           display: block;
           margin-bottom: 8px;
           font-size: 13px;
-          color: var(--wx-gitlab-control-text);
+          font-weight: 500;
+          color: var(--wx-gitlab-filter-text);
         }
 
         .dialog-body input {
           width: 100%;
           padding: 10px 12px;
           border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
+          border-radius: 6px;
           background: var(--wx-gitlab-filter-background);
           color: var(--wx-gitlab-filter-text);
           font-size: 14px;
@@ -654,22 +1048,32 @@ export function FilterPresetSelector({
         .dialog-body input:focus {
           outline: none;
           border-color: #1f75cb;
+          box-shadow: 0 0 0 3px rgba(31, 117, 203, 0.1);
+        }
+
+        .dialog-hint {
+          margin-top: 8px;
+          font-size: 12px;
+          color: var(--wx-gitlab-control-text);
         }
 
         .dialog-footer {
           display: flex;
           justify-content: flex-end;
           gap: 8px;
-          padding: 12px 16px;
+          padding: 16px 20px;
           border-top: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gitlab-filter-hover-background);
+          border-radius: 0 0 12px 12px;
         }
 
         .btn-cancel {
-          padding: 8px 16px;
+          padding: 10px 18px;
           background: none;
           border: 1px solid var(--wx-gitlab-filter-input-border);
-          border-radius: 4px;
+          border-radius: 6px;
           font-size: 13px;
+          font-weight: 500;
           color: var(--wx-gitlab-filter-text);
           cursor: pointer;
         }
@@ -679,11 +1083,12 @@ export function FilterPresetSelector({
         }
 
         .btn-save {
-          padding: 8px 16px;
+          padding: 10px 18px;
           background: #1f75cb;
           border: none;
-          border-radius: 4px;
+          border-radius: 6px;
           font-size: 13px;
+          font-weight: 500;
           color: white;
           cursor: pointer;
         }
@@ -694,6 +1099,7 @@ export function FilterPresetSelector({
 
         .btn-save:disabled {
           background: var(--wx-gitlab-control-background);
+          color: var(--wx-gitlab-control-text);
           cursor: not-allowed;
         }
       `}</style>

@@ -8,6 +8,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGitLabSync } from './useGitLabSync';
 import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
 import { toGitLabServerFilters } from '../utils/GitLabFilters';
+import { presetHasServerFilters } from '../types/projectSettings';
 import type { GitLabServerFilters, GitLabSyncOptions } from '../types/gitlab';
 import type { FilterPreset } from '../types/filterPreset';
 import type { ITask, ILink } from '@svar-ui/gantt-store';
@@ -238,12 +239,13 @@ export function useGitLabDataInit(
     // Check if we have a saved preset with server filters
     if (savedPresetId && filterPresets.length > 0) {
       const savedPreset = filterPresets.find((p) => p.id === savedPresetId);
-      if (
-        savedPreset?.filters?.filterType === 'server' &&
-        savedPreset?.filters?.serverFilters
-      ) {
+      const presetFilters = savedPreset?.filters;
+      // Check for server filters using helper function
+      const hasServer = presetHasServerFilters(presetFilters);
+
+      if (hasServer && presetFilters?.serverFilters) {
         const gitlabFilters = toGitLabServerFilters(
-          savedPreset.filters.serverFilters,
+          presetFilters.serverFilters,
         );
         if (gitlabFilters) {
           setActiveServerFilters(gitlabFilters);
