@@ -1694,6 +1694,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
           await createTask(ev.task);
 
+          // Sync with GitLab to ensure all data is up-to-date
+          // This prevents stale data (e.g., edited titles) from being overwritten
+          await syncWithFoldState();
+
           // Delete the temporary task (with baseline)
           ganttApi.exec('delete-task', {
             id: ev.id,
