@@ -39,6 +39,11 @@ import {
 } from './ColumnSettingsDropdown.jsx';
 import { ColorRulesEditor } from './ColorRulesEditor.jsx';
 import { MoveInModal } from './MoveInModal.jsx';
+import { SaveBlueprintModal } from './SaveBlueprintModal.jsx';
+import { ApplyBlueprintModal } from './ApplyBlueprintModal.jsx';
+import { BlueprintManager } from './BlueprintManager.jsx';
+import { useBlueprint } from '../hooks/useBlueprint.ts';
+import { applyBlueprint as applyBlueprintService } from '../providers/BlueprintService.ts';
 import { defaultMenuOptions } from '@svar-ui/gantt-store';
 
 /**
@@ -88,6 +93,12 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const [showMoveInModal, setShowMoveInModal] = useState(false);
   const [moveInProcessing, setMoveInProcessing] = useState(false);
   const [configs, setConfigs] = useState([]);
+
+  // Blueprint state
+  const [showSaveBlueprintModal, setShowSaveBlueprintModal] = useState(false);
+  const [showApplyBlueprintModal, setShowApplyBlueprintModal] = useState(false);
+  const [showBlueprintManager, setShowBlueprintManager] = useState(false);
+  const [selectedMilestoneForBlueprint, setSelectedMilestoneForBlueprint] = useState(null);
 
   // Server filter options (labels, milestones, members from GitLab)
   const [serverFilterOptions, setServerFilterOptions] = useState(null);
@@ -374,6 +385,22 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     currentConfig?.type || 'project',
     canEditHolidays
   );
+
+  // Blueprint hook
+  const {
+    blueprints,
+    loading: blueprintsLoading,
+    canUseSnippet: canUseBlueprintSnippet,
+    addBlueprint,
+    deleteBlueprint,
+    renameBlueprint,
+    reload: reloadBlueprints,
+  } = useBlueprint({
+    fullPath: projectPath,
+    proxyConfig,
+    configType: currentConfig?.type || 'project',
+    id: currentConfig?.projectId || currentConfig?.groupId,
+  });
 
   // ============================================================
   // Project Settings: Filter State Persistence
@@ -964,7 +991,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   // State to hold selected tasks when modal is opened
   const [selectedTasksForModal, setSelectedTasksForModal] = useState([]);
 
-  // Custom context menu options with Move In... action
+  // Custom context menu options with Move In... action and Blueprint actions
   const contextMenuOptions = useMemo(() => {
     const options = [...defaultMenuOptions];
     // Find the delete-task option index and insert Move In... before it
@@ -988,6 +1015,24 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         check: (task) => task != null,
       });
     }
+
+    // Add Blueprint options for Milestones
+    options.push({ type: 'separator' });
+    options.push({
+      id: 'save-as-blueprint',
+      text: 'Save as Blueprint...',
+      icon: 'fas fa-copy',
+      // Only show for Milestones
+      check: (task) => task?._gitlab?.type === 'milestone',
+    });
+    options.push({
+      id: 'create-from-blueprint',
+      text: 'Create from Blueprint...',
+      icon: 'fas fa-paste',
+      // Show for any context (can also be accessed from toolbar)
+      check: (task) => task != null,
+    });
+
     return options;
   }, []);
 
@@ -999,6 +1044,15 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
       setSelectedTasksForModal(tasks);
       // Open the Move In modal
       setShowMoveInModal(true);
+    } else if (action?.id === 'save-as-blueprint') {
+      // Save milestone as Blueprint
+      if (ctx?._gitlab?.type === 'milestone') {
+        setSelectedMilestoneForBlueprint(ctx);
+        setShowSaveBlueprintModal(true);
+      }
+    } else if (action?.id === 'create-from-blueprint') {
+      // Open Apply Blueprint modal
+      setShowApplyBlueprintModal(true);
     }
   }, [getSelectedTasks]);
 
@@ -1691,6 +1745,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         return confirmed;
       });
 
+      // Track pending delete operations for proper ordering
+      // When deleting Milestone + Issues together, Issues must be deleted first
+      const pendingDeletes = new Map(); // id -> Promise
+
       // Handle task deletion after confirmation
       ganttApi.on('delete-task', async (ev) => {
         // Skip if this is an internal deletion (e.g., removing temp task)
@@ -1711,7 +1769,36 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             }
           }
 
-          await deleteTask(ev.id, task);
+          // If this is a Milestone, wait for all its children to be deleted first
+          // This prevents GitLab 500 error when Milestone still has Issues
+          if (task?._gitlab?.type === 'milestone') {
+            // Find all pending deletes that are children of this milestone
+            const childDeletePromises = [];
+            for (const [childId, promise] of pendingDeletes.entries()) {
+              const childTask = allTasksRef.current.find(t => t.id === childId);
+              if (childTask && childTask.parent === ev.id) {
+                childDeletePromises.push(promise);
+              }
+            }
+
+            // Wait for all children to be deleted first
+            if (childDeletePromises.length > 0) {
+              console.log(`[GitLabGantt] Waiting for ${childDeletePromises.length} child items to be deleted before milestone...`);
+              await Promise.allSettled(childDeletePromises);
+              // Small delay to ensure GitLab has processed the deletions
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+
+          // Create and track the delete promise
+          const deletePromise = deleteTask(ev.id, task);
+          pendingDeletes.set(ev.id, deletePromise);
+
+          try {
+            await deletePromise;
+          } finally {
+            pendingDeletes.delete(ev.id);
+          }
         } catch (error) {
           console.error('Failed to delete task:', error);
           showToast(`Failed to delete task: ${error.message}`, 'error');
@@ -2539,7 +2626,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             onToggleColumn={toggleColumn}
             onReorderColumns={reorderColumns}
           />
-          <Toolbar api={api} onAddMilestone={handleAddMilestone} />
+          <Toolbar api={api} onAddMilestone={handleAddMilestone} onOpenBlueprints={() => setShowBlueprintManager(true)} />
         </div>
         <div className="gantt-chart-container">
           {syncState.isLoading ? (
@@ -2672,6 +2759,70 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         epics={epics || []}
         onMove={handleMoveIn}
         isProcessing={moveInProcessing}
+      />
+
+      {/* Blueprint Modals */}
+      <SaveBlueprintModal
+        isOpen={showSaveBlueprintModal}
+        onClose={() => {
+          setShowSaveBlueprintModal(false);
+          setSelectedMilestoneForBlueprint(null);
+        }}
+        milestoneTask={selectedMilestoneForBlueprint}
+        allTasks={allTasksRef.current}
+        allLinks={links}
+        holidays={holidays}
+        workdays={workdays}
+        onSave={async (blueprint) => {
+          await addBlueprint(blueprint);
+          showToast('Blueprint saved successfully', 'success');
+        }}
+        canUseSnippet={canUseBlueprintSnippet}
+      />
+
+      <ApplyBlueprintModal
+        isOpen={showApplyBlueprintModal}
+        onClose={() => setShowApplyBlueprintModal(false)}
+        blueprints={blueprints}
+        onApply={async (blueprint, options) => {
+          try {
+            const result = await applyBlueprintService(
+              blueprint,
+              options,
+              provider,
+              holidays || [],
+              workdays || [],
+            );
+
+            if (result.success) {
+              showToast('Blueprint applied successfully', 'success');
+            } else {
+              showToast('Blueprint applied with some issues', 'warning');
+            }
+
+            // Refresh data after applying blueprint
+            await syncWithFoldState();
+
+            return result;
+          } catch (error) {
+            console.error('[GitLabGantt] Apply blueprint error:', error);
+            showToast(`Failed to apply blueprint: ${error.message}`, 'error');
+            throw error;
+          }
+        }}
+      />
+
+      <BlueprintManager
+        isOpen={showBlueprintManager}
+        onClose={() => setShowBlueprintManager(false)}
+        blueprints={blueprints}
+        loading={blueprintsLoading}
+        onDelete={deleteBlueprint}
+        onRename={renameBlueprint}
+        onApply={(blueprint) => {
+          setShowBlueprintManager(false);
+          setShowApplyBlueprintModal(true);
+        }}
       />
 
       <style>{`

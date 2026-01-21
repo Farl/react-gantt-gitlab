@@ -22,6 +22,7 @@ export default function Toolbar({
   api = null,
   items = [...defaultToolbarButtons],
   onAddMilestone = null,
+  onOpenBlueprints = null,
 }) {
   const i18nCtx = useContext(context.i18n);
   const i18nLocal = useMemo(() => (i18nCtx ? i18nCtx : locale(gitlabLocale)), [i18nCtx]);
@@ -60,8 +61,22 @@ export default function Toolbar({
       });
     }
 
+    // Add blueprints button right after milestone button if onOpenBlueprints is provided
+    if (onOpenBlueprints) {
+      // Position: after add-task (0) and add-milestone (1), so index 2
+      const insertIndex = onAddMilestone ? 2 : 1;
+      baseItems.splice(insertIndex, 0, {
+        id: 'blueprints',
+        comp: 'button',
+        icon: 'wxi-plus',
+        text: 'Blueprints',
+        type: 'primary',
+        handler: onOpenBlueprints,
+      });
+    }
+
     return baseItems;
-  }, [items, api, _, onAddMilestone]);
+  }, [items, api, _, onAddMilestone, onOpenBlueprints]);
 
   const buttons = useMemo(() => {
     if (api && rSelected?.length) {
@@ -74,8 +89,8 @@ export default function Toolbar({
         return { ...item, disabled: isDisabled };
       });
     }
-    // When no tasks are selected, show only add-task and add-milestone buttons
-    return finalItems.filter((item) => item.id === 'add-task' || item.id === 'add-milestone');
+    // When no tasks are selected, show only add-task, add-milestone, and blueprints buttons
+    return finalItems.filter((item) => item.id === 'add-task' || item.id === 'add-milestone' || item.id === 'blueprints');
   }, [api, rSelected, rTasks, finalItems]);
 
   if (!i18nCtx) {

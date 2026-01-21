@@ -1,0 +1,284 @@
+/**
+ * BlueprintManager Styles
+ * Blueprint management panel
+ */
+
+/* Modal size override */
+.blueprint-manager-modal {
+  width: 560px;
+  max-height: 70vh;
+}
+
+/* Loading state */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}
+
+.loading-state i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 40px;
+  color: var(--wx-gitlab-modal-hint-text, #999);
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.empty-state .hint {
+  font-size: 13px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}
+
+/* Blueprint list */
+.blueprint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blueprint-item {
+  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-radius: 6px;
+  background: var(--wx-gitlab-modal-background, #fff);
+  overflow: hidden;
+}
+
+.blueprint-item:hover {
+  border-color: #1f75cb;
+}
+
+.blueprint-item.expanded {
+  border-color: #1f75cb;
+}
+
+/* Main row */
+.blueprint-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.expand-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expand-btn:hover {
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+}
+
+.blueprint-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.blueprint-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--wx-gitlab-modal-text, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blueprint-meta {
+  font-size: 12px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.storage-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.storage-badge.shared {
+  background: rgba(31, 117, 203, 0.1);
+  color: #1f75cb;
+}
+
+.storage-badge.local {
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}
+
+.edit-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #1f75cb;
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--wx-gitlab-modal-background, #fff);
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(31, 117, 203, 0.1);
+}
+
+/* Actions */
+.blueprint-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.delete:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Expanded details */
+.blueprint-details {
+  padding: 12px 16px;
+  border-top: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  background: var(--wx-gitlab-filter-background, #f9fafb);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  text-transform: uppercase;
+}
+
+.detail-value {
+  font-size: 13px;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.detail-value.description {
+  font-size: 12px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  max-height: 60px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* Items preview */
+.items-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--wx-gitlab-modal-background, #fff);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.item-row i {
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.item-row .item-title {
+  flex: 1;
+  color: var(--wx-gitlab-modal-text, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-row .item-offset {
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.items-more {
+  font-size: 11px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  text-align: center;
+  padding: 6px;
+}

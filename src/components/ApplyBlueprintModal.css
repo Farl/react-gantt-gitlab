@@ -1,0 +1,263 @@
+/**
+ * ApplyBlueprintModal Styles
+ * Modal for creating from Blueprint
+ */
+
+/* Extend base modal styles */
+.apply-blueprint-modal {
+  width: 520px;
+}
+
+/* Empty message */
+.empty-message {
+  padding: 16px;
+  text-align: center;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  font-size: 13px;
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  border-radius: 4px;
+}
+
+/* Form elements */
+.blueprint-modal select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  color: var(--wx-gitlab-modal-text, #333);
+  cursor: pointer;
+}
+
+.blueprint-modal select:focus {
+  outline: none;
+  border-color: #1f75cb;
+}
+
+.blueprint-modal input[type='date'] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.blueprint-modal input[type='date']:focus {
+  outline: none;
+  border-color: #1f75cb;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  margin-top: 4px;
+}
+
+/* Naming options */
+.naming-options {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.naming-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.naming-option input[type='radio'] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.name-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  border-radius: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.name-preview .preview-label {
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}
+
+.name-preview .preview-value {
+  color: var(--wx-gitlab-modal-text, #333);
+  font-weight: 500;
+}
+
+/* Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.checkbox-label input[type='checkbox'] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 20px;
+}
+
+/* Apply Result */
+.apply-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.result-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.result-status.success {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.result-status.success i {
+  font-size: 18px;
+}
+
+.result-status.partial {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.result-status.partial i {
+  font-size: 18px;
+}
+
+.result-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-section h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.result-item i {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.result-item span:first-of-type {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-item.milestone {
+  background: rgba(31, 117, 203, 0.1);
+}
+
+.result-item.milestone i {
+  color: #1f75cb;
+}
+
+.result-item.success i {
+  color: #059669;
+}
+
+.result-item.failed {
+  background: #fef2f2;
+}
+
+.result-item.failed i {
+  color: #dc2626;
+}
+
+.result-item .item-type {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}
+
+.result-item .item-error {
+  font-size: 11px;
+  color: #dc2626;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-item .item-link {
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  text-decoration: none;
+}
+
+.result-item .item-link:hover {
+  color: #1f75cb;
+}
+
+.result-more {
+  text-align: center;
+  font-size: 12px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  padding: 8px;
+}
+
+.result-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.result-stats .stat-success {
+  color: #059669;
+}
+
+.result-stats .stat-failed {
+  color: #dc2626;
+}

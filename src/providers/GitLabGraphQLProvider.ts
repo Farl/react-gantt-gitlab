@@ -1613,9 +1613,20 @@ export class GitLabGraphQLProvider {
     // Calculate progress based on state
     const progress = workItem.state === 'closed' ? 1 : 0;
 
-    // Extract assignees
+    // Extract assignees - display names for Gantt column
     const assignees =
-      assigneesWidget?.assignees?.nodes.map((a) => a.name).join(', ') || '';
+      assigneesWidget?.assignees?.nodes
+        .map((a: { name?: string }) => a.name)
+        .join(', ') || '';
+
+    // Extract assignee usernames for Blueprint storage (use @username format)
+    const assigneeUsernames =
+      assigneesWidget?.assignees?.nodes
+        .map((a: { username?: string }) =>
+          a.username ? `@${a.username}` : null,
+        )
+        .filter(Boolean)
+        .join(', ') || '';
 
     // Extract labels
     const labels =
@@ -1749,6 +1760,8 @@ export class GitLabGraphQLProvider {
         epicParentId, // Store Epic parent ID if exists (for Issues without Milestone)
         epicTitle: epicTitle || undefined, // Epic title for display
         web_url: workItem.webUrl, // GitLab web URL for opening in browser
+        // Assignee usernames for Blueprint storage (use @username format)
+        assigneeUsernames: assigneeUsernames || undefined,
         // Milestone info for client-side filtering (not using parent field anymore)
         milestoneIid: milestoneWidget?.milestone
           ? Number(milestoneWidget.milestone.iid)
@@ -2765,6 +2778,56 @@ export class GitLabGraphQLProvider {
     // Set appropriate default name based on work item type
     const defaultName = isSubtask ? 'New GitLab Task' : 'New GitLab Issue';
 
+    // Resolve label titles to global IDs if labels are provided
+    let labelIds: string[] | undefined;
+    if (task.labels) {
+      const labelTitles = task.labels
+        .split(',')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (labelTitles.length > 0) {
+        const labelIdMap = await this.getLabelIdsByTitles(labelTitles);
+        labelIds = labelTitles
+          .map((title) => labelIdMap.get(title))
+          .filter((id): id is string => !!id);
+        // Log any labels that couldn't be found
+        const notFoundLabels = labelTitles.filter(
+          (title) => !labelIdMap.has(title),
+        );
+        if (notFoundLabels.length > 0) {
+          console.warn(
+            '[GitLabGraphQL] Labels not found:',
+            notFoundLabels.join(', '),
+          );
+        }
+      }
+    }
+
+    // Resolve usernames to global IDs if assignees are provided
+    let assigneeIds: string[] | undefined;
+    if (task.assigned) {
+      const usernames = task.assigned
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean);
+      if (usernames.length > 0) {
+        const userIdMap = await this.getUserIdsByUsernames(usernames);
+        assigneeIds = usernames
+          .map((username) => userIdMap.get(username))
+          .filter((id): id is string => !!id);
+        // Log any users that couldn't be found
+        const notFoundUsers = usernames.filter(
+          (username) => !userIdMap.has(username),
+        );
+        if (notFoundUsers.length > 0) {
+          console.warn(
+            '[GitLabGraphQL] Users not found:',
+            notFoundUsers.join(', '),
+          );
+        }
+      }
+    }
+
     const mutation = `
       mutation CreateWorkItem($input: WorkItemCreateInput!) {
         workItemCreate(input: $input) {
@@ -2786,6 +2849,23 @@ export class GitLabGraphQLProvider {
               ... on WorkItemWidgetStartAndDueDate {
                 startDate
                 dueDate
+              }
+              ... on WorkItemWidgetLabels {
+                labels {
+                  nodes {
+                    id
+                    title
+                  }
+                }
+              }
+              ... on WorkItemWidgetAssignees {
+                assignees {
+                  nodes {
+                    id
+                    name
+                    username
+                  }
+                }
               }
             }
           }
@@ -2835,6 +2915,20 @@ export class GitLabGraphQLProvider {
             milestoneId: task._gitlab.milestoneGlobalId,
           },
         }),
+        // Add labels if resolved
+        ...(labelIds &&
+          labelIds.length > 0 && {
+            labelsWidget: {
+              labelIds,
+            },
+          }),
+        // Add assignees if resolved
+        ...(assigneeIds &&
+          assigneeIds.length > 0 && {
+            assigneesWidget: {
+              assigneeIds,
+            },
+          }),
       },
     };
 
@@ -3652,6 +3746,17 @@ export class GitLabGraphQLProvider {
    * - Group: uses groupMembers field
    */
   async getProjectMembers(): Promise<string[]> {
+    const members = await this.getProjectMembersWithIds();
+    return [...new Set(members.map((m) => m.name))].sort();
+  }
+
+  /**
+   * Fetch project/group members with IDs
+   * Returns list of members with id, name, and username
+   */
+  async getProjectMembersWithIds(): Promise<
+    Array<{ id: string; name: string; username: string }>
+  > {
     // Different member field for project vs group
     const membersField =
       this.config.type === 'group' ? 'groupMembers' : 'projectMembers';
@@ -3662,6 +3767,7 @@ export class GitLabGraphQLProvider {
           ${membersField}(first: 100) {
             nodes {
               user {
+                id
                 name
                 username
               }
@@ -3681,16 +3787,57 @@ export class GitLabGraphQLProvider {
           ? result.group?.groupMembers?.nodes || []
           : result.project?.projectMembers?.nodes || [];
 
-      // Extract unique member names
-      const names = members
-        .map((m: any) => m.user?.name)
-        .filter((name: string | undefined) => name);
-
-      return [...new Set(names)].sort() as string[];
+      return members
+        .filter((m: any) => m.user?.id && m.user?.name && m.user?.username)
+        .map((m: any) => ({
+          id: m.user.id,
+          name: m.user.name,
+          username: m.user.username,
+        }));
     } catch (error) {
       console.warn('[GitLabGraphQL] Failed to fetch members:', error);
       return [];
     }
+  }
+
+  /**
+   * Get user global IDs by their names or usernames
+   * Supports matching by:
+   * - @username format (e.g., "@johndoe") - preferred, strips @ prefix before matching
+   * - Plain username (e.g., "johndoe")
+   * - Display name (e.g., "John Doe") - fallback for legacy data
+   * @param nameOrUsernames - Array of names or usernames (with or without @ prefix)
+   * @returns Map of input name/username -> global ID
+   */
+  async getUserIdsByUsernames(
+    nameOrUsernames: string[],
+  ): Promise<Map<string, string>> {
+    const members = await this.getProjectMembersWithIds();
+    const result = new Map<string, string>();
+
+    for (const input of nameOrUsernames) {
+      // Strip @ prefix if present (e.g., "@johndoe" -> "johndoe")
+      const normalizedInput = input.startsWith('@') ? input.slice(1) : input;
+
+      // First try to match by username (case-insensitive)
+      let member = members.find(
+        (m) => m.username.toLowerCase() === normalizedInput.toLowerCase(),
+      );
+
+      // If not found by username, try to match by display name (case-insensitive)
+      // This is for backward compatibility with older Blueprints that stored display names
+      if (!member) {
+        member = members.find(
+          (m) => m.name.toLowerCase() === normalizedInput.toLowerCase(),
+        );
+      }
+
+      if (member) {
+        result.set(input, member.id);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -3870,11 +4017,23 @@ export class GitLabGraphQLProvider {
    * Returns list of label titles available in the project
    */
   async getProjectLabels(): Promise<string[]> {
+    const labels = await this.getProjectLabelsWithIds();
+    return labels.map((l) => l.title).sort();
+  }
+
+  /**
+   * Fetch labels from GitLab (project or group) with IDs
+   * Returns list of labels with id and title
+   */
+  async getProjectLabelsWithIds(): Promise<
+    Array<{ id: string; title: string }>
+  > {
     const query = `
       query getProjectLabels($fullPath: ID!) {
         ${this.config.type}(fullPath: $fullPath) {
           labels(first: 100) {
             nodes {
+              id
               title
             }
           }
@@ -3892,15 +4051,34 @@ export class GitLabGraphQLProvider {
           ? result.group?.labels?.nodes || []
           : result.project?.labels?.nodes || [];
 
-      // Extract label titles
       return labels
-        .map((l: any) => l.title)
-        .filter((title: string | undefined) => title)
-        .sort();
+        .filter((l: any) => l.id && l.title)
+        .map((l: any) => ({ id: l.id, title: l.title }));
     } catch (error) {
       console.warn('[GitLabGraphQL] Failed to fetch project labels:', error);
       return [];
     }
+  }
+
+  /**
+   * Get label global IDs by their titles
+   * @param titles - Array of label titles
+   * @returns Map of title -> global ID
+   */
+  async getLabelIdsByTitles(titles: string[]): Promise<Map<string, string>> {
+    const labels = await this.getProjectLabelsWithIds();
+    const result = new Map<string, string>();
+
+    for (const title of titles) {
+      const label = labels.find(
+        (l) => l.title.toLowerCase() === title.toLowerCase(),
+      );
+      if (label) {
+        result.set(title, label.id);
+      }
+    }
+
+    return result;
   }
 
   /**
