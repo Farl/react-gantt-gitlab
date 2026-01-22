@@ -37,7 +37,10 @@ import type {
   GitLabFilterOptionsData,
 } from '../types/gitlab';
 import { GitLabGraphQLClient } from './GitLabGraphQLClient';
-import { gitlabRestRequest } from './GitLabApiUtils';
+import {
+  gitlabRestRequest,
+  gitlabRestRequestPaginated,
+} from './GitLabApiUtils';
 
 /**
  * Format iteration title for display
@@ -248,16 +251,18 @@ export class GitLabGraphQLProvider {
 
     try {
       // Fetch members and milestones via GraphQL, labels via REST API in parallel
+      // Note: Labels use paginated request because some CORS proxies or GitLab servers
+      // may ignore per_page parameter, defaulting to 20 items per page
       const labelsEndpoint =
         this.config.type === 'project'
-          ? `/projects/${encodeURIComponent(fullPath)}/labels?per_page=100`
-          : `/groups/${encodeURIComponent(fullPath)}/labels?per_page=100&include_ancestor_groups=true`;
+          ? `/projects/${encodeURIComponent(fullPath)}/labels`
+          : `/groups/${encodeURIComponent(fullPath)}/labels?include_ancestor_groups=true`;
 
       const [graphqlResult, labelsFromRest] = await Promise.all([
         this.graphqlClient.query<FilterOptionsResponse>(filterOptionsQuery, {
           fullPath,
         }),
-        gitlabRestRequest<GitLabRestLabel[]>(labelsEndpoint, {
+        gitlabRestRequestPaginated<GitLabRestLabel>(labelsEndpoint, {
           gitlabUrl: this.config.gitlabUrl,
           token: this.config.token,
         }),
