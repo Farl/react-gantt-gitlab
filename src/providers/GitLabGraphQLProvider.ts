@@ -44,7 +44,8 @@ import {
 
 /**
  * Format iteration title for display
- * Shows cadence title + date range (e.g. "Sprint 1: Feb 1-28")
+ * - Manual iterations with title: "Cadence: Iteration Title"
+ * - Auto-generated iterations: "Cadence: Feb 1-28" (date range)
  */
 function formatIterationTitle(iteration: {
   title?: string | null;
@@ -53,6 +54,7 @@ function formatIterationTitle(iteration: {
   iterationCadence?: { title: string };
 }): string {
   const cadenceTitle = iteration.iterationCadence?.title;
+  const iterationTitle = iteration.title?.trim() || '';
   const startDate = iteration.startDate;
   const dueDate = iteration.dueDate;
 
@@ -75,15 +77,18 @@ function formatIterationTitle(iteration: {
     }
   }
 
-  // Combine cadence title and date range
-  if (cadenceTitle && dateRange) {
+  // Combine cadence title with iteration title (if available) or date range
+  // Manual iterations have a title, auto-generated ones don't
+  if (cadenceTitle && iterationTitle) {
+    return `${cadenceTitle}: ${iterationTitle}`;
+  } else if (cadenceTitle && dateRange) {
     return `${cadenceTitle}: ${dateRange}`;
   } else if (cadenceTitle) {
     return cadenceTitle;
   } else if (dateRange) {
     return dateRange;
-  } else if (iteration.title) {
-    return iteration.title;
+  } else if (iterationTitle) {
+    return iterationTitle;
   }
   return 'Iteration';
 }
