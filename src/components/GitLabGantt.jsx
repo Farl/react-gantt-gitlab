@@ -2771,6 +2771,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
               cellWidth={effectiveCellWidth}
               cellHeight={cellHeight}
               highlightTime={highlightTime}
+              countWorkdays={countWorkdays}
               readonly={false}
               baselines={true}
               taskTemplate={SmartTaskContent}

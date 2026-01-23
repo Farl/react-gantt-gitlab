@@ -27,6 +27,7 @@ function Chart(props) {
     taskTemplate,
     cellBorders,
     highlightTime,
+    countWorkdays,
     colorRules,
   } = props;
 
@@ -327,6 +328,7 @@ function Chart(props) {
         readonly={readonly}
         api={api}
         scales={scales}
+        countWorkdays={countWorkdays}
         areaRef={areaRef}
         chartRef={chartRef}
       />

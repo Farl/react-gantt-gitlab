@@ -23,6 +23,7 @@ function Layout(props) {
     readonly,
     cellBorders,
     highlightTime,
+    countWorkdays,
     onTableAPIChange,
     colorRules,
   } = props;
@@ -324,6 +325,7 @@ function Layout(props) {
                 taskTemplate={taskTemplate}
                 cellBorders={cellBorders}
                 highlightTime={highlightTime}
+                countWorkdays={countWorkdays}
                 colorRules={colorRules}
               />
             </div>

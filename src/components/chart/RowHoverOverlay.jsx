@@ -24,10 +24,13 @@ function RowHoverOverlay({
   readonly,
   api,
   scales,
+  countWorkdays, // Function to count workdays between two dates (from useHighlightTime)
   areaRef, // Reference to the .wx-area element for mouse event handling
   chartRef, // Reference to the .wx-chart element (scroll container)
 }) {
   const [dialogInfo, setDialogInfo] = useState(null);
+  // Store the confirmed draw preview to keep showing it while dialog is open
+  const [confirmedPreview, setConfirmedPreview] = useState(null);
 
   // Use the row hover hook for state management
   const {
@@ -177,13 +180,21 @@ function RowHoverOverlay({
     if (drawInfo) {
       // Snap positions to cell boundaries before converting to dates
       const snappedStartX = snapToCell(Math.min(drawInfo.startX, drawInfo.endX));
-      const snappedEndX = snapToCell(Math.max(drawInfo.startX, drawInfo.endX));
+      const snappedEndX = snapToCellEnd(Math.max(drawInfo.startX, drawInfo.endX));
 
       // Convert snapped pixel positions to dates
+      // Note: endDate is the position AFTER the last cell (exclusive)
       const startDate = pixelToDate(snappedStartX);
       const endDate = pixelToDate(snappedEndX);
 
       if (startDate && endDate) {
+        // Save preview position to keep showing it while dialog is open
+        setConfirmedPreview({
+          left: snappedStartX,
+          width: snappedEndX - snappedStartX,
+          rowIndex: hoverState.rowIndex,
+        });
+
         setDialogInfo({
           taskId: drawInfo.taskId,
           startDate,
@@ -191,7 +202,7 @@ function RowHoverOverlay({
         });
       }
     }
-  }, [handleMouseUp, pixelToDate, snapToCell]);
+  }, [handleMouseUp, pixelToDate, snapToCell, snapToCellEnd, hoverState.rowIndex]);
 
   // Refs to hold the latest callback functions
   const onMouseMoveRef = useRef(onMouseMove);
@@ -279,9 +290,10 @@ function RowHoverOverlay({
       }
 
       setDialogInfo(null);
+      setConfirmedPreview(null);
       cancelDrawing();
     },
-    [dialogInfo, api, cancelDrawing],
+    [dialogInfo, api, cancelDrawing, setEndOfDay],
   );
 
   /**
@@ -289,11 +301,23 @@ function RowHoverOverlay({
    */
   const handleDialogCancel = useCallback(() => {
     setDialogInfo(null);
+    setConfirmedPreview(null);
     cancelDrawing();
   }, [cancelDrawing]);
 
   // Calculate draw preview dimensions - snapped to cell boundaries
+  // Use confirmedPreview when dialog is open, otherwise use live hover state
   const drawPreview = useMemo(() => {
+    // If dialog is open, show the confirmed preview
+    if (confirmedPreview) {
+      return {
+        left: confirmedPreview.left - scrollLeft,
+        width: confirmedPreview.width,
+        rowIndex: confirmedPreview.rowIndex,
+      };
+    }
+
+    // Otherwise show live drawing preview
     if (!hoverState.isDrawing || !hoverState.drawStartX || !hoverState.drawEndX) {
       return null;
     }
@@ -306,25 +330,28 @@ function RowHoverOverlay({
     return {
       left: snappedStartX - scrollLeft,
       width,
+      rowIndex: hoverState.rowIndex,
     };
-  }, [hoverState, scrollLeft, snapToCell, snapToCellEnd]);
+  }, [hoverState, scrollLeft, snapToCell, snapToCellEnd, confirmedPreview]);
 
   // Determine if we should show any overlay elements
-  // Show overlay when hovering a drawable row or actively drawing
+  // Show overlay when hovering a drawable row, actively drawing, or dialog is open
   const showOverlay =
-    hoveredTask !== null && (isDrawableRow || hoverState.isDrawing);
+    (hoveredTask !== null && (isDrawableRow || hoverState.isDrawing)) || confirmedPreview !== null;
 
   // Calculate fixed position for overlay elements (relative to viewport)
   // Use rowIndex (global task index) calculated in handleMouseMove to get exact row position
   // This avoids the small offset that task.$y includes for bar vertical centering
   const fixedTop = useMemo(() => {
-    if (!chartContainerRect || hoverState.rowIndex === null || !cellHeight) return 0;
+    // Use confirmedPreview.rowIndex when dialog is open, otherwise use hoverState.rowIndex
+    const rowIndex = confirmedPreview?.rowIndex ?? hoverState.rowIndex;
+    if (!chartContainerRect || rowIndex === null || !cellHeight) return 0;
     // Calculate row top from the global row index
-    const rowTopInContent = hoverState.rowIndex * cellHeight;
+    const rowTopInContent = rowIndex * cellHeight;
     const rowTopInChart = rowTopInContent - scrollTop;
     // Convert to viewport coordinates
     return chartContainerRect.top + rowTopInChart;
-  }, [chartContainerRect, hoverState.rowIndex, scrollTop, cellHeight]);
+  }, [chartContainerRect, hoverState.rowIndex, scrollTop, cellHeight, confirmedPreview]);
 
   const fixedLeft = useMemo(() => {
     if (!chartContainerRect) return 0;
@@ -412,7 +439,7 @@ function RowHoverOverlay({
         <DrawBarConfirmDialog
           startDate={dialogInfo.startDate}
           endDate={dialogInfo.endDate}
-          taskId={dialogInfo.taskId}
+          countWorkdays={countWorkdays}
           onConfirm={handleDialogConfirm}
           onCancel={handleDialogCancel}
         />

@@ -59,6 +59,7 @@ const Gantt = forwardRef(function Gantt(
     zoom = false,
     baselines = false,
     highlightTime = null,
+    countWorkdays = null,
     init = null,
     autoScale = true,
     unscheduledTasks = false,
@@ -238,6 +239,7 @@ const Gantt = forwardRef(function Gantt(
           readonly={readonly}
           cellBorders={cellBorders}
           highlightTime={highlightTime}
+          countWorkdays={countWorkdays}
           onTableAPIChange={setTableAPI}
           colorRules={colorRules}
         />

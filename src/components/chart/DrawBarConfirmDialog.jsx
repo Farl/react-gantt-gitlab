@@ -21,48 +21,24 @@ const formatDate = (date) => {
 };
 
 /**
- * Count workdays between two dates (excluding weekends)
- * Note: This is a simple implementation that only excludes Sat/Sun.
- * For full holiday support, use the countWorkdays from useHighlightTime hook.
- * @param {Date} startDate
- * @param {Date} endDate
- * @returns {number} Number of workdays (inclusive)
- */
-const countSimpleWorkdays = (startDate, endDate) => {
-  if (!startDate || !endDate) return 0;
-
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-
-  if (start > end) return 0;
-
-  let count = 0;
-  const current = new Date(start);
-
-  while (current <= end) {
-    const dayOfWeek = current.getDay();
-    // Skip Saturday (6) and Sunday (0)
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-
-  return count;
-};
-
-/**
  * @param {Object} props
  * @param {Date} props.startDate - Start date from the drawn range
- * @param {Date} props.endDate - End date from the drawn range
- * @param {number|string} props.taskId - ID of the task being modified
+ * @param {Date} props.endDate - End date from the drawn range (exclusive - day after last selected day)
+ * @param {(startDate: Date, endDate: Date) => number} props.countWorkdays - Function to count workdays (from useHighlightTime)
  * @param {(mode: 'overwrite' | 'end-only') => void} props.onConfirm - Confirm callback with mode
  * @param {() => void} props.onCancel - Cancel callback
  */
-function DrawBarConfirmDialog({ startDate, endDate, taskId, onConfirm, onCancel }) {
-  // Calculate duration in calendar days (inclusive of both start and end)
+function DrawBarConfirmDialog({ startDate, endDate, countWorkdays, onConfirm, onCancel }) {
+  // Display end date (endDate is exclusive, so show the day before)
+  const displayEndDate = useMemo(() => {
+    if (!endDate) return null;
+    const end = new Date(endDate);
+    end.setDate(end.getDate() - 1);
+    return end;
+  }, [endDate]);
+
+  // Calculate duration in calendar days
+  // endDate is EXCLUSIVE (the day after the last selected day)
   const calendarDays = useMemo(() => {
     if (!startDate || !endDate) return 0;
     const start = new Date(startDate);
@@ -70,14 +46,16 @@ function DrawBarConfirmDialog({ startDate, endDate, taskId, onConfirm, onCancel 
     const end = new Date(endDate);
     end.setHours(0, 0, 0, 0);
     const diffTime = end.getTime() - start.getTime();
-    // +1 to include both start and end dates
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    // endDate is exclusive, so no +1 needed
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }, [startDate, endDate]);
 
-  // Calculate workdays (excluding weekends)
+  // Calculate workdays (excluding weekends and holidays)
+  // Uses countWorkdays from useHighlightTime which properly handles holidays
   const workdays = useMemo(() => {
-    return countSimpleWorkdays(startDate, endDate);
-  }, [startDate, endDate]);
+    if (!countWorkdays || !startDate || !displayEndDate) return calendarDays;
+    return countWorkdays(startDate, displayEndDate);
+  }, [countWorkdays, startDate, displayEndDate, calendarDays]);
 
   // Handle overlay click (close dialog)
   const handleOverlayClick = (e) => {
@@ -128,7 +106,7 @@ function DrawBarConfirmDialog({ startDate, endDate, taskId, onConfirm, onCancel 
             </div>
             <div className="date-range-row">
               <span className="date-label">End:</span>
-              <span className="date-value">{formatDate(endDate)}</span>
+              <span className="date-value">{formatDate(displayEndDate)}</span>
             </div>
             <div className="date-range-row duration">
               <span className="date-label">Duration:</span>
