@@ -36,6 +36,8 @@ https://react-gantt-gitlab-8d7d33.pages.rayark.io/
   - 範本可以存在 local 也可以存在 snippet 裡面共享。
 - 批次將 Issues / Tasks 重新指定 Milestone / Issues parent / Epic
   - 左邊的任務清單可以按著 shift / ctrl 複選，然後按右鍵找到 Move In 選項，就可以開啟 ui 決定要放入的 Milestone / Issue / Epic
+- 新增可以直接用拖曳新增時間軸 bar 的功能。
+- 箭頭指向畫面外的任務 bar，點擊可以快速捲動畫面。
 
 ### 已知問題
 
