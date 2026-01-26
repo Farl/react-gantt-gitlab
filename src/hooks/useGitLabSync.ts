@@ -12,12 +12,15 @@ import type {
   GitLabMilestone,
   GitLabEpic,
 } from '../types/gitlab';
+import type { SyncProgress } from '../types/syncProgress';
 
 export interface SyncState {
   isLoading: boolean;
   isSyncing: boolean;
   error: string | null;
   lastSyncTime: Date | null;
+  /** Sync progress info (available during sync) */
+  progress: SyncProgress | null;
 }
 
 export interface UseGitLabSyncOptions {
@@ -60,12 +63,15 @@ export function useGitLabSync(
     isSyncing: false,
     error: null,
     lastSyncTime: null,
+    progress: null,
   });
 
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const tasksRef = useRef<ITask[]>(tasks);
   const onWarningRef = useRef(onWarning);
+  // AbortController for cancelling in-flight sync requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
@@ -79,6 +85,7 @@ export function useGitLabSync(
 
   /**
    * Main sync function to fetch data from GitLab
+   * Supports cancellation via AbortController when provider changes or new sync starts
    */
   const sync = useCallback(
     async (options: GitLabSyncOptions = {}) => {
@@ -90,14 +97,38 @@ export function useGitLabSync(
         return;
       }
 
+      // Cancel any in-flight sync request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new AbortController for this sync
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       setSyncState((prev) => ({
         ...prev,
         isSyncing: true,
         error: null,
+        progress: null,
       }));
 
+      // Progress callback that updates state
+      const onProgress = (progress: SyncProgress) => {
+        if (isMountedRef.current && !abortController.signal.aborted) {
+          setSyncState((prev) => ({
+            ...prev,
+            progress,
+          }));
+        }
+      };
+
       try {
-        const data = await provider.getData(options);
+        const data = await provider.getData({
+          ...options,
+          signal: abortController.signal,
+          onProgress,
+        });
 
         console.log(
           '[useGitLabSync] Sync completed, received links:',
@@ -109,7 +140,8 @@ export function useGitLabSync(
           })),
         );
 
-        if (isMountedRef.current) {
+        // Only update state if not aborted and still mounted
+        if (isMountedRef.current && !abortController.signal.aborted) {
           setTasks(data.tasks);
           setLinks(data.links);
           setMilestones(data.milestones || []);
@@ -120,10 +152,16 @@ export function useGitLabSync(
             isSyncing: false,
             error: null,
             lastSyncTime: new Date(),
+            progress: null,
           });
-        } else {
         }
       } catch (error) {
+        // Handle abort specifically - don't set error state for aborts
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('[useGitLabSync] Sync aborted');
+          return;
+        }
+
         console.error('GitLab sync error:', error);
 
         if (isMountedRef.current) {
@@ -132,6 +170,7 @@ export function useGitLabSync(
             isLoading: false,
             isSyncing: false,
             error: error instanceof Error ? error.message : 'Sync failed',
+            progress: null,
           }));
         }
       }
@@ -345,8 +384,16 @@ export function useGitLabSync(
    * Clear data when provider changes
    * NOTE: Does NOT auto-sync - caller is responsible for triggering initial sync
    * This allows caller to wait for other async operations (e.g., preset loading) before syncing
+   *
+   * Also cancels any in-flight sync requests to prevent stale data from overwriting
    */
   useEffect(() => {
+    // Cancel any in-flight sync when provider changes
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     if (provider) {
       // Clear old data immediately when provider changes
       setTasks([]);
@@ -358,6 +405,7 @@ export function useGitLabSync(
         isSyncing: false,
         error: null,
         lastSyncTime: null,
+        progress: null,
       });
       // Do NOT auto-sync - caller is responsible for calling sync()
     } else {
@@ -369,6 +417,7 @@ export function useGitLabSync(
       setSyncState((prev) => ({
         ...prev,
         isLoading: false,
+        progress: null,
       }));
     }
   }, [provider]);
@@ -401,6 +450,11 @@ export function useGitLabSync(
       isMountedRef.current = false;
       if (syncIntervalRef.current) {
         clearInterval(syncIntervalRef.current);
+      }
+      // Cancel any in-flight sync on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
   }, []);

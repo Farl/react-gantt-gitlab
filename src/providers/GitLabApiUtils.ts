@@ -2,6 +2,12 @@
  * Shared utilities for GitLab API providers
  */
 
+import type {
+  SyncProgressCallback,
+  SyncResourceType,
+} from '../types/syncProgress';
+import { createProgressMessage } from '../types/syncProgress';
+
 export interface GitLabProxyConfig {
   gitlabUrl: string;
   token: string;
@@ -57,11 +63,17 @@ export function getRestHeaders(config: GitLabProxyConfig): HeadersInit {
  * Error handling includes detection of common configuration issues:
  * - 404 on /projects/:id/snippets may indicate the path is a Group, not a Project
  * - 404 on /groups/:id/snippets may indicate the path is a Project, not a Group
+ *
+ * @param endpoint - API endpoint (without base URL)
+ * @param config - GitLab proxy config
+ * @param options - Additional fetch options
+ * @param signal - Optional AbortSignal for request cancellation
  */
 export async function gitlabRestRequest<T = any>(
   endpoint: string,
   config: GitLabProxyConfig,
   options: RequestInit = {},
+  signal?: AbortSignal,
 ): Promise<T> {
   const url = `${config.gitlabUrl}/api/v4${endpoint}`;
   const proxyUrl = getProxyUrl(url, config);
@@ -72,6 +84,7 @@ export async function gitlabRestRequest<T = any>(
       ...getRestHeaders(config),
       ...options.headers,
     },
+    signal,
   });
 
   if (!response.ok) {
@@ -144,6 +157,9 @@ export async function gitlabRestRequest<T = any>(
  * @param config - GitLab proxy config
  * @param options - Additional fetch options
  * @param maxPages - Maximum pages to fetch (default: 50, ~1000 items with per_page=20)
+ * @param signal - Optional AbortSignal for request cancellation
+ * @param onProgress - Optional callback for progress updates
+ * @param resourceType - Resource type for progress messages
  * @returns Combined array of all items from all pages
  */
 export async function gitlabRestRequestPaginated<T = any>(
@@ -151,15 +167,24 @@ export async function gitlabRestRequestPaginated<T = any>(
   config: GitLabProxyConfig,
   options: RequestInit = {},
   maxPages: number = 50,
+  signal?: AbortSignal,
+  onProgress?: SyncProgressCallback,
+  resourceType?: SyncResourceType,
 ): Promise<T[]> {
   const allItems: T[] = [];
   let page = 1;
   let hasMore = true;
+  let totalPages: number | undefined;
 
   // Determine if endpoint already has query params
   const separator = endpoint.includes('?') ? '&' : '?';
 
   while (hasMore && page <= maxPages) {
+    // Check if aborted before each request
+    if (signal?.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+
     const paginatedEndpoint = `${endpoint}${separator}page=${page}&per_page=100`;
     const url = `${config.gitlabUrl}/api/v4${paginatedEndpoint}`;
     const proxyUrl = getProxyUrl(url, config);
@@ -170,6 +195,7 @@ export async function gitlabRestRequestPaginated<T = any>(
         ...getRestHeaders(config),
         ...options.headers,
       },
+      signal,
     });
 
     if (!response.ok) {
@@ -202,10 +228,25 @@ export async function gitlabRestRequestPaginated<T = any>(
       allItems.push(...items);
 
       // Check pagination headers to determine if there are more pages
-      const totalPages = response.headers.get('x-total-pages');
+      const totalPagesHeader = response.headers.get('x-total-pages');
       const nextPage = response.headers.get('x-next-page');
 
-      if (totalPages && page >= parseInt(totalPages, 10)) {
+      if (totalPagesHeader) {
+        totalPages = parseInt(totalPagesHeader, 10);
+      }
+
+      // Report progress if callback provided
+      if (onProgress && resourceType) {
+        onProgress({
+          resource: resourceType,
+          currentPage: page,
+          totalPages,
+          itemsFetched: allItems.length,
+          message: createProgressMessage(resourceType, page, totalPages),
+        });
+      }
+
+      if (totalPages && page >= totalPages) {
         hasMore = false;
       } else if (nextPage) {
         page = parseInt(nextPage, 10);

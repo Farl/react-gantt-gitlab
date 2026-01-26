@@ -36,6 +36,15 @@ import type {
   GitLabDataResponse,
   GitLabFilterOptionsData,
 } from '../types/gitlab';
+import type {
+  SyncProgressCallback,
+  SyncResourceType,
+} from '../types/syncProgress';
+import {
+  createProgressMessage,
+  checkAborted,
+  reportProgress,
+} from '../types/syncProgress';
 import { GitLabGraphQLClient } from './GitLabGraphQLClient';
 import {
   gitlabRestRequest,
@@ -241,6 +250,9 @@ export class GitLabGraphQLProvider {
    * @param variables - Variables to pass to the query (excluding 'after')
    * @param extractData - Function to extract nodes array and pageInfo from query result
    * @param maxPages - Maximum pages to fetch (default: 20, = 2000 items with first:100)
+   * @param signal - Optional AbortSignal for request cancellation
+   * @param onProgress - Optional callback for progress updates
+   * @param resourceType - Resource type for progress messages
    * @returns Combined array of all nodes from all pages
    */
   private async queryPaginated<T>(
@@ -251,6 +263,9 @@ export class GitLabGraphQLProvider {
       pageInfo?: { hasNextPage: boolean; endCursor: string | null };
     },
     maxPages: number = 20,
+    signal?: AbortSignal,
+    onProgress?: SyncProgressCallback,
+    resourceType?: SyncResourceType,
   ): Promise<T[]> {
     const allNodes: T[] = [];
     let hasNextPage = true;
@@ -258,10 +273,16 @@ export class GitLabGraphQLProvider {
     let pageCount = 0;
 
     while (hasNextPage && pageCount < maxPages) {
-      const result = await this.graphqlClient.query<unknown>(query, {
-        ...variables,
-        after: endCursor,
-      });
+      checkAborted(signal);
+
+      const result = await this.graphqlClient.query<unknown>(
+        query,
+        {
+          ...variables,
+          after: endCursor,
+        },
+        signal,
+      );
 
       const data = extractData(result);
       allNodes.push(...data.nodes);
@@ -269,6 +290,10 @@ export class GitLabGraphQLProvider {
       hasNextPage = data.pageInfo?.hasNextPage || false;
       endCursor = data.pageInfo?.endCursor || null;
       pageCount++;
+
+      if (resourceType) {
+        reportProgress(onProgress, resourceType, pageCount, allNodes.length);
+      }
     }
 
     if (pageCount === maxPages && hasNextPage) {
@@ -400,10 +425,19 @@ export class GitLabGraphQLProvider {
 
   /**
    * Fetch all work items (issues) using GraphQL
+   *
+   * @param options - Sync options including filters
+   * @param options.signal - Optional AbortSignal for request cancellation
+   * @param options.onProgress - Optional callback for progress updates
    */
   async getData(
-    options: GitLabSyncOptions & { enablePagination?: boolean } = {},
+    options: GitLabSyncOptions & {
+      enablePagination?: boolean;
+      signal?: AbortSignal;
+      onProgress?: SyncProgressCallback;
+    } = {},
   ): Promise<GitLabDataResponse> {
+    const { signal, onProgress } = options;
     // Fetching work items and milestones
 
     // Query for work items with pagination
@@ -704,10 +738,13 @@ export class GitLabGraphQLProvider {
     let pageCount = 0;
 
     while (hasNextPage && pageCount < MAX_PAGES) {
+      checkAborted(signal);
+
       const paginatedVariables = { ...variables, after: endCursor };
       const workItemsResult = await this.graphqlClient.query<WorkItemsResponse>(
         workItemsQuery,
         paginatedVariables,
+        signal,
       );
 
       const workItemsData =
@@ -720,6 +757,8 @@ export class GitLabGraphQLProvider {
         hasNextPage = workItemsData.pageInfo?.hasNextPage || false;
         endCursor = workItemsData.pageInfo?.endCursor || null;
         pageCount++;
+
+        reportProgress(onProgress, 'workItems', pageCount, allWorkItems.length);
       } else {
         hasNextPage = false;
       }
@@ -829,10 +868,13 @@ export class GitLabGraphQLProvider {
       const MAX_FALLBACK_PAGES = 20;
 
       while (hasNextPage && pageCount < MAX_FALLBACK_PAGES) {
+        checkAborted(signal);
+
         try {
           const fallbackResult = await this.graphqlClient.query<any>(
             fallbackIssuesQuery,
             { ...issuesVariables, after: endCursor },
+            signal,
           );
 
           const issuesData = fallbackResult.group?.issues;
@@ -885,6 +927,13 @@ export class GitLabGraphQLProvider {
             hasNextPage = issuesData.pageInfo?.hasNextPage || false;
             endCursor = issuesData.pageInfo?.endCursor || null;
             pageCount++;
+
+            reportProgress(
+              onProgress,
+              'workItems',
+              pageCount,
+              allWorkItems.length,
+            );
           } else {
             hasNextPage = false;
           }
@@ -1113,16 +1162,30 @@ export class GitLabGraphQLProvider {
 
         // Batch within each project
         for (let i = 0; i < issues.length; i += BATCH_SIZE) {
+          checkAborted(signal);
+
           const batch = issues.slice(i, i + BATCH_SIZE);
           const iids = batch.map((b) => b.iid);
+          const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+          const totalBatches = Math.ceil(issues.length / BATCH_SIZE);
           console.log(
-            `[GitLabGraphQL] Project ${projectPath} batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(issues.length / BATCH_SIZE)}, ${iids.length} iids`,
+            `[GitLabGraphQL] Project ${projectPath} batch ${batchNumber}/${totalBatches}, ${iids.length} iids`,
+          );
+
+          reportProgress(
+            onProgress,
+            'hierarchy',
+            batchNumber,
+            successCount,
+            totalBatches,
+            `Fetching Hierarchy (${projectPath} ${batchNumber}/${totalBatches})...`,
           );
 
           try {
             const result = await this.graphqlClient.query<any>(
               workItemsByIidsQuery,
               { fullPath: projectPath, iids },
+              signal,
             );
 
             // IMPORTANT: Use result.project (not result.group) because we're querying at project level
@@ -1193,6 +1256,9 @@ export class GitLabGraphQLProvider {
     }
 
     // Fetch milestones (usually fewer, so use smaller limit)
+    // Report progress for milestones
+    reportProgress(onProgress, 'milestones', 1, 0);
+
     const allMilestones: GitLabMilestone[] = [];
     hasNextPage = true;
     endCursor = null;
@@ -1200,12 +1266,15 @@ export class GitLabGraphQLProvider {
     const MAX_MILESTONE_PAGES = enablePagination ? 2 : 1; // Maximum 200 milestones if pagination enabled
 
     while (hasNextPage && pageCount < MAX_MILESTONE_PAGES) {
+      checkAborted(signal);
+
       const milestonesResult = await this.graphqlClient.query<any>(
         milestonesQuery,
         {
           fullPath: this.getFullPath(),
           after: endCursor,
         },
+        signal,
       );
 
       const milestonesData =
@@ -1218,6 +1287,13 @@ export class GitLabGraphQLProvider {
         hasNextPage = milestonesData.pageInfo?.hasNextPage || false;
         endCursor = milestonesData.pageInfo?.endCursor || null;
         pageCount++;
+
+        reportProgress(
+          onProgress,
+          'milestones',
+          pageCount,
+          allMilestones.length,
+        );
       } else {
         hasNextPage = false;
       }
@@ -1226,6 +1302,8 @@ export class GitLabGraphQLProvider {
     console.log(`[GitLabGraphQL] Fetched ${allMilestones.length} milestones`);
 
     // Fetch issues for relativePosition (same limit as work items)
+    reportProgress(onProgress, 'issues', 1, 0);
+
     const allIssuesWithPosition: { iid: string; relativePosition: number }[] =
       [];
     hasNextPage = true;
@@ -1235,10 +1313,16 @@ export class GitLabGraphQLProvider {
     try {
       const MAX_ISSUE_PAGES = 20; // 100 × 20 = 2000 items max, same as work items
       while (hasNextPage && pageCount < MAX_ISSUE_PAGES) {
-        const issuesResult = await this.graphqlClient.query<any>(issuesQuery, {
-          ...issuesVariables,
-          after: endCursor,
-        });
+        checkAborted(signal);
+
+        const issuesResult = await this.graphqlClient.query<any>(
+          issuesQuery,
+          {
+            ...issuesVariables,
+            after: endCursor,
+          },
+          signal,
+        );
 
         const issuesData =
           this.config.type === 'group'
@@ -1250,11 +1334,22 @@ export class GitLabGraphQLProvider {
           hasNextPage = issuesData.pageInfo?.hasNextPage || false;
           endCursor = issuesData.pageInfo?.endCursor || null;
           pageCount++;
+
+          reportProgress(
+            onProgress,
+            'issues',
+            pageCount,
+            allIssuesWithPosition.length,
+          );
         } else {
           hasNextPage = false;
         }
       }
     } catch (error) {
+      // Re-throw abort errors, but log warning for other errors
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
       console.warn(
         '[GitLabGraphQL] Failed to fetch Issue relativePosition, will fall back to IID sorting:',
         error,

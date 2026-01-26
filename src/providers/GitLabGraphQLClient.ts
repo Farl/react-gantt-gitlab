@@ -69,8 +69,16 @@ export class GitLabGraphQLClient {
    * Error handling includes detection of common configuration issues:
    * - "project not found" may indicate a group was configured as a project
    * - "group not found" may indicate a project was configured as a group
+   *
+   * @param query - GraphQL query string
+   * @param variables - Query variables
+   * @param signal - Optional AbortSignal for request cancellation
    */
-  async query<T>(query: string, variables?: Record<string, any>): Promise<T> {
+  async query<T>(
+    query: string,
+    variables?: Record<string, any>,
+    signal?: AbortSignal,
+  ): Promise<T> {
     const endpoint = this.getEndpoint();
     const headers = this.getHeaders();
 
@@ -78,6 +86,7 @@ export class GitLabGraphQLClient {
       method: 'POST',
       headers,
       body: JSON.stringify({ query, variables }),
+      signal,
     });
 
     if (!response.ok) {
@@ -127,11 +136,16 @@ export class GitLabGraphQLClient {
 
   /**
    * Execute GraphQL mutation
+   *
+   * @param mutation - GraphQL mutation string
+   * @param variables - Mutation variables
+   * @param signal - Optional AbortSignal for request cancellation
    */
   async mutate<T>(
     mutation: string,
     variables?: Record<string, any>,
+    signal?: AbortSignal,
   ): Promise<T> {
-    return this.query<T>(mutation, variables);
+    return this.query<T>(mutation, variables, signal);
   }
 }
