@@ -8,8 +8,9 @@
 
 .wx-smart-task.wx-text-out {
   position: absolute;
-  left: 100%;
-  padding-left: 8px;
+  /* 使用 CSS 變數動態設定偏移，避開 link 轉折區域
+     變數由父元素 (.wx-bar) 透過 inline style 設定 */
+  left: calc(100% + var(--wx-label-offset, 8px));
   line-height: normal;
   display: block;
   color: var(--wx-color-font);

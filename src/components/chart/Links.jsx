@@ -36,13 +36,6 @@ const LIBRARY_ARROW_HEIGHT = 3;
 const DETOUR_PADDING = 10;
 
 /**
- * 判斷任務是否有「真正的 bar」的最小寬度閾值
- * 沒有 dueDate 的任務可能有 fallback bar（用 created_at），但寬度很小
- * 與 useRowHover.js 的 taskNeedsBar 使用相同閾值
- */
-const MIN_VISIBLE_BAR_WIDTH = 20;
-
-/**
  * ====================================================================
  * Helper Functions
  * ====================================================================
@@ -87,11 +80,11 @@ function generatePathPoints(points) {
 /**
  * 檢查任務是否有可見的 bar
  *
- * 判斷邏輯（與 useRowHover.js 的 taskNeedsBar 相反）：
+ * 判斷邏輯（與 OffscreenArrows.jsx 一致）：
  * 1. 必須有座標資訊 ($x, $y, $w, $h)
- * 2. 必須有真正的日期（$w > 閾值，或有 _gitlab.dueDate）
- *    - 沒有 dueDate 的任務可能有 fallback bar（用 created_at），但寬度很小
- *    - 這類 fallback bar 不應該顯示 link
+ * 2. GitLab milestone：檢查 $isMilestone 或 _gitlab.type === 'milestone'
+ * 3. 普通任務：需要有 _gitlab.dueDate
+ *    - 沒有 dueDate 的任務可能有 fallback bar（用 created_at），但不應該顯示 link
  */
 function hasVisibleBar(task) {
   if (!task) return false;
@@ -104,18 +97,20 @@ function hasVisibleBar(task) {
     return false;
   }
 
-  // Milestone 和 summary 類型特殊處理：如果有座標就算有 bar
-  if (task.type === 'milestone' || task.type === 'summary') {
+  // GitLab milestone 特殊處理：日期存在 task.start/end，不在 _gitlab
+  const isGitLabMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
+  if (isGitLabMilestone) {
     return true;
   }
 
-  // 一般任務：需要有真正的日期
-  // 1. 如果有 _gitlab.dueDate，表示有真正的結束日期
-  // 2. 或者 $w > 閾值，表示有足夠寬度的 bar（不是 fallback 的小 bar）
-  const hasRealDueDate = task._gitlab?.dueDate;
-  const hasVisibleWidth = task.$w > MIN_VISIBLE_BAR_WIDTH;
+  // Gantt summary 類型：如果有座標就算有 bar
+  if (task.type === 'summary') {
+    return true;
+  }
 
-  return hasRealDueDate || hasVisibleWidth;
+  // 普通任務：必須有 _gitlab.dueDate 才算有真正的 bar
+  // 沒有 dueDate 的任務 bar 是 fallback（用 created_at），不應該顯示 link
+  return !!task._gitlab?.dueDate;
 }
 
 /**

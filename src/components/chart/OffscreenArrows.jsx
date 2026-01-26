@@ -5,11 +5,15 @@ import './OffscreenArrows.css';
 
 /**
  * 標題寬度估算常數
- * 注意：LABEL_LINK_GAP 必須與 Bars.css 中 .wx-text-out 的 left 值保持一致
  */
 const LABEL_CHAR_WIDTH = 7;   // 每個字元約 7px
 const LABEL_PADDING = 8;      // 標題額外 padding
-const LABEL_LINK_GAP = 24;    // bar 結束到標題開始的間距（避開 link 轉折區域，對應 CSS: left: calc(100% + 24px)）
+
+/**
+ * Link 轉折常數（與 Links.jsx / Bars.jsx 保持一致）
+ */
+const LINK_OFFSET_MAX = 20;   // link 水平偏移距離上限
+const LABEL_GAP = 4;          // 標題與 link 轉折點之間的緩衝
 const ARROW_EDGE_PADDING = 4; // Padding from viewport edge
 const SCROLL_PADDING = 50; // Padding when scrolling to bar
 const DISPLAY_NAME_MAX_LENGTH = 12;
@@ -35,6 +39,7 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
   const rTasksValue = useStore(api, '_tasks');
   const areaValue = useStore(api, 'area');
   const scrollTop = useStore(api, 'scrollTop');
+  const cellWidth = useStore(api, 'cellWidth');
 
   // Update chart container rect for fixed positioning (on scroll and resize)
   useEffect(() => {
@@ -93,7 +98,7 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
 
       // All GitLab items display title to the RIGHT of the bar
       // Include label width when checking if visual element is off-screen
-      const labelWidth = estimateLabelWidth(task.text || task.label);
+      const labelWidth = estimateLabelWidth(task.text || task.label, cellWidth);
       const visualRight = barRight + labelWidth;
 
       // Determine off-screen direction
@@ -107,7 +112,7 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
     });
 
     return result;
-  }, [visibleTasks, scrollLeft, viewportWidth]);
+  }, [visibleTasks, scrollLeft, viewportWidth, cellWidth]);
 
   // Handle arrow click - scroll to show the bar
   const handleArrowClick = useCallback(
@@ -181,12 +186,24 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
 }
 
 /**
- * Estimate the pixel width of a label text (including the gap from bar end)
- * Label is positioned at bar end + LABEL_LINK_GAP to avoid link turn overlap
+ * 計算標題的動態偏移量（與 Bars.jsx 的 getLabelOffset 一致）
+ * @param {number} cellWidth - 當前格子寬度
+ * @returns {number} 標題相對於 bar 結束位置的偏移 (px)
  */
-function estimateLabelWidth(text) {
-  if (!text) return LABEL_LINK_GAP;
-  return LABEL_LINK_GAP + text.length * LABEL_CHAR_WIDTH + LABEL_PADDING;
+function getLabelOffset(cellWidth) {
+  const linkOffset = Math.min(cellWidth / 2, LINK_OFFSET_MAX);
+  return linkOffset + LABEL_GAP;
+}
+
+/**
+ * Estimate the pixel width of a label text (including the gap from bar end)
+ * @param {string} text - 標題文字
+ * @param {number} cellWidth - 當前格子寬度
+ */
+function estimateLabelWidth(text, cellWidth) {
+  const labelOffset = getLabelOffset(cellWidth);
+  if (!text) return labelOffset;
+  return labelOffset + text.length * LABEL_CHAR_WIDTH + LABEL_PADDING;
 }
 
 /**

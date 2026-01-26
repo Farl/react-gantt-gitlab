@@ -23,6 +23,23 @@ const BRACKET_CONFIG = {
 };
 
 /**
+ * 標題偏移常數（避開 link 轉折區域）
+ * link 轉折距離 = min(cellWidth/2, LINK_OFFSET_MAX)
+ */
+const LINK_OFFSET_MAX = 20;  // 與 Links.jsx 的 LIBRARY_LINK_OFFSET_MAX 一致
+const LABEL_GAP = 4;         // 標題與 link 轉折點之間的緩衝
+
+/**
+ * 計算標題的動態偏移量
+ * @param {number} cellWidth - 當前格子寬度
+ * @returns {number} 標題相對於 bar 結束位置的偏移 (px)
+ */
+function getLabelOffset(cellWidth) {
+  const linkOffset = Math.min(cellWidth / 2, LINK_OFFSET_MAX);
+  return linkOffset + LABEL_GAP;
+}
+
+/**
  * Parent task baseline 括號組件
  * 形成向下包覆子任務的形狀：/────────\
  */
@@ -79,6 +96,10 @@ function Bars(props) {
   const selectedValue = useStore(api,"_selected");
   const scrollTaskStore = useStore(api,"_scrollTask" );
   const cellWidthValue = useStore(api, "cellWidth");
+
+  // 動態計算標題偏移（隨 cellWidth 變化）
+  // 設定為 CSS 變數，讓子元素的 .wx-text-out 可以使用
+  const labelOffset = useMemo(() => getLabelOffset(cellWidthValue), [cellWidthValue]);
 
   const tasks = useMemo(() => {
     if (!areaValue || !Array.isArray(rTasksValue)) return [];
@@ -588,7 +609,7 @@ function Bars(props) {
           <Fragment key={task.id}>
             <div
               className={'wx-GKbcLEGA ' + barClass}
-              style={{ ...taskStyle(task), ...stripeStyle }}
+              style={{ ...taskStyle(task), ...stripeStyle, '--wx-label-offset': `${labelOffset}px` }}
               data-tooltip-id={task.id}
               data-id={task.id}
               tabIndex={focused === task.id ? 0 : -1}
@@ -606,7 +627,9 @@ function Bars(props) {
                   // For bars with color rules, show text outside to avoid stripe interference
                   <>
                     <div className="wx-GKbcLEGA wx-content"></div>
-                    <div className="wx-GKbcLEGA wx-text-out">{task.text || ''}</div>
+                    <div className="wx-GKbcLEGA wx-text-out">
+                      {task.text || ''}
+                    </div>
                   </>
                 ) : (
                   <div className="wx-GKbcLEGA wx-content">
@@ -619,7 +642,9 @@ function Bars(props) {
                   {TaskTemplate ? (
                     <TaskTemplate data={task} api={api} onAction={forward} />
                   ) : (
-                    <div className="wx-GKbcLEGA wx-text-out">{task.text}</div>
+                    <div className="wx-GKbcLEGA wx-text-out">
+                      {task.text}
+                    </div>
                   )}
                 </>
               )}
