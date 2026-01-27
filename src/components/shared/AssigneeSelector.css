@@ -1,0 +1,178 @@
+/**
+ * AssigneeSelector Styles
+ *
+ * 使用 --wx-gitlab-* CSS 變數以支援主題切換
+ */
+
+.assignee-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assignee-selector.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Search input */
+.as-search {
+  position: relative;
+}
+
+.as-search-input {
+  width: 100%;
+  padding: 6px 28px 6px 8px;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  border-radius: 4px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  color: var(--wx-gitlab-filter-text, #303030);
+  font-size: 13px;
+}
+
+.as-search-input:focus {
+  outline: none;
+  border-color: #1f75cb;
+}
+
+.as-search-input:disabled {
+  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+}
+
+.as-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--wx-gitlab-control-text, #666);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.as-search-clear:hover {
+  color: var(--wx-gitlab-filter-text, #303030);
+}
+
+/* Options list */
+.as-options {
+  overflow-y: auto;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  border-radius: 4px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+}
+
+.as-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.as-options::-webkit-scrollbar-track {
+  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+}
+
+.as-options::-webkit-scrollbar-thumb {
+  background: var(--wx-gitlab-control-text, #999);
+  border-radius: 3px;
+}
+
+/* Option item */
+.as-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--wx-gitlab-filter-text, #303030);
+  transition: background 0.1s;
+}
+
+.as-option:hover {
+  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+}
+
+.as-option.selected {
+  background: rgba(31, 117, 203, 0.08);
+}
+
+.as-option input[type='checkbox'] {
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.as-option-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.as-option-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.as-option-subtitle {
+  font-size: 11px;
+  color: var(--wx-gitlab-control-text, #666);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.as-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--wx-gitlab-control-text, #666);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Footer: actions + selected hint */
+.as-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Action buttons */
+.as-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.as-action-btn {
+  padding: 4px 8px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--wx-gitlab-filter-text, #303030);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.as-action-btn:hover:not(:disabled) {
+  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+}
+
+.as-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Selected hint */
+.as-selected-hint {
+  font-size: 11px;
+  color: var(--wx-gitlab-control-text, #666);
+  margin-left: auto;
+}

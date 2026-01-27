@@ -8,16 +8,18 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { BaseDialog } from './BaseDialog';
+import { AssigneeSelector } from '../AssigneeSelector';
 import './CreateItemDialog.css';
 
 /**
  * @param {Object} props
  * @param {boolean} props.isOpen - 是否開啟
  * @param {Function} props.onClose - 關閉回調
- * @param {Function} props.onConfirm - 確認回調 (items: {title, description}[]) => Promise
+ * @param {Function} props.onConfirm - 確認回調 (items: {title, description, assignees}[]) => Promise
  * @param {'milestone'|'issue'|'task'} props.itemType - 項目類型
  * @param {Object} props.parentTask - 父任務（用於顯示上下文）
  * @param {string} props.defaultTitle - 預設標題
+ * @param {Array<{value, label, subtitle?, username?}>} props.assigneeOptions - 可選的成員列表
  */
 export function CreateItemDialog({
   isOpen,
@@ -26,10 +28,12 @@ export function CreateItemDialog({
   itemType = 'issue',
   parentTask,
   defaultTitle = '',
+  assigneeOptions = [],
 }) {
   const [mode, setMode] = useState('single'); // 'single' | 'batch'
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [assignees, setAssignees] = useState([]);
   const [batchTitles, setBatchTitles] = useState('');
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
@@ -37,8 +41,10 @@ export function CreateItemDialog({
   const titleInputRef = useRef(null);
   const batchInputRef = useRef(null);
 
-  // Milestone 不支援批次模式
-  const supportsBatchMode = itemType !== 'milestone';
+  // Milestone 不支援批次模式和 assignee（GitLab 限制）
+  const isMilestone = itemType === 'milestone';
+  const supportsBatchMode = !isMilestone;
+  const supportsAssignees = !isMilestone && assigneeOptions.length > 0;
 
   // 取得項目類型的顯示名稱
   const itemTypeName = useMemo(() => {
@@ -56,6 +62,7 @@ export function CreateItemDialog({
       setMode('single');
       setTitle(defaultTitle);
       setDescription('');
+      setAssignees([]);
       setBatchTitles('');
       setError(null);
       setProcessing(false);
@@ -97,13 +104,21 @@ export function CreateItemDialog({
         setError('Please enter a title');
         return;
       }
-      items = [{ title: title.trim(), description: description.trim() }];
+      items = [{
+        title: title.trim(),
+        description: description.trim(),
+        assignees,
+      }];
     } else {
       if (parsedBatchItems.length === 0) {
         setError('Please enter at least one title');
         return;
       }
-      items = parsedBatchItems;
+      // Batch 模式：所有 items 共用相同的 assignees
+      items = parsedBatchItems.map(item => ({
+        ...item,
+        assignees,
+      }));
     }
 
     setProcessing(true);
@@ -117,7 +132,7 @@ export function CreateItemDialog({
     } finally {
       setProcessing(false);
     }
-  }, [mode, title, description, parsedBatchItems, onConfirm, onClose]);
+  }, [mode, title, description, assignees, parsedBatchItems, onConfirm, onClose]);
 
   // Enter 鍵處理（僅在單一模式且 focus 在 title 輸入框時）
   const handleTitleKeyDown = useCallback((e) => {
@@ -135,6 +150,26 @@ export function CreateItemDialog({
     }
     return `Create ${itemTypeName}`;
   }, [processing, mode, parsedBatchItems.length, itemTypeName]);
+
+  // Assignee 選擇器區塊（single 和 batch 模式共用）
+  const renderAssigneeSelector = (hint) => {
+    if (!supportsAssignees) return null;
+    return (
+      <div className="dialog-form-group">
+        <label>
+          Assignees <span className="optional-label">({hint})</span>
+        </label>
+        <AssigneeSelector
+          options={assigneeOptions}
+          selected={assignees}
+          onChange={setAssignees}
+          disabled={processing}
+          placeholder="Search members..."
+          maxHeight={mode === 'batch' ? 80 : 100}
+        />
+      </div>
+    );
+  };
 
   const footer = (
     <>
@@ -231,6 +266,8 @@ export function CreateItemDialog({
             />
           </div>
 
+          {renderAssigneeSelector('optional')}
+
           <p className="dialog-hint">
             Press <kbd>Enter</kbd> to create quickly
           </p>
@@ -255,6 +292,8 @@ export function CreateItemDialog({
               rows={8}
             />
           </div>
+
+          {renderAssigneeSelector('shared for all items')}
 
           {/* 預覽 - 固定高度避免跳動 */}
           <div className="batch-preview">

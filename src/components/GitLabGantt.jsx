@@ -956,6 +956,17 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     return map;
   }, [serverFilterOptions?.labels]);
 
+  // Build assignee options for CreateItemDialog (from server members)
+  const assigneeOptions = useMemo(() => {
+    const members = serverFilterOptions?.members || [];
+    return members.map(member => ({
+      value: member.name,        // Use display name as value (matches task.assigned)
+      label: member.name,
+      subtitle: `@${member.username}`,
+      username: member.username,
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [serverFilterOptions?.members]);
+
   // Add workdays and labelPriority to tasks for sorting support
   const tasksWithWorkdays = useMemo(() => {
     return allTasks.map(task => {
@@ -1091,6 +1102,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             ...baseTask,
             text: item.title,
             details: item.description || '',
+            // 加入 assignees (display names，GraphQL provider 會自動解析)
+            assigned: item.assignees?.join(', ') || '',
           };
 
           // If creating under a milestone, add milestone info
@@ -3091,6 +3104,7 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         onConfirm={handleCreateItemConfirm}
         itemType={createItemDialogType}
         parentTask={createItemDialogContext?.parentTask}
+        assigneeOptions={assigneeOptions}
       />
 
       {/* Delete Dialog - for deleting items with close/delete options */}
