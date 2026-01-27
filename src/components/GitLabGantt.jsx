@@ -45,6 +45,9 @@ import { BlueprintManager } from './BlueprintManager.jsx';
 import { useBlueprint } from '../hooks/useBlueprint.ts';
 import { applyBlueprint as applyBlueprintService } from '../providers/BlueprintService.ts';
 import { defaultMenuOptions } from '@svar-ui/gantt-store';
+import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
+import { CreateItemDialog } from './shared/dialogs/CreateItemDialog';
+import { DeleteDialog } from './shared/dialogs/DeleteDialog';
 import {
   findLinkBySourceTarget,
   validateLinkGitLabMetadata,
@@ -85,6 +88,60 @@ function getTasksFromState(state) {
   return tasks.filter(task => task != null);
 }
 
+/**
+ * Get all children (direct and nested) of a task recursively
+ * Used for recursive delete feature
+ *
+ * @param {string|number} taskId - The parent task ID
+ * @param {Array} allTasks - Array of all tasks
+ * @returns {Array} Array of child task objects (all descendants)
+ */
+function getChildrenForTask(taskId, allTasks) {
+  const children = [];
+
+  const findChildren = (parentId) => {
+    const directChildren = allTasks.filter(t => t.parent === parentId);
+    for (const child of directChildren) {
+      children.push(child);
+      // Recursively find grandchildren
+      findChildren(child.id);
+    }
+  };
+
+  findChildren(taskId);
+  return children;
+}
+
+/**
+ * Sort task IDs by deletion order (children first, then parents)
+ * GitLab requires children to be deleted before parents
+ *
+ * @param {Array} taskIds - Array of task IDs to sort
+ * @param {Array} allTasks - Array of all tasks
+ * @returns {Array} Sorted array of task IDs
+ */
+function sortByDeletionOrder(taskIds, allTasks) {
+  // Build depth map (distance from root)
+  const depthMap = new Map();
+
+  for (const id of taskIds) {
+    const task = allTasks.find(t => t.id === id);
+    if (!task) continue;
+
+    let depth = 0;
+    let current = task;
+    while (current.parent && current.parent !== 0) {
+      depth++;
+      current = allTasks.find(t => t.id === current.parent);
+      if (!current) break;
+    }
+    depthMap.set(id, depth);
+  }
+
+  // Sort by depth descending (deepest/children first)
+  return [...taskIds].sort((a, b) => (depthMap.get(b) || 0) - (depthMap.get(a) || 0));
+}
+
 export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const [api, setApi] = useState(null);
   const [currentConfig, setCurrentConfig] = useState(null);
@@ -104,6 +161,14 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const [showBlueprintManager, setShowBlueprintManager] = useState(false);
   const [selectedMilestoneForBlueprint, setSelectedMilestoneForBlueprint] = useState(null);
 
+  // Dialog states for replacing native browser dialogs
+  const [createItemDialogOpen, setCreateItemDialogOpen] = useState(false);
+  const [createItemDialogType, setCreateItemDialogType] = useState('milestone');
+  const [createItemDialogContext, setCreateItemDialogContext] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogItems, setDeleteDialogItems] = useState([]);
+  const [discardChangesDialogOpen, setDiscardChangesDialogOpen] = useState(false);
+
   // Server filter options (labels, milestones, members from GitLab)
   const [serverFilterOptions, setServerFilterOptions] = useState(null);
   const [serverFilterOptionsLoading, setServerFilterOptionsLoading] = useState(false);
@@ -114,6 +179,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const allTasksRef = useRef([]);
   // Store reference to links for event handlers (to avoid stale closure)
   const linksRef = useRef([]);
+  // Store pending delete task IDs for delete dialog confirmation (supports batch)
+  const pendingDeleteTaskIdsRef = useRef([]);
+  // Store pending add-task context for create dialog confirmation
+  const pendingAddTaskContextRef = useRef(null);
 
   // Load settings from localStorage with defaults
   const [cellWidth, setCellWidth] = useState(() => {
@@ -959,31 +1028,154 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     []
   );
 
-  // Handler for adding a new milestone
-  const handleAddMilestone = useCallback(async () => {
-    const title = prompt('Enter Milestone title:', 'New Milestone');
-    if (!title) return;
+  // Handler for adding a new milestone - opens CreateItemDialog
+  const handleAddMilestone = useCallback(() => {
+    setCreateItemDialogType('milestone');
+    setCreateItemDialogContext(null);
+    setCreateItemDialogOpen(true);
+  }, []);
 
-    const description = prompt('Enter description (optional):');
+  // Handler for CreateItemDialog confirmation
+  const handleCreateItemConfirm = useCallback(async (items) => {
+    if (createItemDialogType === 'milestone') {
+      // Milestone creation (single mode only)
+      const { title, description } = items[0];
 
-    const startDateStr = prompt('Enter start date (YYYY-MM-DD, optional):');
-    const dueDateStr = prompt('Enter due date (YYYY-MM-DD, optional):');
+      try {
+        const milestone = {
+          text: title,
+          details: description || '',
+          parent: 0,
+        };
+
+        await createMilestone(milestone);
+        setCreateItemDialogOpen(false);
+      } catch (error) {
+        console.error('[GitLabGantt] Failed to create milestone:', error);
+        showToast(`Failed to create milestone: ${error.message}`, 'error');
+        throw error;
+      }
+    } else {
+      // Issue/Task creation - use the stored context from intercept
+      const context = pendingAddTaskContextRef.current;
+      if (!context) {
+        setCreateItemDialogOpen(false);
+        return;
+      }
+
+      const { baseTask, parentTask, itemType } = context;
+
+      try {
+        // Create items directly via createTask (supports batch)
+        for (const item of items) {
+          const newTask = {
+            ...baseTask,
+            text: item.title,
+            details: item.description || '',
+          };
+
+          // If creating under a milestone, add milestone info
+          if (itemType === 'issue' && parentTask?.$isMilestone) {
+            newTask._gitlab = {
+              ...newTask._gitlab,
+              milestoneGlobalId: parentTask._gitlab.globalId,
+            };
+          }
+
+          // If creating task under an issue, set parent
+          if (itemType === 'task' && parentTask?.$isIssue) {
+            newTask.parent = parentTask.id;
+          }
+
+          await createTask(newTask);
+        }
+
+        // Sync to get the newly created items
+        await syncWithFoldState();
+
+        pendingAddTaskContextRef.current = null;
+        setCreateItemDialogOpen(false);
+      } catch (error) {
+        console.error(`[GitLabGantt] Failed to create ${itemType}:`, error);
+        showToast(`Failed to create ${itemType}: ${error.message}`, 'error');
+        throw error;
+      }
+    }
+  }, [createItemDialogType, createMilestone, createTask, showToast, syncWithFoldState]);
+
+  // Handler for discard changes dialog confirmation
+  const handleDiscardChangesConfirm = useCallback(() => {
+    pendingEditorChangesRef.current.clear();
+    if (api) {
+      api.exec('close-editor');
+      syncWithFoldState(); // Reload to revert local changes
+    }
+    setDiscardChangesDialogOpen(false);
+  }, [api, syncWithFoldState]);
+
+  // Handler for delete dialog confirmation
+  const handleDeleteConfirm = useCallback(async (action, options = {}) => {
+    const { recursive = false } = options;
+    let taskIds = [...pendingDeleteTaskIdsRef.current];
+
+    if (!taskIds || taskIds.length === 0 || !api) {
+      setDeleteDialogOpen(false);
+      return;
+    }
 
     try {
-      const milestone = {
-        text: title,
-        details: description || '',
-        parent: 0,
-        ...(startDateStr && { start: new Date(startDateStr) }),
-        ...(dueDateStr && { end: new Date(dueDateStr) }),
-      };
+      // If recursive, expand to include all descendants
+      if (recursive) {
+        const allItems = new Set(taskIds);
+        for (const taskId of taskIds) {
+          const children = getChildrenForTask(taskId, allTasksRef.current);
+          children.forEach(child => allItems.add(child.id));
+        }
+        taskIds = Array.from(allItems);
+      }
 
-      await createMilestone(milestone);
+      // Sort by deletion order: children first, then parents (GitLab requirement)
+      taskIds = sortByDeletionOrder(taskIds, allTasksRef.current);
+
+      // Track already processed items to avoid duplicates
+      const processedSet = new Set();
+
+      if (action === 'delete') {
+        // Execute the delete for all items with skipHandler to avoid re-triggering the intercept
+        for (const taskId of taskIds) {
+          if (processedSet.has(taskId)) continue;
+          processedSet.add(taskId);
+          api.exec('delete-task', { id: taskId, skipHandler: true });
+        }
+      } else if (action === 'close') {
+        // Close issues/tasks by updating their state
+        for (const taskId of taskIds) {
+          if (processedSet.has(taskId)) continue;
+
+          // Skip milestones for close action (milestones cannot be closed)
+          const task = allTasksRef.current.find(t => t.id === taskId);
+          if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
+            console.log(`[GitLabGantt] Skipping close for milestone: ${taskId}`);
+            continue;
+          }
+
+          processedSet.add(taskId);
+          await syncTask(taskId, { state: 'closed' });
+        }
+        // Refresh to reflect the closed state
+        await syncWithFoldState();
+        const closedCount = processedSet.size;
+        showToast(`${closedCount > 1 ? `${closedCount} items` : 'Item'} closed successfully`, 'success');
+      }
     } catch (error) {
-      console.error('[GitLabGantt] Failed to create milestone:', error);
-      showToast(`Failed to create milestone: ${error.message}`, 'error');
+      console.error('[GitLabGantt] Delete/close failed:', error);
+      showToast(`Failed to ${action} items: ${error.message}`, 'error');
     }
-  }, [createMilestone]);
+
+    pendingDeleteTaskIdsRef.current = [];
+    setDeleteDialogItems([]);
+    setDeleteDialogOpen(false);
+  }, [api, syncTask, syncWithFoldState, showToast]);
 
   // ============================================
   // Move In... Feature - Context Menu Integration
@@ -1281,17 +1473,9 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           const changes = pendingEditorChangesRef.current.get(taskId);
 
           if (changes && Object.keys(changes).length > 0) {
-            const confirmed = confirm(
-              'You have unsaved changes. Do you want to discard them?'
-            );
-
-            if (confirmed) {
-              // Discard changes and reload
-              pendingEditorChangesRef.current.clear();
-              ganttApi.exec('close-editor');
-              syncWithFoldState(); // Reload to revert local changes
-            }
-            // If not confirmed, do nothing (stay in editor)
+            // Show discard changes dialog instead of native confirm
+            setDiscardChangesDialogOpen(true);
+            // Dialog will handle the actual close via handleDiscardChangesConfirm
           } else {
             // No changes, just close
             ganttApi.exec('close-editor');
@@ -1561,33 +1745,22 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
           // Check if parent is a milestone
           if (parentTask && parentTask.$isMilestone) {
-            // Creating issue under milestone - this is allowed
+            // Creating issue under milestone - show CreateItemDialog
+            const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : '';
 
-            // Don't use ev.task.text as default if it's the generic "New Task" from Gantt
-            const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : 'New GitLab Issue';
-            const title = prompt(
-              'Enter GitLab Issue title:',
-              defaultTitle
-            );
+            // Store context for dialog confirmation
+            pendingAddTaskContextRef.current = {
+              baseTask: { ...ev.task, text: defaultTitle },
+              parentTask,
+              itemType: 'issue',
+            };
 
-            if (!title) {
-              return false; // User cancelled
-            }
+            setCreateItemDialogType('issue');
+            setCreateItemDialogContext({ parentMilestone: parentTask });
+            setCreateItemDialogOpen(true);
 
-            // Update the task with user input
-            ev.task.text = title;
-
-            // Optionally ask for description
-            const description = prompt('Enter description (optional):');
-            if (description) {
-              ev.task.details = description;
-            }
-
-            // Mark this task to be created with milestone assignment
-            // Store the milestone's global ID for the mutation
-            ev.task._assignToMilestone = parentTask._gitlab.globalId; // Store milestone global ID
-
-            return true;
+            // Block the add-task - dialog will handle creation directly
+            return false;
           }
 
           // Check if parent is a GitLab Task (subtask)
@@ -1604,53 +1777,41 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           const isParentGitLabIssue = parentTask && parentTask.$isIssue;
 
           if (isParentGitLabIssue) {
-            // Creating task under issue
-            // Don't use ev.task.text as default if it's the generic "New Task" from Gantt
-            const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : 'New GitLab Task';
-            const title = prompt(
-              'Enter GitLab Task title:',
-              defaultTitle
-            );
+            // Creating task under issue - show CreateItemDialog
+            const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : '';
 
-            if (!title) {
-              return false; // User cancelled
-            }
+            // Store context for dialog confirmation
+            pendingAddTaskContextRef.current = {
+              baseTask: { ...ev.task, text: defaultTitle },
+              parentTask,
+              itemType: 'task',
+            };
 
-            // Update the task with user input
-            ev.task.text = title;
+            setCreateItemDialogType('task');
+            setCreateItemDialogContext({ parentTask });
+            setCreateItemDialogOpen(true);
 
-            // Optionally ask for description
-            const description = prompt('Enter description (optional):');
-            if (description) {
-              ev.task.details = description;
-            }
-
-            return true;
+            // Block the add-task - dialog will handle creation directly
+            return false;
           }
         }
 
-        // Creating top-level issue (no parent)
-        // Don't use ev.task.text as default if it's the generic "New Task" from Gantt
-        const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : 'New GitLab Issue';
-        const title = prompt(
-          'Enter GitLab Issue title:',
-          defaultTitle
-        );
+        // Creating top-level issue (no parent) - show CreateItemDialog
+        const defaultTitle = (ev.task.text && ev.task.text !== 'New Task') ? ev.task.text : '';
 
-        if (!title) {
-          return false; // User cancelled
-        }
+        // Store context for dialog confirmation
+        pendingAddTaskContextRef.current = {
+          baseTask: { ...ev.task, text: defaultTitle },
+          parentTask: null,
+          itemType: 'issue',
+        };
 
-        // Update the task with user input
-        ev.task.text = title;
+        setCreateItemDialogType('issue');
+        setCreateItemDialogContext(null);
+        setCreateItemDialogOpen(true);
 
-        // Optionally ask for description
-        const description = prompt('Enter description (optional):');
-        if (description) {
-          ev.task.details = description;
-        }
-
-        return true;
+        // Block the add-task - dialog will handle creation directly
+        return false;
       });
 
       // Handle task creation
@@ -1701,7 +1862,8 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           // Delete the temporary task (with baseline)
           ganttApi.exec('delete-task', {
             id: ev.id,
-            skipHandler: true, // Don't trigger delete handler
+            skipHandler: true, // Skip intercept
+            skipGitLabDelete: true, // Don't trigger GitLab delete
           });
 
           // Restore fold state for parent tasks after adding new child
@@ -1729,35 +1891,51 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           console.error('Failed to create task:', error);
           showToast(`Failed to create task: ${error.message}`, 'error');
           // Remove the temporary task
-          ganttApi.exec('delete-task', { id: ev.id, skipHandler: true });
+          ganttApi.exec('delete-task', { id: ev.id, skipHandler: true, skipGitLabDelete: true });
         }
       });
 
-      // Intercept task deletion to ask for confirmation
+      // Intercept task deletion to show delete dialog
       ganttApi.intercept('delete-task', (ev) => {
         // Skip if this is an internal deletion (e.g., removing temp task)
         if (ev.skipHandler) {
           return true;
         }
 
-        // Get task info for confirmation message
+        // Get task info for dialog
         const task = ganttApi.getTask(ev.id);
         const taskTitle = task ? task.text : `Item ${ev.id}`;
 
-        // Determine the type of item for proper messaging
-        let itemType = 'issue';
+        // Determine the type of item
+        let itemType = 'Issue';
         if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
-          itemType = 'milestone';
+          itemType = 'Milestone';
         } else if (task?._gitlab?.workItemType === 'Task') {
-          itemType = 'task';
+          itemType = 'Task';
         }
 
-        // Ask for confirmation
-        const confirmed = confirm(
-          `Are you sure you want to delete "${taskTitle}"?\n\nThis will permanently delete the ${itemType} from GitLab.`
-        );
+        // Get children for recursive delete option
+        const children = getChildrenForTask(ev.id, allTasksRef.current);
 
-        return confirmed;
+        // Accumulate task IDs for batch deletion
+        pendingDeleteTaskIdsRef.current = [...pendingDeleteTaskIdsRef.current, ev.id];
+
+        // Accumulate items for dialog display
+        setDeleteDialogItems(prev => [...prev, {
+          id: ev.id,
+          title: taskTitle,
+          type: itemType,
+          children: children.map(child => ({
+            id: child.id,
+            title: child.text,
+            type: child.$isMilestone ? 'Milestone' :
+                  child._gitlab?.workItemType === 'Task' ? 'Task' : 'Issue',
+          })),
+        }]);
+        setDeleteDialogOpen(true);
+
+        // Block the delete - dialog will handle it
+        return false;
       });
 
       // Track pending delete operations for proper ordering
@@ -1766,8 +1944,10 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
       // Handle task deletion after confirmation
       ganttApi.on('delete-task', async (ev) => {
-        // Skip if this is an internal deletion (e.g., removing temp task)
-        if (ev.skipHandler) {
+        // Skip if this is an internal deletion (e.g., removing temp task after create)
+        // Note: skipHandler=true from dialog confirmation should NOT skip this handler
+        // We use a separate flag (skipGitLabDelete) for internal deletions
+        if (ev.skipGitLabDelete) {
           return;
         }
 
@@ -2876,6 +3056,41 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
           setShowBlueprintManager(false);
           setShowApplyBlueprintModal(true);
         }}
+      />
+
+      {/* Create Item Dialog - for milestone/issue/task creation */}
+      <CreateItemDialog
+        isOpen={createItemDialogOpen}
+        onClose={() => {
+          setCreateItemDialogOpen(false);
+          pendingAddTaskContextRef.current = null;
+        }}
+        onConfirm={handleCreateItemConfirm}
+        itemType={createItemDialogType}
+        parentTask={createItemDialogContext?.parentTask}
+      />
+
+      {/* Delete Dialog - for deleting items with close/delete options */}
+      <DeleteDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setDeleteDialogItems([]);
+          pendingDeleteTaskIdsRef.current = [];
+        }}
+        onConfirm={handleDeleteConfirm}
+        items={deleteDialogItems}
+      />
+
+      {/* Discard Changes Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={discardChangesDialogOpen}
+        onClose={() => setDiscardChangesDialogOpen(false)}
+        onConfirm={handleDiscardChangesConfirm}
+        title="Discard Changes"
+        message="You have unsaved changes. Do you want to discard them?"
+        severity="warning"
+        confirmLabel="Discard"
       />
 
       <style>{`

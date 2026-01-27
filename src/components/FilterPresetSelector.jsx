@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Toast } from './Toast.jsx';
+import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
 
 /**
  * Simple dialog component for preset name input
@@ -287,6 +288,10 @@ export function FilterPresetSelector({
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Delete confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [presetToDelete, setPresetToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const dropdownRef = useRef(null);
@@ -445,17 +450,25 @@ export function FilterPresetSelector({
     }
   }, [newPresetName, renameTarget, onRenamePreset]);
 
-  const handleDeletePreset = useCallback(async (preset) => {
-    if (window.confirm(`Delete preset "${preset.name}"?`)) {
-      try {
-        await onDeletePreset(preset.id);
-      } catch (err) {
-        const message = err?.message || 'Failed to delete preset';
-        setErrorMessage(message.includes('403') ? 'Permission denied: You may not have write access to this project' : message);
-      }
-    }
+  const handleDeletePreset = useCallback((preset) => {
+    setPresetToDelete(preset);
+    setDeleteConfirmOpen(true);
     setActiveMenuId(null);
-  }, [onDeletePreset]);
+  }, []);
+
+  const confirmDeletePreset = useCallback(async () => {
+    if (!presetToDelete) return;
+
+    try {
+      await onDeletePreset(presetToDelete.id);
+    } catch (err) {
+      const message = err?.message || 'Failed to delete preset';
+      setErrorMessage(message.includes('403') ? 'Permission denied: You may not have write access to this project' : message);
+    }
+
+    setDeleteConfirmOpen(false);
+    setPresetToDelete(null);
+  }, [presetToDelete, onDeletePreset]);
 
   const handleMenuToggle = useCallback((e, presetId) => {
     e.stopPropagation();
@@ -660,6 +673,20 @@ export function FilterPresetSelector({
           hint="Use '/' to organize into folders"
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setPresetToDelete(null);
+        }}
+        onConfirm={confirmDeletePreset}
+        title="Delete Preset"
+        message={`Are you sure you want to delete "${presetToDelete?.name}"?`}
+        severity="danger"
+        confirmLabel="Delete"
+      />
 
       <style>{`
         .filter-preset-container {

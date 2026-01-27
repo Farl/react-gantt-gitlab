@@ -1,0 +1,235 @@
+/**
+ * BaseDialog Styles
+ * 共用對話框樣式，其他對話框可以共用這些樣式或覆蓋
+ * 使用 --wx-gitlab-modal-* CSS 變數以保持與現有 modal 一致
+ */
+
+/* ===== Overlay ===== */
+.base-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--wx-gitlab-modal-overlay, rgba(0, 0, 0, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: dialog-fade-in 0.15s ease-out;
+}
+
+@keyframes dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ===== Dialog Container ===== */
+.base-dialog {
+  background: var(--wx-gitlab-modal-background, #fff);
+  border-radius: 8px;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: dialog-slide-in 0.15s ease-out;
+  outline: none;
+}
+
+@keyframes dialog-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Header ===== */
+.base-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gitlab-modal-border, #ddd);
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
+}
+
+.base-dialog-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.base-dialog-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.base-dialog-close:hover {
+  background: var(--wx-gitlab-button-hover-background, rgba(0, 0, 0, 0.05));
+}
+
+/* ===== Body ===== */
+.base-dialog-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ===== Footer ===== */
+.base-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--wx-gitlab-modal-border, #ddd);
+  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
+  border-radius: 0 0 8px 8px;
+  flex-shrink: 0;
+}
+
+/* ===== Common Button Styles ===== */
+.base-dialog .dialog-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.base-dialog .dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.base-dialog .dialog-btn-secondary {
+  background: var(--wx-gitlab-button-background, #fff);
+  color: var(--wx-gitlab-button-text, #666);
+  border: 1px solid var(--wx-gitlab-button-border, #ddd);
+}
+
+.base-dialog .dialog-btn-secondary:hover:not(:disabled) {
+  background: var(--wx-gitlab-button-hover-background, #f5f5f5);
+}
+
+.base-dialog .dialog-btn-primary {
+  background: #1f75cb;
+  color: #fff;
+}
+
+.base-dialog .dialog-btn-primary:hover:not(:disabled) {
+  background: #1a65b3;
+}
+
+.base-dialog .dialog-btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.base-dialog .dialog-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+/* ===== Common Form Elements ===== */
+.base-dialog .dialog-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.base-dialog .dialog-form-group > label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.base-dialog .dialog-input {
+  padding: 8px 12px;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  color: var(--wx-gitlab-modal-text, #333);
+}
+
+.base-dialog .dialog-input:focus {
+  outline: none;
+  border-color: #1f75cb;
+  box-shadow: 0 0 0 2px rgba(31, 117, 203, 0.1);
+}
+
+.base-dialog .dialog-input::placeholder {
+  color: var(--wx-gitlab-modal-hint-text, #999);
+}
+
+.base-dialog .dialog-textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--wx-gitlab-filter-input-background, #fff);
+  color: var(--wx-gitlab-modal-text, #333);
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.base-dialog .dialog-textarea:focus {
+  outline: none;
+  border-color: #1f75cb;
+  box-shadow: 0 0 0 2px rgba(31, 117, 203, 0.1);
+}
+
+.base-dialog .dialog-textarea::placeholder {
+  color: var(--wx-gitlab-modal-hint-text, #999);
+}
+
+/* ===== Message Content ===== */
+.base-dialog .dialog-message {
+  font-size: 14px;
+  color: var(--wx-gitlab-modal-text, #333);
+  line-height: 1.5;
+}
+
+/* ===== Error Message ===== */
+.base-dialog .dialog-error {
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* ===== Hint Text ===== */
+.base-dialog .dialog-hint {
+  font-size: 12px;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+}

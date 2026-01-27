@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { gitlabConfigManager } from '../config/GitLabConfigManager';
+import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
 
 export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsChange }) {
   const [configs, setConfigs] = useState([]);
@@ -20,6 +21,12 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
   });
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
+
+  // Dialog states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfigId, setDeleteConfigId] = useState(null);
+  const [validationErrorOpen, setValidationErrorOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   useEffect(() => {
     loadConfigs();
@@ -67,8 +74,13 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
   };
 
   const handleDelete = (configId) => {
-    if (window.confirm('Are you sure you want to delete this configuration?')) {
-      gitlabConfigManager.deleteConfig(configId);
+    setDeleteConfigId(configId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfigId) {
+      gitlabConfigManager.deleteConfig(deleteConfigId);
       loadConfigs();
       // Notify parent to refresh its configs list
       if (onConfigsChange) {
@@ -81,6 +93,8 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
         onProjectChange(activeConfig);
       }
     }
+    setDeleteConfirmOpen(false);
+    setDeleteConfigId(null);
   };
 
   const handleTestConnection = async () => {
@@ -108,7 +122,8 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
     const validation = gitlabConfigManager.constructor.validateConfig(formData);
 
     if (!validation.valid) {
-      alert('Validation errors:\n' + validation.errors.join('\n'));
+      setValidationErrors(validation.errors);
+      setValidationErrorOpen(true);
       return;
     }
 
@@ -578,6 +593,38 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
           border-top: 1px solid var(--wx-gitlab-modal-border);
         }
       `}</style>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setDeleteConfigId(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Configuration"
+        message="Are you sure you want to delete this configuration?"
+        severity="danger"
+        confirmLabel="Delete"
+      />
+
+      {/* Validation Error Dialog */}
+      <ConfirmDialog
+        isOpen={validationErrorOpen}
+        onClose={() => setValidationErrorOpen(false)}
+        onConfirm={() => setValidationErrorOpen(false)}
+        title="Validation Error"
+        message={
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            {validationErrors.map((err, idx) => (
+              <li key={idx}>{err}</li>
+            ))}
+          </ul>
+        }
+        severity="warning"
+        confirmLabel="OK"
+        showCancel={false}
+      />
     </div>
   );
 }

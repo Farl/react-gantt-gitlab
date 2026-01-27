@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import './BlueprintManager.css';
+import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
 
 /**
  * @param {Object} props
@@ -30,6 +31,10 @@ export function BlueprintManager({
   const [editName, setEditName] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+
+  // Delete confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [blueprintToDelete, setBlueprintToDelete] = useState(null);
 
   // 用於追蹤 mousedown 是否發生在 overlay 上，避免拖曳選取文字時意外關閉
   const mouseDownOnOverlay = useRef(false);
@@ -64,27 +69,32 @@ export function BlueprintManager({
     [editName, onRename, cancelEditing],
   );
 
-  // 刪除
+  // 開啟刪除確認對話框
   const handleDelete = useCallback(
-    async (blueprint) => {
+    (blueprint) => {
       if (deletingId) return;
-
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${blueprint.name}"?`,
-      );
-      if (!confirmed) return;
-
-      setDeletingId(blueprint.id);
-      try {
-        await onDelete(blueprint.id, blueprint.storage_type);
-      } catch (err) {
-        console.error('[BlueprintManager] Delete failed:', err);
-      } finally {
-        setDeletingId(null);
-      }
+      setBlueprintToDelete(blueprint);
+      setDeleteConfirmOpen(true);
     },
-    [deletingId, onDelete],
+    [deletingId],
   );
+
+  // 確認刪除
+  const confirmDelete = useCallback(async () => {
+    if (!blueprintToDelete) return;
+
+    setDeletingId(blueprintToDelete.id);
+    setDeleteConfirmOpen(false);
+
+    try {
+      await onDelete(blueprintToDelete.id, blueprintToDelete.storage_type);
+    } catch (err) {
+      console.error('[BlueprintManager] Delete failed:', err);
+    } finally {
+      setDeletingId(null);
+      setBlueprintToDelete(null);
+    }
+  }, [blueprintToDelete, onDelete]);
 
   // 展開/收合詳情
   const toggleExpand = useCallback((blueprintId) => {
@@ -290,6 +300,20 @@ export function BlueprintManager({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setBlueprintToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Blueprint"
+        message={`Are you sure you want to delete "${blueprintToDelete?.name}"?`}
+        severity="danger"
+        confirmLabel="Delete"
+      />
     </div>
   );
 }
