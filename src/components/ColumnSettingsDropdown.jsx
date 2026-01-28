@@ -574,11 +574,20 @@ export const COLUMN_CONFIGS = {
 /**
  * Build columns array based on settings and external cell components
  * @param {Object} columnSettings - Column settings from useColumnSettings
- * @param {Object} cellComponents - External cell components { DateCell, WorkdaysCell, labelColorMap, labelPriorityMap }
+ * @param {Object} cellComponents - External cell components
+ *   { DateCell, DateEditCell, WorkdaysCell, labelColorMap, labelPriorityMap, dateEditable, onDateChange }
  * @returns {Array} Ordered array of visible column configs
  */
 export function buildColumnsFromSettings(columnSettings, cellComponents) {
-  const { DateCell, WorkdaysCell, labelColorMap, labelPriorityMap } = cellComponents;
+  const {
+    DateCell,
+    DateEditCell,
+    WorkdaysCell,
+    labelColorMap,
+    labelPriorityMap,
+    dateEditable = false,
+    onDateChange,
+  } = cellComponents;
 
   return columnSettings.columns
     .filter(col => col.visible)
@@ -586,7 +595,14 @@ export function buildColumnsFromSettings(columnSettings, cellComponents) {
       const config = { ...COLUMN_CONFIGS[col.key] };
       // Inject external cell components
       if (col.key === 'start' || col.key === 'end') {
-        config.cell = DateCell;
+        // Use DateEditCell when editable, otherwise use DateCell (readonly)
+        if (dateEditable && DateEditCell) {
+          config.cell = (props) => (
+            <DateEditCell {...props} readonly={false} onDateChange={onDateChange} />
+          );
+        } else {
+          config.cell = DateCell;
+        }
       } else if (col.key === 'workdays') {
         config.cell = WorkdaysCell;
       } else if (col.key === 'labels') {

@@ -1,0 +1,19 @@
+/**
+ * DateEditCell - Grid cell specific styles
+ * Popup styles are in shared/DatePickerPopup.css
+ *
+ * NOTE: --wx-color-secondary is "transparent" in willow theme, so we use
+ * --wx-color-font-alt (#9fa1ae) for muted text color instead.
+ * The "None" text color is set via inline style in the component.
+ */
+
+.date-edit-cell-value {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
+}
+
+.date-edit-cell-value:hover {
+  background-color: var(--wx-background-alt, rgba(0, 0, 0, 0.05));
+}

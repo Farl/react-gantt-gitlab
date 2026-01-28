@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useContext } from 'react';
+import { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
 import { Editor as WxEditor, registerEditorItem } from '@svar-ui/react-editor';
 import { Locale, RichSelect, Slider, Counter, TwoState } from '@svar-ui/react-core';
 import { defaultEditorItems, normalizeDates } from '@svar-ui/gantt-store';
@@ -10,6 +10,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import Links from './editor/Links.jsx';
 import DateTimePicker from './editor/DateTimePicker.jsx';
+import NullableDatePicker from './editor/NullableDatePicker.jsx';
 import WorkdaysInput from './editor/WorkdaysInput.jsx';
 import { useStore, useWritableProp } from '@svar-ui/lib-react';
 
@@ -21,6 +22,7 @@ import './Editor.css';
 
 registerEditorItem('select', RichSelect);
 registerEditorItem('date', DateTimePicker);
+registerEditorItem('nullable-date', NullableDatePicker); // Custom date picker that supports null
 registerEditorItem('twostate', TwoState);
 registerEditorItem('slider', Slider);
 registerEditorItem('counter', Counter);
@@ -245,9 +247,24 @@ function Editor({
     }
     if (!activeTask) return null;
 
-    // Calculate workdays if helpers are available
+    // Create task object with workdays calculation
     const taskWithWorkdays = { ...activeTask };
-    if (workdaysHelpers?.countWorkdays && activeTask.start && activeTask.end) {
+
+    // Check _gitlab fields to determine if GitLab actually has the dates
+    // (task.start may be auto-filled with createdAt when GitLab has no startDate)
+    const hasGitLabStartDate = activeTask._gitlab?.startDate;
+    const hasGitLabDueDate = activeTask._gitlab?.dueDate;
+
+    // If GitLab doesn't have the date, set it to null so Editor shows empty
+    if (!hasGitLabStartDate) {
+      taskWithWorkdays.start = null;
+    }
+    if (!hasGitLabDueDate) {
+      taskWithWorkdays.end = null;
+    }
+
+    // Calculate workdays if helpers are available and both dates exist
+    if (workdaysHelpers?.countWorkdays && hasGitLabStartDate && hasGitLabDueDate) {
       taskWithWorkdays.workdays = workdaysHelpers.countWorkdays(
         activeTask.start,
         activeTask.end
@@ -294,8 +311,23 @@ function Editor({
     if (item.comp) hide();
   }, [api, taskId, autoSave, saveLinks, deleteTask, hide, activeTask]);
 
+  // Track which date fields the user has actually changed
+  // This is needed because svar's normalizeDates auto-fills the other date field
+  const changedDateFieldsRef = useRef(new Set());
+
   const normalizeTask = useCallback((t, key) => {
     if (unscheduledTasks && t.type === 'summary') t.unscheduled = false;
+
+    // Track date field changes
+    if (key === 'start' || key === 'end') {
+      changedDateFieldsRef.current.add(key);
+    }
+
+    // Skip normalizeDates for date fields entirely
+    // normalizeDates auto-fills start/end which we don't want - dates should be independent
+    if (key === 'start' || key === 'end') {
+      return t;
+    }
 
     normalizeDates(t, unit, true, key);
     return t;
@@ -339,6 +371,25 @@ function Editor({
 
   const handleSave = useCallback((ev) => {
     let { values } = ev;
+
+    console.log('[Editor handleSave] values.start:', values.start, 'type:', typeof values.start);
+    console.log('[Editor handleSave] values.end:', values.end, 'type:', typeof values.end);
+    console.log('[Editor handleSave] changedDateFields:', [...changedDateFieldsRef.current]);
+
+    // Build originalDateValues based on what the user actually changed
+    // This tells GitLabGantt which fields to sync to GitLab
+    const originalDateValues = {};
+    if (changedDateFieldsRef.current.has('start')) {
+      originalDateValues.start = values.start; // can be null or Date
+    }
+    if (changedDateFieldsRef.current.has('end')) {
+      originalDateValues.end = values.end; // can be null or Date
+    }
+    console.log('[Editor handleSave] originalDateValues:', originalDateValues);
+
+    // Clear the tracking for next edit session
+    changedDateFieldsRef.current.clear();
+
     values = {
       ...values,
       unscheduled:
@@ -350,6 +401,7 @@ function Editor({
     api.exec('update-task', {
       id: taskId,
       task: values,
+      _originalDateValues: originalDateValues, // Preserve null values that svar would overwrite
     });
 
     if (!autoSave) saveLinks();

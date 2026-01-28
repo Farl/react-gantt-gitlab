@@ -1,0 +1,47 @@
+/**
+ * DatePickerPopup shared styles
+ * Used by DateEditCell (Grid) and NullableDatePicker (Editor)
+ *
+ * Layout: Calendar on left, trash icon clear button on right when has date
+ */
+
+.date-picker-popup {
+  background: var(--wx-background, #fff);
+  border: 1px solid var(--wx-border, #dcdcde);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  z-index: 1000;
+}
+
+/* Horizontal layout container */
+.date-picker-popup-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Clear button - circular button with trash icon */
+.date-picker-popup-clear-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border: 1px solid var(--wx-color-danger, #dc3545);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--wx-color-danger, #dc3545);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.date-picker-popup-clear-btn:hover {
+  background: var(--wx-color-danger, #dc3545);
+  color: #fff;
+}

@@ -20,6 +20,7 @@ import { useFilterPresets } from '../hooks/useFilterPresets.ts';
 import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
 import { useHighlightTime } from '../hooks/useHighlightTime.ts';
 import { GitLabFilters, toGitLabServerFilters } from '../utils/GitLabFilters.ts';
+import { formatDateToLocalString, createStartDate, createEndDate } from '../utils/dateUtils.js';
 import {
   loadProjectSettings,
   updateProjectFilterSettings,
@@ -37,6 +38,7 @@ import {
   useColumnSettings,
   buildColumnsFromSettings,
 } from './ColumnSettingsDropdown.jsx';
+import DateEditCell from './grid/DateEditCell.jsx';
 import { ColorRulesEditor } from './ColorRulesEditor.jsx';
 import { MoveInModal } from './MoveInModal.jsx';
 import { SaveBlueprintModal } from './SaveBlueprintModal.jsx';
@@ -172,6 +174,9 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
 
   // Server filter options (labels, milestones, members from GitLab)
   const [serverFilterOptions, setServerFilterOptions] = useState(null);
+
+  // Date editing mode state (true = dates can be edited in grid cells)
+  const [dateEditable, setDateEditable] = useState(true);
   const [serverFilterOptionsLoading, setServerFilterOptionsLoading] = useState(false);
   // Active server filters (applied to API calls)
   const [activeServerFilters, setActiveServerFilters] = useState(null);
@@ -1739,27 +1744,92 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
             taskChanges.details = ev.task.details;
           }
 
-          // Date fields
-          if (ev.task.start !== undefined) {
-            taskChanges.start = new Date(ev.task.start);
-          } else if (currentTask.start) {
-            taskChanges.start = new Date(currentTask.start);
+          // Date fields - support null values for clearing dates
+          // IMPORTANT: svar merges ev.task with the gantt store, so null values get overwritten
+          // We use _originalDateValues (from Editor) and _originalDateChange (from Grid) to preserve nulls
+
+          // Determine which date fields were actually changed
+          // NOTE: ev.task contains the FULL merged task from svar, not just changed fields
+          // So we must rely on _originalDateValues (Editor) or _originalDateChange (Grid)
+          // to know what was actually changed by the user
+          const isFromEditor = ev._originalDateValues && Object.keys(ev._originalDateValues).length > 0;
+          const isFromGrid = !!ev._originalDateChange;
+
+          // Get actual values from the original sources (before svar merge)
+          let actualStartValue = ev.task.start;
+          let actualEndValue = ev.task.end;
+
+          if (isFromEditor) {
+            // Editor: _originalDateValues contains the actual user-set values (Date or null)
+            if (ev._originalDateValues.hasOwnProperty('start')) {
+              actualStartValue = ev._originalDateValues.start;
+            }
+            if (ev._originalDateValues.hasOwnProperty('end')) {
+              actualEndValue = ev._originalDateValues.end;
+            }
+          } else if (isFromGrid) {
+            // Grid: _originalDateChange contains the single changed field
+            if (ev._originalDateChange.column === 'start') {
+              actualStartValue = ev._originalDateChange.value;
+            } else if (ev._originalDateChange.column === 'end') {
+              actualEndValue = ev._originalDateChange.value;
+            }
           }
 
-          if (ev.task.end !== undefined) {
-            taskChanges.end = new Date(ev.task.end);
-          } else if (currentTask.end) {
-            taskChanges.end = new Date(currentTask.end);
+          // Process start date - only if it was actually changed
+          // Start date uses 00:00:00 local time
+          const hasStartChange = (isFromEditor && ev._originalDateValues.hasOwnProperty('start')) ||
+                                  (isFromGrid && ev._originalDateChange.column === 'start');
+          if (hasStartChange) {
+            const normalizedStart = createStartDate(actualStartValue);
+            taskChanges.start = normalizedStart;
+            // Also update ev.task so svar Gantt UI reflects the correct time
+            if (normalizedStart) ev.task.start = normalizedStart;
+            if (!taskChanges._gitlab) taskChanges._gitlab = { ...currentTask._gitlab };
+            taskChanges._gitlab.startDate = formatDateToLocalString(actualStartValue);
+          }
+
+          // Process end date - only if it was actually changed
+          // End/due date uses 23:59:59 local time so tasks appear to end at end of day
+          const hasEndChange = (isFromEditor && ev._originalDateValues.hasOwnProperty('end')) ||
+                                (isFromGrid && ev._originalDateChange.column === 'end');
+          if (hasEndChange) {
+            const normalizedEnd = createEndDate(actualEndValue);
+            taskChanges.end = normalizedEnd;
+            // Also update ev.task so svar Gantt UI reflects the correct time (bar length)
+            if (normalizedEnd) ev.task.end = normalizedEnd;
+            if (!taskChanges._gitlab) taskChanges._gitlab = { ...currentTask._gitlab };
+            taskChanges._gitlab.dueDate = formatDateToLocalString(actualEndValue);
+          }
+
+          // If neither Editor nor Grid markers exist, this might be from timeline drag
+          // In that case, check if ev.task has date changes vs currentTask
+          if (!isFromEditor && !isFromGrid) {
+            if (ev.task.start !== undefined && ev.task.start?.getTime?.() !== currentTask.start?.getTime?.()) {
+              const normalizedStart = createStartDate(ev.task.start);
+              taskChanges.start = normalizedStart;
+              if (normalizedStart) ev.task.start = normalizedStart;
+              if (!taskChanges._gitlab) taskChanges._gitlab = { ...currentTask._gitlab };
+              taskChanges._gitlab.startDate = formatDateToLocalString(ev.task.start);
+            }
+            if (ev.task.end !== undefined && ev.task.end?.getTime?.() !== currentTask.end?.getTime?.()) {
+              const normalizedEnd = createEndDate(ev.task.end);
+              taskChanges.end = normalizedEnd;
+              if (normalizedEnd) ev.task.end = normalizedEnd;
+              if (!taskChanges._gitlab) taskChanges._gitlab = { ...currentTask._gitlab };
+              taskChanges._gitlab.dueDate = formatDateToLocalString(ev.task.end);
+            }
           }
 
           if (ev.task.duration !== undefined) {
             taskChanges.duration = ev.task.duration;
           }
 
-          // Sync to GitLab without updating React state (to avoid re-render conflicts)
           (async () => {
             try {
               await syncTask(ev.id, taskChanges);
+              // NOTE: Removed syncWithFoldState() call - it was causing unnecessary full reload
+              // The UI should update based on _gitlab data directly via DateEditCell
             } catch (error) {
               console.error('Failed to sync task update:', error);
               showToast(`Failed to sync task: ${error.message}`, 'error');
@@ -2439,9 +2509,25 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
   const highlightTime = highlightTimeFn;
 
   // Date cell component for custom formatting
+  // For regular tasks: Check _gitlab.startDate / _gitlab.dueDate to determine if GitLab actually has the date
+  // (row.start may be auto-filled with createdAt when GitLab has no startDate)
+  // For milestones: Always show the date (milestones always have dates in GitLab)
   const DateCell = useCallback(({ row, column }) => {
+    const isMilestone = row.$isMilestone || row._gitlab?.type === 'milestone';
+
+    // Milestones always have dates, so skip the _gitlab check for them
+    if (!isMilestone) {
+      // For regular tasks, check if GitLab actually has the date
+      const gitlabFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
+      const hasGitLabDate = row._gitlab?.[gitlabFieldName];
+
+      if (!hasGitLabDate) {
+        return <span style={{ color: 'var(--wx-color-secondary, #6e6e73)' }}>None</span>;
+      }
+    }
+
     const date = row[column.id];
-    if (!date) return '';
+    if (!date) return <span style={{ color: 'var(--wx-color-secondary, #6e6e73)' }}>None</span>;
 
     const d = date instanceof Date ? date : new Date(date);
     const yy = String(d.getFullYear()).slice(-2);
@@ -2487,14 +2573,33 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
     );
   }, []);
 
+  // Handler for date changes from Grid DateEditCell
+  const handleGridDateChange = useCallback((rowId, columnId, value) => {
+    if (!api) return;
+
+    // Trigger update-task event which will be handled by the existing sync logic
+    // IMPORTANT: Pass _originalDateChange to preserve null values, because svar merges
+    // ev.task with the gantt store, overwriting our null with the existing date
+    api.exec('update-task', {
+      id: rowId,
+      task: {
+        [columnId]: value, // value can be Date or null (cleared)
+      },
+      _originalDateChange: { column: columnId, value }, // Preserve original value
+    });
+  }, [api]);
+
   // Columns configuration with visibility and order control
   const columns = useMemo(() => {
     // Build configurable columns from settings
     const configurableCols = buildColumnsFromSettings(columnSettings, {
       DateCell,
+      DateEditCell,
       WorkdaysCell,
       labelColorMap,
       labelPriorityMap,
+      dateEditable, // Enable/disable date editing in grid cells
+      onDateChange: handleGridDateChange,
     });
 
     return [
@@ -2514,15 +2619,17 @@ export function GitLabGantt({ initialConfigId, autoSync = false }) {
         width: 50,
       },
     ];
-  }, [DateCell, TaskTitleCell, WorkdaysCell, columnSettings, labelColorMap, labelPriorityMap]);
+  }, [DateCell, TaskTitleCell, WorkdaysCell, columnSettings, labelColorMap, labelPriorityMap, dateEditable, handleGridDateChange]);
 
   // Editor items configuration - customized for GitLab
+  // Use 'nullable-date' comp type for date fields to support clearing dates to null
+  // (svar's default 'date' type always requires a value and doesn't support null)
   const editorItems = useMemo(() => {
     return [
       { key: 'text', comp: 'text', label: 'Title' },
       { key: 'details', comp: 'textarea', label: 'Description' },
-      { key: 'start', comp: 'date', label: 'Start Date' },
-      { key: 'end', comp: 'date', label: 'Due Date' },
+      { key: 'start', comp: 'nullable-date', label: 'Start Date' },
+      { key: 'end', comp: 'nullable-date', label: 'Due Date' },
       { key: 'workdays', comp: 'workdays', label: 'Workdays' },
       { key: 'links', comp: 'links', label: 'Links' },
     ];

@@ -527,10 +527,17 @@ export default function Grid(props) {
         if (task) {
           const update = { ...task };
           let v = value;
-          if (v && !isNaN(v) && !(v instanceof Date)) v *= 1;
+
+          // Allow null values through (for clearing dates)
+          // Only apply number conversion for non-null, non-Date values
+          if (v !== null && v && !isNaN(v) && !(v instanceof Date)) v *= 1;
           update[column] = v;
 
-          normalizeDates(update, handlersStateRef.current.durationUnitVal, true, column);
+          // Skip normalizeDates if value is null (date being cleared)
+          // to prevent auto-filling default dates
+          if (v !== null) {
+            normalizeDates(update, handlersStateRef.current.durationUnitVal, true, column);
+          }
 
           api.exec('update-task', {
             id: id,

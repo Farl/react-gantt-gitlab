@@ -1,0 +1,50 @@
+/**
+ * NullableDatePicker styles - Editor specific
+ * Popup styles are in shared/DatePickerPopup.css
+ *
+ * NOTE: --wx-color-secondary is "transparent" in willow theme, so we use
+ * --wx-color-font-alt (#9fa1ae) for muted text color instead.
+ * The "None" text color is set via inline style in the component.
+ */
+
+.nullable-date-picker {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.nullable-date-picker.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Date value display - clickable */
+.nullable-date-value {
+  font-size: 14px;
+  color: var(--wx-color-font, #303030);
+  padding: 6px 10px;
+  background: var(--wx-background, #fff);
+  border: 1px solid var(--wx-border, #dcdcde);
+  border-radius: 4px;
+  min-width: 90px;
+  display: inline-block;
+}
+
+.nullable-date-value.clickable {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.nullable-date-value.clickable:hover {
+  border-color: var(--wx-color-primary, #1976d2);
+  background-color: var(--wx-background-alt, rgba(0, 0, 0, 0.02));
+}
+
+/* Picker popup positioning (relative to container, overlapping trigger) */
+.nullable-date-picker-popup {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
