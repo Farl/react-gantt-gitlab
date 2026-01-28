@@ -12,9 +12,9 @@ https://react-gantt-gitlab-8d7d33.pages.rayark.io/
 - 簡易的篩選器
 - 新增/編輯/刪除 GitLab Milestone
   - 在旁邊按 + 可以新增內層 Issue
-- 新增/編輯/刪除 GitLab Issue
+- 新增/編輯/刪除 GitLab Issue / GitLab Task
   - 在旁邊按 + 可以新增內層 Task
-- 新增/編輯/刪除 GitLab Task
+  - 支援批次新增
 - 雙擊打開 Milestone, Issue, Task 編輯器
   - 可以從編輯器連進 GitLab 頁面
 - 支援 Issue / Task 排序
