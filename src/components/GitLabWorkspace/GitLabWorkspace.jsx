@@ -12,7 +12,8 @@ import { GanttView } from '../GanttView/GanttView';
 import './GitLabWorkspace.css';
 
 export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
-  const [activeView, setActiveView] = useState('gantt'); // 'gantt' | 'kanban'
+  // eslint-disable-next-line no-unused-vars
+  const [activeView, setActiveView] = useState('gantt'); // 'gantt' | 'kanban' - TODO: Enable when Kanban is ready
 
   return (
     <GitLabDataProvider initialConfigId={initialConfigId} autoSync={autoSync}>

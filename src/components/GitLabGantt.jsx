@@ -9,7 +9,8 @@ import { GitLabWorkspace } from './GitLabWorkspace';
 
 export function GitLabGantt(props) {
   // Log deprecation warning in development
-  if (process.env.NODE_ENV === 'development') {
+  // eslint-disable-next-line no-undef
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
     console.warn(
       '[GitLabGantt] This component is deprecated. ' +
         'Use GitLabWorkspace for new code.',
