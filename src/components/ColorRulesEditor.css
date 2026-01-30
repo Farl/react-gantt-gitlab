@@ -453,23 +453,6 @@
   color: var(--wx-gitlab-modal-text, #333);
 }
 
-.modal-close {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--wx-gitlab-button-text, #666);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close:hover {
-  background: var(--wx-gitlab-button-hover-background, #f5f5f5);
-}
-
 .modal-body {
   padding: 16px;
   display: flex;

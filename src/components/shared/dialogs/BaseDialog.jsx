@@ -7,6 +7,7 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import './BaseDialog.css';
+import '../modal-close-button.css';
 
 /**
  * @param {Object} props
@@ -108,12 +109,12 @@ export function BaseDialog({
           <h3 id="dialog-title">{title}</h3>
           {showCloseButton && (
             <button
-              className="base-dialog-close"
+              className="modal-close-btn"
               onClick={onClose}
               title="Close"
               type="button"
             >
-              <i className="fas fa-times" />
+              &times;
             </button>
           )}
         </div>

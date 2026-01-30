@@ -25,6 +25,7 @@ import { SyncButton } from './SyncButton.jsx';
 import { ProjectSelector } from './ProjectSelector.jsx';
 import { FilterPanel } from './FilterPanel.jsx';
 import './WorkloadView.css';
+import './shared/modal-close-button.css';
 
 export function WorkloadView({ initialConfigId }) {
   // Use shared project config hook
@@ -623,7 +624,7 @@ export function WorkloadView({ initialConfigId }) {
           <div className="settings-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="settings-modal-header">
               <h3>Workload Settings</h3>
-              <button onClick={() => setShowSettings(false)} className="btn-close-modal">
+              <button onClick={() => setShowSettings(false)} className="modal-close-btn">
                 &times;
               </button>
             </div>

@@ -200,20 +200,6 @@
   color: var(--wx-color-primary, #24292e);
 }
 
-.btn-close-modal {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--wx-color-secondary, #586069);
-  padding: 0;
-  line-height: 1;
-}
-
-.btn-close-modal:hover {
-  color: var(--wx-color-primary, #24292e);
-}
-
 /* Scrollable body container */
 .settings-modal-body {
   flex: 1;
@@ -485,16 +471,6 @@
 
 .wx-dark-theme .settings-modal-header h3 {
   color: var(--wx-color-font);
-}
-
-.wx-dark-theme .btn-close-modal {
-  color: var(--wx-color-font);
-  opacity: 0.7;
-}
-
-.wx-dark-theme .btn-close-modal:hover {
-  color: var(--wx-color-font);
-  opacity: 1;
 }
 
 .wx-dark-theme .settings-section h4 {

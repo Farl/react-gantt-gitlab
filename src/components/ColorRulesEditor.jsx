@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react';
 import { matchPattern } from '../types/colorRule';
 import './ColorRulesEditor.css';
+import './shared/modal-close-button.css';
 
 // Predefined color palette (without alpha, will be combined with opacity)
 const PREDEFINED_COLORS = [
@@ -418,8 +419,8 @@ export function ColorRulesEditor({
           <div className="color-rule-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Edit Rule</h3>
-              <button className="modal-close" onClick={() => setEditingRule(null)}>
-                <i className="fas fa-times" />
+              <button className="modal-close-btn" onClick={() => setEditingRule(null)}>
+                &times;
               </button>
             </div>
             <div className="modal-body">

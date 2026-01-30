@@ -1,0 +1,28 @@
+/**
+ * Shared Modal Close Button Styles
+ * 統一所有 modal 的關閉按鈕樣式
+ *
+ * 使用方式：
+ * 1. import './shared/modal-close-button.css' 或相對路徑
+ * 2. 在 button 上使用 className="modal-close-btn"
+ */
+
+.modal-close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--wx-gitlab-modal-hint-text, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  transition: background 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: var(--wx-gitlab-button-hover-background, rgba(0, 0, 0, 0.05));
+}

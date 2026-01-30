@@ -10,6 +10,7 @@ import {
   getBlueprintPreview,
 } from '../providers/BlueprintService';
 import './SaveBlueprintModal.css';
+import './shared/modal-close-button.css';
 
 /**
  * @param {Object} props
@@ -147,8 +148,8 @@ export function SaveBlueprintModal({
         {/* Header */}
         <div className="modal-header">
           <h3>Save as Blueprint</h3>
-          <button className="modal-close" onClick={onClose} title="Close">
-            <i className="fas fa-times" />
+          <button className="modal-close-btn" onClick={onClose} title="Close">
+            &times;
           </button>
         </div>
 

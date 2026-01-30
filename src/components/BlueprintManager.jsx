@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import './BlueprintManager.css';
+import './shared/modal-close-button.css';
 import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
 
 /**
@@ -143,8 +144,8 @@ export function BlueprintManager({
         {/* Header */}
         <div className="modal-header">
           <h3>Blueprints</h3>
-          <button className="modal-close" onClick={onClose} title="Close">
-            <i className="fas fa-times" />
+          <button className="modal-close-btn" onClick={onClose} title="Close">
+            &times;
           </button>
         </div>
 

@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import './shared/modal-close-button.css';
 import {
   gitlabCredentialManager,
   GitLabCredentialManager,
@@ -227,7 +228,7 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
       <div className="modal-content credential-manager-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{showForm ? (editingCredential ? 'Edit Credential' : 'Add Credential') : 'Manage Credentials'}</h3>
-          <button onClick={handleClose} className="btn-close">
+          <button onClick={handleClose} className="modal-close-btn">
             &times;
           </button>
         </div>
@@ -394,22 +395,6 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
           margin: 0;
           font-size: 18px;
           color: var(--wx-gitlab-modal-text);
-        }
-
-        .credential-manager-modal .btn-close {
-          background: none;
-          border: none;
-          font-size: 28px;
-          cursor: pointer;
-          color: var(--wx-gitlab-button-text);
-          line-height: 1;
-          padding: 0;
-          width: 32px;
-          height: 32px;
-        }
-
-        .credential-manager-modal .btn-close:hover {
-          color: var(--wx-gitlab-button-hover-text);
         }
 
         .credential-manager-modal .modal-body {

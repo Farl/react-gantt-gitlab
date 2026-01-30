@@ -7,6 +7,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { getNewMilestoneTitle, getNewItemTitle } from '../providers/BlueprintService';
 import './ApplyBlueprintModal.css';
+import './shared/modal-close-button.css';
 
 /**
  * @param {Object} props
@@ -249,12 +250,12 @@ export function ApplyBlueprintModal({
         <div className="modal-header">
           <h3>Create from Blueprint</h3>
           <button
-            className="modal-close"
+            className="modal-close-btn"
             onClick={handleClose}
             title="Close"
             disabled={applying}
           >
-            <i className="fas fa-times" />
+            &times;
           </button>
         </div>
 

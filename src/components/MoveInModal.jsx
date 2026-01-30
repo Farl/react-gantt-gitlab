@@ -5,6 +5,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import './MoveInModal.css';
+import './shared/modal-close-button.css';
 
 /**
  * @typedef {'parent' | 'milestone' | 'epic'} MoveType
@@ -266,8 +267,8 @@ export function MoveInModal({
         <div className="move-in-modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h3>Move In...</h3>
-            <button className="modal-close" onClick={handleClose}>
-              <i className="fas fa-times" />
+            <button className="modal-close-btn" onClick={handleClose}>
+              &times;
             </button>
           </div>
           <div className="modal-body">
@@ -297,8 +298,8 @@ export function MoveInModal({
       <div className="move-in-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Move In...</h3>
-          <button className="modal-close" onClick={handleClose}>
-            <i className="fas fa-times" />
+          <button className="modal-close-btn" onClick={handleClose}>
+            &times;
           </button>
         </div>
 

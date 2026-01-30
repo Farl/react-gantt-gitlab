@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import './shared/modal-close-button.css';
 import { gitlabConfigManager, GitLabConfigManager } from '../config/GitLabConfigManager';
 import {
   gitlabCredentialManager,
@@ -922,7 +923,7 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
           <div className="modal-content project-selector-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingConfig ? 'Edit Configuration' : 'Add Configuration'}</h3>
-              <button onClick={() => setShowModal(false)} className="btn-close">
+              <button onClick={() => setShowModal(false)} className="modal-close-btn">
                 &times;
               </button>
             </div>
@@ -1176,22 +1177,6 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
           margin: 0;
           font-size: 18px;
           color: var(--wx-gitlab-modal-text);
-        }
-
-        .btn-close {
-          background: none;
-          border: none;
-          font-size: 28px;
-          cursor: pointer;
-          color: var(--wx-gitlab-button-text);
-          line-height: 1;
-          padding: 0;
-          width: 32px;
-          height: 32px;
-        }
-
-        .btn-close:hover {
-          color: var(--wx-gitlab-button-hover-text);
         }
 
         .modal-body {
