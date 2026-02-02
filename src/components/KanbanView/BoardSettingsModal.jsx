@@ -1,7 +1,7 @@
 /**
  * BoardSettingsModal Component
  *
- * Modal for editing board settings:
+ * Modal for editing board settings. Uses BaseDialog for consistent modal behavior.
  * - Board name
  * - List management (add, edit, delete, reorder)
  * - Special list toggles (Others, Closed)
@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { BaseDialog } from '../shared/dialogs/BaseDialog';
 import './BoardSettingsModal.css';
 
 /**
@@ -49,7 +50,7 @@ export function BoardSettingsModal({
     }
   }, [board]);
 
-  if (!isOpen || !board) return null;
+  if (!board) return null;
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -98,193 +99,163 @@ export function BoardSettingsModal({
     onClose();
   };
 
-  return (
-    <div className="board-settings-overlay" onClick={handleClose}>
-      <div
-        className="board-settings-modal"
-        onClick={(e) => e.stopPropagation()}
+  // Custom footer with delete on left, cancel/save on right
+  const footer = (
+    <div className="board-settings-footer-content">
+      <button
+        className={`dialog-btn dialog-btn-danger ${confirmDelete ? 'confirm' : ''}`}
+        onClick={handleDeleteBoard}
+        disabled={saving}
       >
-        {/* Header */}
-        <div className="board-settings-header">
-          <h3>Board Settings</h3>
-          <button
-            className="board-settings-close modal-close-btn"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            <i className="fas fa-times" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="board-settings-content">
-          {/* Name input */}
-          <div className="board-settings-field">
-            <label htmlFor="board-settings-name">Name</label>
-            <input
-              id="board-settings-name"
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError('');
-              }}
-              className={error ? 'error' : ''}
-              disabled={saving}
-            />
-            {error && <span className="board-settings-error">{error}</span>}
-          </div>
-
-          {/* Lists section */}
-          <div className="board-settings-section">
-            <div className="board-settings-section-header">
-              <label>Lists</label>
-              <button
-                className="board-settings-add-btn"
-                onClick={() => onEditList(null)}
-                disabled={saving}
-              >
-                <i className="fas fa-plus" />
-                Add List
-              </button>
-            </div>
-
-            {lists.length === 0 ? (
-              <div className="board-settings-empty">
-                No lists defined. Click "Add List" to create one.
-              </div>
-            ) : (
-              <div className="board-settings-lists">
-                {lists.map((list, index) => (
-                  <div key={list.id} className="board-settings-list-item">
-                    <div className="list-item-drag">
-                      <button
-                        className="list-move-btn"
-                        onClick={() => handleMoveList(list.id, 'up')}
-                        disabled={index === 0 || saving}
-                        title="Move up"
-                      >
-                        <i className="fas fa-chevron-up" />
-                      </button>
-                      <button
-                        className="list-move-btn"
-                        onClick={() => handleMoveList(list.id, 'down')}
-                        disabled={index === lists.length - 1 || saving}
-                        title="Move down"
-                      >
-                        <i className="fas fa-chevron-down" />
-                      </button>
-                    </div>
-                    <div className="list-item-info">
-                      <span className="list-item-name">{list.name}</span>
-                      <span className="list-item-labels">
-                        {list.labels.length > 0
-                          ? `Labels: ${list.labels.join(', ')}`
-                          : 'No labels'}
-                      </span>
-                    </div>
-                    <div className="list-item-actions">
-                      <button
-                        className="list-action-btn"
-                        onClick={() => onEditList(list)}
-                        disabled={saving}
-                        title="Edit"
-                      >
-                        <i className="fas fa-edit" />
-                      </button>
-                      <button
-                        className="list-action-btn list-action-btn-delete"
-                        onClick={() => handleDeleteList(list.id)}
-                        disabled={saving}
-                        title="Delete"
-                      >
-                        <i className="fas fa-trash" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Special lists */}
-          <div className="board-settings-section">
-            <label>Special Lists</label>
-            <div className="board-settings-checkboxes">
-              <label className="board-settings-checkbox">
-                <input
-                  type="checkbox"
-                  checked={showOthers}
-                  onChange={(e) => setShowOthers(e.target.checked)}
-                  disabled={saving}
-                />
-                <span>Show "Others" list</span>
-                <span className="checkbox-description">
-                  Issues that don't match any list
-                </span>
-              </label>
-              <label className="board-settings-checkbox">
-                <input
-                  type="checkbox"
-                  checked={showClosed}
-                  onChange={(e) => setShowClosed(e.target.checked)}
-                  disabled={saving}
-                />
-                <span>Show "Closed" list</span>
-                <span className="checkbox-description">
-                  Issues that are closed
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="board-settings-footer">
-          <button
-            className={`board-settings-btn board-settings-btn-delete ${
-              confirmDelete ? 'confirm' : ''
-            }`}
-            onClick={handleDeleteBoard}
-            disabled={saving}
-          >
-            {confirmDelete ? (
-              <>
-                <i className="fas fa-exclamation-triangle" />
-                Click again to confirm
-              </>
-            ) : (
-              <>
-                <i className="fas fa-trash" />
-                Delete Board
-              </>
-            )}
-          </button>
-          <div className="board-settings-footer-right">
-            <button
-              className="board-settings-btn board-settings-btn-cancel"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              className="board-settings-btn board-settings-btn-save"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <i className="fas fa-spinner fa-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </div>
-        </div>
+        {confirmDelete ? 'Click again to confirm' : 'Delete Board'}
+      </button>
+      <div className="board-settings-footer-right">
+        <button
+          className="dialog-btn dialog-btn-secondary"
+          onClick={handleClose}
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <button
+          className="dialog-btn dialog-btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
     </div>
+  );
+
+  return (
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Board Settings"
+      width={500}
+      footer={footer}
+      className="board-settings-modal"
+    >
+      {/* Name input */}
+      <div className="dialog-form-group">
+        <label htmlFor="board-settings-name">Name</label>
+        <input
+          id="board-settings-name"
+          type="text"
+          className={`dialog-input ${error ? 'error' : ''}`}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError('');
+          }}
+          disabled={saving}
+        />
+        {error && <div className="dialog-error">{error}</div>}
+      </div>
+
+      {/* Lists section */}
+      <div className="board-settings-section">
+        <div className="board-settings-section-header">
+          <label>Lists</label>
+          <button
+            className="board-settings-add-btn"
+            onClick={() => onEditList(null)}
+            disabled={saving}
+          >
+            <i className="fas fa-plus" />
+            Add List
+          </button>
+        </div>
+
+        {lists.length === 0 ? (
+          <div className="board-settings-empty">
+            No lists defined. Click "Add List" to create one.
+          </div>
+        ) : (
+          <div className="board-settings-lists">
+            {lists.map((list, index) => (
+              <div key={list.id} className="board-settings-list-item">
+                <div className="list-item-drag">
+                  <button
+                    className="list-move-btn"
+                    onClick={() => handleMoveList(list.id, 'up')}
+                    disabled={index === 0 || saving}
+                    title="Move up"
+                  >
+                    <i className="fas fa-chevron-up" />
+                  </button>
+                  <button
+                    className="list-move-btn"
+                    onClick={() => handleMoveList(list.id, 'down')}
+                    disabled={index === lists.length - 1 || saving}
+                    title="Move down"
+                  >
+                    <i className="fas fa-chevron-down" />
+                  </button>
+                </div>
+                <div className="list-item-info">
+                  <span className="list-item-name">{list.name}</span>
+                  <span className="list-item-labels">
+                    {list.labels.length > 0
+                      ? `Labels: ${list.labels.join(', ')}`
+                      : 'No labels'}
+                  </span>
+                </div>
+                <div className="list-item-actions">
+                  <button
+                    className="list-action-btn"
+                    onClick={() => onEditList(list)}
+                    disabled={saving}
+                    title="Edit"
+                  >
+                    <i className="fas fa-edit" />
+                  </button>
+                  <button
+                    className="list-action-btn list-action-btn-delete"
+                    onClick={() => handleDeleteList(list.id)}
+                    disabled={saving}
+                    title="Delete"
+                  >
+                    <i className="fas fa-trash" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Special lists */}
+      <div className="board-settings-section">
+        <label>Special Lists</label>
+        <div className="board-settings-checkboxes">
+          <label className="board-settings-checkbox">
+            <input
+              type="checkbox"
+              checked={showOthers}
+              onChange={(e) => setShowOthers(e.target.checked)}
+              disabled={saving}
+            />
+            <span>Show "Others" list</span>
+            <span className="checkbox-description">
+              Issues that don't match any list
+            </span>
+          </label>
+          <label className="board-settings-checkbox">
+            <input
+              type="checkbox"
+              checked={showClosed}
+              onChange={(e) => setShowClosed(e.target.checked)}
+              disabled={saving}
+            />
+            <span>Show "Closed" list</span>
+            <span className="checkbox-description">
+              Issues that are closed
+            </span>
+          </label>
+        </div>
+      </div>
+    </BaseDialog>
   );
 }

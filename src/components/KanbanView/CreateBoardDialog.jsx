@@ -2,10 +2,12 @@
  * CreateBoardDialog Component
  *
  * Dialog for creating a new Kanban board.
+ * Uses BaseDialog for consistent modal behavior.
  * Allows user to enter name and optionally select a template for initial lists.
  */
 
 import { useState } from 'react';
+import { BaseDialog } from '../shared/dialogs/BaseDialog';
 import { DEFAULT_BOARD_TEMPLATES } from '../../types/issueBoard';
 import './CreateBoardDialog.css';
 
@@ -21,11 +23,7 @@ export function CreateBoardDialog({ isOpen, onClose, onCreate, saving = false })
   const [template, setTemplate] = useState('kanban'); // 'empty' | 'kanban' | 'bugTriage'
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
+  const handleSubmit = () => {
     // Validate
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -60,125 +58,105 @@ export function CreateBoardDialog({ isOpen, onClose, onCreate, saving = false })
     onClose();
   };
 
-  return (
-    <div className="create-board-overlay" onClick={handleClose}>
-      <div
-        className="create-board-dialog"
-        onClick={(e) => e.stopPropagation()}
+  const footer = (
+    <>
+      <button
+        type="button"
+        className="dialog-btn dialog-btn-secondary"
+        onClick={handleClose}
+        disabled={saving}
       >
-        {/* Header */}
-        <div className="create-board-header">
-          <h3>Create New Board</h3>
-          <button
-            className="create-board-close modal-close-btn"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            <i className="fas fa-times" />
-          </button>
-        </div>
+        Cancel
+      </button>
+      <button
+        type="button"
+        className="dialog-btn dialog-btn-primary"
+        onClick={handleSubmit}
+        disabled={saving}
+      >
+        {saving ? 'Creating...' : 'Create Board'}
+      </button>
+    </>
+  );
 
-        {/* Content */}
-        <form onSubmit={handleSubmit}>
-          <div className="create-board-content">
-            {/* Name input */}
-            <div className="create-board-field">
-              <label htmlFor="board-name">Name</label>
-              <input
-                id="board-name"
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError('');
-                }}
-                placeholder="Enter board name..."
-                className={error ? 'error' : ''}
-                disabled={saving}
-                autoFocus
-              />
-              {error && <span className="create-board-error">{error}</span>}
-            </div>
-
-            {/* Template selection */}
-            <div className="create-board-field">
-              <label>Initial Lists</label>
-              <div className="create-board-templates">
-                <label className="create-board-template">
-                  <input
-                    type="radio"
-                    name="template"
-                    value="empty"
-                    checked={template === 'empty'}
-                    onChange={(e) => setTemplate(e.target.value)}
-                    disabled={saving}
-                  />
-                  <span className="template-label">Empty</span>
-                  <span className="template-description">
-                    Start with no lists (add later)
-                  </span>
-                </label>
-
-                <label className="create-board-template">
-                  <input
-                    type="radio"
-                    name="template"
-                    value="kanban"
-                    checked={template === 'kanban'}
-                    onChange={(e) => setTemplate(e.target.value)}
-                    disabled={saving}
-                  />
-                  <span className="template-label">To Do / In Progress / Done</span>
-                  <span className="template-description">
-                    Standard Kanban workflow with State labels
-                  </span>
-                </label>
-
-                <label className="create-board-template">
-                  <input
-                    type="radio"
-                    name="template"
-                    value="bugTriage"
-                    checked={template === 'bugTriage'}
-                    onChange={(e) => setTemplate(e.target.value)}
-                    disabled={saving}
-                  />
-                  <span className="template-label">Bug Triage</span>
-                  <span className="template-description">
-                    New / Confirmed / In Progress for bug tracking
-                  </span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="create-board-footer">
-            <button
-              type="button"
-              className="create-board-btn create-board-btn-cancel"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="create-board-btn create-board-btn-create"
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <i className="fas fa-spinner fa-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Board'
-              )}
-            </button>
-          </div>
-        </form>
+  return (
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Create New Board"
+      width={440}
+      footer={footer}
+      className="create-board-dialog"
+    >
+      {/* Name input */}
+      <div className="dialog-form-group">
+        <label htmlFor="board-name">Name</label>
+        <input
+          id="board-name"
+          type="text"
+          className={`dialog-input ${error ? 'error' : ''}`}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError('');
+          }}
+          placeholder="Enter board name..."
+          disabled={saving}
+          autoFocus
+        />
+        {error && <div className="dialog-error">{error}</div>}
       </div>
-    </div>
+
+      {/* Template selection */}
+      <div className="dialog-form-group">
+        <label>Initial Lists</label>
+        <div className="create-board-templates">
+          <label className="create-board-template">
+            <input
+              type="radio"
+              name="template"
+              value="empty"
+              checked={template === 'empty'}
+              onChange={(e) => setTemplate(e.target.value)}
+              disabled={saving}
+            />
+            <span className="template-label">Empty</span>
+            <span className="template-description">
+              Start with no lists (add later)
+            </span>
+          </label>
+
+          <label className="create-board-template">
+            <input
+              type="radio"
+              name="template"
+              value="kanban"
+              checked={template === 'kanban'}
+              onChange={(e) => setTemplate(e.target.value)}
+              disabled={saving}
+            />
+            <span className="template-label">To Do / In Progress / Done</span>
+            <span className="template-description">
+              Standard Kanban workflow with State labels
+            </span>
+          </label>
+
+          <label className="create-board-template">
+            <input
+              type="radio"
+              name="template"
+              value="bugTriage"
+              checked={template === 'bugTriage'}
+              onChange={(e) => setTemplate(e.target.value)}
+              disabled={saving}
+            />
+            <span className="template-label">Bug Triage</span>
+            <span className="template-description">
+              New / Confirmed / In Progress for bug tracking
+            </span>
+          </label>
+        </div>
+      </div>
+    </BaseDialog>
   );
 }

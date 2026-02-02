@@ -1,129 +1,46 @@
 /**
  * BoardSettingsModal Styles
+ *
+ * Most styling comes from BaseDialog.css
+ * This file contains component-specific styles for lists, checkboxes, etc.
  */
 
-.board-settings-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.board-settings-modal {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Header */
-.board-settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.board-settings-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.board-settings-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.board-settings-close:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #1f2937;
-}
-
-.board-settings-close:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Content */
-.board-settings-content {
-  padding: 20px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.board-settings-field {
-  margin-bottom: 20px;
-}
-
-.board-settings-field > label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.board-settings-field input[type='text'] {
-  width: 100%;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #1f2937;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-
-.board-settings-field input[type='text']:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.board-settings-field input[type='text'].error {
+/* Error state for input */
+.board-settings-modal .dialog-input.error {
   border-color: #ef4444;
 }
 
-.board-settings-field input[type='text']:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+/* Custom footer layout: delete on left, cancel/save on right */
+.board-settings-footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
-.board-settings-error {
-  display: block;
-  font-size: 12px;
-  color: #ef4444;
-  margin-top: 4px;
+.board-settings-footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Delete button confirm state */
+.board-settings-modal .dialog-btn-danger.confirm {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 /* Section */
 .board-settings-section {
-  margin-bottom: 20px;
+  margin-top: 8px;
 }
 
 .board-settings-section > label {
@@ -345,95 +262,4 @@
   font-size: 11px;
   color: #6b7280;
   margin-top: 1px;
-}
-
-/* Footer */
-.board-settings-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.board-settings-footer-right {
-  display: flex;
-  gap: 8px;
-}
-
-.board-settings-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.board-settings-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.board-settings-btn i {
-  font-size: 12px;
-}
-
-.board-settings-btn-cancel {
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
-}
-
-.board-settings-btn-cancel:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-
-.board-settings-btn-save {
-  border: none;
-  background: #3b82f6;
-  color: white;
-}
-
-.board-settings-btn-save:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.board-settings-btn-delete {
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.board-settings-btn-delete:hover:not(:disabled) {
-  background: #fee2e2;
-  border-color: #fca5a5;
-}
-
-.board-settings-btn-delete.confirm {
-  background: #dc2626;
-  border-color: #dc2626;
-  color: white;
-  animation: pulse 1s infinite;
-}
-
-.board-settings-btn-delete.confirm:hover:not(:disabled) {
-  background: #b91c1c;
-  border-color: #b91c1c;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
 }

@@ -2,12 +2,14 @@
  * ListEditDialog Component
  *
  * Dialog for creating or editing a list within a board.
- * - List name
+ * Uses BaseDialog for consistent modal behavior.
+ * - List name (optional, auto-generated from labels)
  * - Label selection (multi-select using FilterMultiSelect)
- * - Sort settings
+ * - Display sort settings
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { BaseDialog } from '../shared/dialogs/BaseDialog';
 import { FilterMultiSelect } from '../FilterMultiSelect';
 import './ListEditDialog.css';
 
@@ -32,7 +34,6 @@ export function ListEditDialog({
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [sortBy, setSortBy] = useState('position');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [error, setError] = useState('');
 
   const isNewList = !list;
 
@@ -49,7 +50,6 @@ export function ListEditDialog({
       setSortBy('position');
       setSortOrder('asc');
     }
-    setError('');
   }, [list, isOpen]);
 
   // Convert availableLabels to FilterMultiSelect options format
@@ -61,18 +61,20 @@ export function ListEditDialog({
     }));
   }, [availableLabels]);
 
-  if (!isOpen) return null;
+  // Generate default name from selected labels
+  const getDefaultName = () => {
+    if (selectedLabels.length === 0) return 'Untitled List';
+    if (selectedLabels.length <= 3) return selectedLabels.join(' + ');
+    return `${selectedLabels.slice(0, 2).join(' + ')} +${selectedLabels.length - 2}`;
+  };
 
   const handleSave = () => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError('Please enter a list name');
-      return;
-    }
+    // Use custom name if provided, otherwise generate from labels
+    const finalName = name.trim() || getDefaultName();
 
     const listData = {
       id: list?.id || '', // Will be generated if new
-      name: trimmedName,
+      name: finalName,
       labels: selectedLabels,
       sortBy,
       sortOrder,
@@ -81,119 +83,92 @@ export function ListEditDialog({
     onSave(listData);
   };
 
-  const handleLabelsChange = (newLabels) => {
-    setSelectedLabels(newLabels);
-  };
-
-  const handleClose = () => {
-    setError('');
-    onClose();
-  };
+  const footer = (
+    <>
+      <button
+        className="dialog-btn dialog-btn-secondary"
+        onClick={onClose}
+        disabled={saving}
+      >
+        Cancel
+      </button>
+      <button
+        className="dialog-btn dialog-btn-primary"
+        onClick={handleSave}
+        disabled={saving}
+      >
+        {saving ? 'Saving...' : isNewList ? 'Add List' : 'Save Changes'}
+      </button>
+    </>
+  );
 
   return (
-    <div className="list-edit-overlay" onClick={handleClose}>
-      <div className="list-edit-dialog" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="list-edit-header">
-          <h3>{isNewList ? 'Add New List' : 'Edit List'}</h3>
-          <button
-            className="list-edit-close modal-close-btn"
-            onClick={handleClose}
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isNewList ? 'Add New List' : 'Edit List'}
+      width={440}
+      footer={footer}
+      className="list-edit-dialog"
+    >
+      {/* Name input (optional - will use labels if empty) */}
+      <div className="dialog-form-group">
+        <label htmlFor="list-name">Name (optional)</label>
+        <input
+          id="list-name"
+          type="text"
+          className="dialog-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={getDefaultName()}
+          disabled={saving}
+        />
+        <span className="dialog-hint">
+          Leave empty to auto-generate from labels
+        </span>
+      </div>
+
+      {/* Labels selection */}
+      <div className="dialog-form-group list-edit-labels-field">
+        <label>Labels (issues must have ALL selected)</label>
+        <FilterMultiSelect
+          title=""
+          options={labelOptions}
+          selected={selectedLabels}
+          onChange={setSelectedLabels}
+          placeholder="Search labels..."
+          emptyMessage="No labels available"
+          showCount={false}
+        />
+      </div>
+
+      {/* Sort settings */}
+      <div className="dialog-form-group">
+        <label>Display Sort (visual only, does not change GitLab order)</label>
+        <div className="list-edit-sort">
+          <select
+            className="dialog-input"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
             disabled={saving}
           >
-            <i className="fas fa-times" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="list-edit-content">
-          {/* Name input */}
-          <div className="list-edit-field">
-            <label htmlFor="list-name">Name</label>
-            <input
-              id="list-name"
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError('');
-              }}
-              placeholder="Enter list name..."
-              className={error ? 'error' : ''}
-              disabled={saving}
-              autoFocus
-            />
-            {error && <span className="list-edit-error">{error}</span>}
-          </div>
-
-          {/* Labels selection */}
-          <div className="list-edit-field list-edit-labels-field">
-            <label>Labels (issues must have ALL selected)</label>
-            <FilterMultiSelect
-              title=""
-              options={labelOptions}
-              selected={selectedLabels}
-              onChange={handleLabelsChange}
-              placeholder="Search labels..."
-              emptyMessage="No labels available"
-              showCount={false}
-            />
-          </div>
-
-          {/* Sort settings */}
-          <div className="list-edit-field">
-            <label>Default Sort</label>
-            <div className="list-edit-sort">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                disabled={saving}
-              >
-                <option value="position">Position</option>
-                <option value="due_date">Due Date</option>
-                <option value="created_at">Created Date</option>
-                <option value="label_priority">Label Priority</option>
-                <option value="id">ID</option>
-              </select>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                disabled={saving}
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="list-edit-footer">
-          <button
-            className="list-edit-btn list-edit-btn-cancel"
-            onClick={handleClose}
+            <option value="position">Position</option>
+            <option value="due_date">Due Date</option>
+            <option value="created_at">Created Date</option>
+            <option value="label_priority">Label Priority</option>
+            <option value="id">ID</option>
+          </select>
+          <select
+            className="dialog-input"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
             disabled={saving}
           >
-            Cancel
-          </button>
-          <button
-            className="list-edit-btn list-edit-btn-save"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <i className="fas fa-spinner fa-spin" />
-                Saving...
-              </>
-            ) : isNewList ? (
-              'Add List'
-            ) : (
-              'Save Changes'
-            )}
-          </button>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 }

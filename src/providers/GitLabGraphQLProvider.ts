@@ -420,9 +420,11 @@ export class GitLabGraphQLProvider {
 
     try {
       // Fetch members, milestones, and labels in parallel with pagination support
+      // For projects: include_ancestor_labels=true to also get group labels
+      // For groups: include_ancestor_groups=true to get parent group labels
       const labelsEndpoint =
         this.config.type === 'project'
-          ? `/projects/${encodeURIComponent(fullPath)}/labels`
+          ? `/projects/${encodeURIComponent(fullPath)}/labels?include_ancestor_labels=true`
           : `/groups/${encodeURIComponent(fullPath)}/labels?include_ancestor_groups=true`;
 
       const [membersNodes, milestonesNodes, labelsFromRest] = await Promise.all(
