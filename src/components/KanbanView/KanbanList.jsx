@@ -5,9 +5,12 @@
  *
  * A single column/list in the Kanban board.
  * Displays a header with count and contains KanbanCard items.
+ * Supports drag-and-drop via @dnd-kit.
  */
 
 import { useMemo } from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { KanbanCard } from './KanbanCard';
 import './KanbanList.css';
 
@@ -78,11 +81,28 @@ export function KanbanList({
   isSpecial = false, // true for Others and Closed lists
   specialType = null, // 'others' | 'closed'
   onCardDoubleClick,
+  activeTaskId = null, // ID of the currently dragged task
+  isOver = false, // Whether a dragged item is over this list (from parent)
 }) {
+  // Setup droppable for this list
+  const { setNodeRef, isOver: isOverDroppable } = useDroppable({
+    id: `list-${id}`,
+    data: { listId: id },
+  });
+
+  // Use either parent-provided isOver or droppable's isOver
+  const isDropTarget = isOver || isOverDroppable;
+
   // Sort tasks
   const sortedTasks = useMemo(
     () => sortTasks(tasks, sortBy, sortOrder, labelPriorityMap),
     [tasks, sortBy, sortOrder, labelPriorityMap],
+  );
+
+  // Get task IDs for SortableContext
+  const taskIds = useMemo(
+    () => sortedTasks.map((task) => task.id),
+    [sortedTasks],
   );
 
   // Determine header class based on special type
@@ -90,29 +110,36 @@ export function KanbanList({
     ? `kanban-list-header kanban-list-header-${specialType}`
     : 'kanban-list-header';
 
+  // Determine list class with drop target highlight
+  const listClass = isDropTarget ? 'kanban-list kanban-list-over' : 'kanban-list';
+
   return (
-    <div className="kanban-list" data-list-id={id}>
+    <div className={listClass} data-list-id={id} ref={setNodeRef}>
       {/* List Header */}
       <div className={headerClass}>
         <span className="kanban-list-name">{name}</span>
         <span className="kanban-list-count">{tasks.length}</span>
       </div>
 
-      {/* List Content */}
-      <div className="kanban-list-content">
-        {sortedTasks.length === 0 ? (
-          <div className="kanban-list-empty">No issues</div>
-        ) : (
-          sortedTasks.map((task) => (
-            <KanbanCard
-              key={task.id}
-              task={task}
-              labelColorMap={labelColorMap}
-              onDoubleClick={onCardDoubleClick}
-            />
-          ))
-        )}
-      </div>
+      {/* List Content with SortableContext for drag-and-drop ordering */}
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <div className="kanban-list-content">
+          {sortedTasks.length === 0 ? (
+            <div className="kanban-list-empty">No issues</div>
+          ) : (
+            sortedTasks.map((task) => (
+              <KanbanCard
+                key={task.id}
+                task={task}
+                listId={id}
+                labelColorMap={labelColorMap}
+                onDoubleClick={onCardDoubleClick}
+                isDragging={task.id === activeTaskId}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
     </div>
   );
 }

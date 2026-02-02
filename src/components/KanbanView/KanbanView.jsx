@@ -11,17 +11,22 @@
  * - CreateBoardDialog for new boards
  * - BoardSettingsModal for editing boards
  * - ListEditDialog for editing lists
+ *
+ * Phase 4: Drag-and-drop functionality
+ * - KanbanBoardDnd for drag-and-drop support
+ * - useDragOperations for handling API operations
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useGitLabData } from '../../contexts/GitLabDataContext';
 import { useIssueBoard } from '../../hooks/useIssueBoard';
-import { KanbanBoard } from './KanbanBoard';
+import { KanbanBoardDnd } from './KanbanBoardDnd';
 import { BoardSelector } from './BoardSelector';
 import { CreateBoardDialog } from './CreateBoardDialog';
 import { BoardSettingsModal } from './BoardSettingsModal';
 import { ListEditDialog } from './ListEditDialog';
 import { GitLabFilters } from '../../utils/GitLabFilters';
+import { useDragOperations } from '../../hooks/useDragOperations';
 import './KanbanView.css';
 
 export function KanbanView() {
@@ -33,6 +38,9 @@ export function KanbanView() {
     showToast,
     currentConfig,
     proxyConfig,
+    provider,
+    sync,
+    syncTask,
   } = useGitLabData();
 
   // Board management state from hook
@@ -124,6 +132,37 @@ export function KanbanView() {
     );
     return GitLabFilters.applyFilters(issuesOnly, filterOptions);
   }, [tasksWithPriority, filterOptions]);
+
+  // === Drag-and-Drop Operations ===
+  // Reorder task wrapper: converts task ID to GitLab IID for API call
+  const reorderTask = useCallback(
+    async (taskId, targetTaskId, position) => {
+      if (!provider) {
+        throw new Error('Provider not available');
+      }
+      const task = filteredTasks.find((t) => t.id === taskId);
+      const targetTask = filteredTasks.find((t) => t.id === targetTaskId);
+      if (!task?._gitlab?.iid || !targetTask?._gitlab?.iid) {
+        throw new Error('Task IID not found');
+      }
+      await provider.reorderWorkItem(task._gitlab.iid, targetTask._gitlab.iid, position);
+    },
+    [provider, filteredTasks]
+  );
+
+  // Refresh tasks by triggering a sync
+  const refreshTasks = useCallback(() => {
+    sync();
+  }, [sync]);
+
+  // Get drag operation handlers from hook
+  const { handleSameListReorder, handleCrossListDrag } = useDragOperations({
+    tasks: filteredTasks,
+    syncTask,
+    reorderTask,
+    showToast,
+    refreshTasks,
+  });
 
   // Handle card double-click (open editor)
   const handleCardDoubleClick = useCallback(
@@ -227,12 +266,14 @@ export function KanbanView() {
         {!currentBoard ? (
           renderEmptyState()
         ) : (
-          <KanbanBoard
+          <KanbanBoardDnd
             board={currentBoard}
             tasks={filteredTasks}
             labelColorMap={labelColorMap}
             labelPriorityMap={labelPriorityMap}
             onCardDoubleClick={handleCardDoubleClick}
+            onSameListReorder={handleSameListReorder}
+            onCrossListDrag={handleCrossListDrag}
           />
         )}
       </div>

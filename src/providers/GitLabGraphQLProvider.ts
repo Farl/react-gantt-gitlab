@@ -2812,7 +2812,18 @@ export class GitLabGraphQLProvider {
       input.stateEvent = task.state === 'closed' ? 'CLOSE' : 'REOPEN';
     }
 
-    // TODO: Handle assignees, labels, milestone
+    // Labels - use REST API since GraphQL WorkItemWidgetLabelsUpdateInput
+    // requires addLabelIds/removeLabelIds instead of direct labelIds
+    if (task.labels !== undefined) {
+      const labelTitles = String(task.labels)
+        .split(',')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      // Use REST API to update labels
+      await this.updateIssueLabels(id, labelTitles);
+    }
+
+    // TODO: Handle assignees, milestone
 
     const mutation = `
       mutation updateWorkItem($input: WorkItemUpdateInput!) {

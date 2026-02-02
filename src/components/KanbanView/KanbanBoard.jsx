@@ -44,6 +44,8 @@ export function KanbanBoard({
   labelColorMap,
   labelPriorityMap,
   onCardDoubleClick,
+  activeTaskId = null,
+  overListId = null,
 }) {
   // Distribute tasks to lists
   const distributedLists = useMemo(() => {
@@ -127,6 +129,8 @@ export function KanbanBoard({
           isSpecial={list.isSpecial}
           specialType={list.specialType}
           onCardDoubleClick={onCardDoubleClick}
+          activeTaskId={activeTaskId}
+          isOver={overListId === list.id}
         />
       ))}
     </div>

@@ -179,9 +179,9 @@ export function useGitLabSync(
   );
 
   /**
-   * Sync a single task update
-   * Only sync to GitLab, don't update React state
-   * Caller should manually call sync() after drag ends to refresh from GitLab
+   * Sync a single task update with optimistic update
+   * Updates local state immediately, then syncs to GitLab.
+   * On failure, reverts local state and throws error.
    */
   const syncTask = useCallback(
     async (id: number | string, updates: Partial<ITask>) => {
@@ -189,8 +189,22 @@ export function useGitLabSync(
         throw new Error('GitLab provider not initialized');
       }
 
+      // Capture snapshot for potential rollback
+      const previousTasks = tasksRef.current;
+      const taskIndex = previousTasks.findIndex((t) => t.id === id);
+
+      if (taskIndex === -1) {
+        throw new Error(`Task ${id} not found`);
+      }
+
+      // Optimistic update: apply changes to local state immediately
+      const updatedTasks = [...previousTasks];
+      updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], ...updates };
+      setTasks(updatedTasks);
+      tasksRef.current = updatedTasks;
+
       try {
-        // Sync to GitLab only, don't update React state to avoid re-render
+        // Sync to GitLab
         if (provider instanceof GitLabGraphQLProvider) {
           await provider.updateWorkItem(id, updates);
         } else {
@@ -199,13 +213,14 @@ export function useGitLabSync(
       } catch (error) {
         console.error('Failed to sync task update:', error);
 
-        // Reload from GitLab on error
-        await sync();
+        // Rollback: restore previous state
+        setTasks(previousTasks);
+        tasksRef.current = previousTasks;
 
         throw error;
       }
     },
-    [provider, sync],
+    [provider],
   );
 
   /**

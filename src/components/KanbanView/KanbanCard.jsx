@@ -5,8 +5,15 @@
  *
  * Displays a single issue as a compact card in the Kanban board.
  * Shows: ID, title, assignees, labels, task completion, due date
+ *
+ * Supports drag-and-drop via @dnd-kit/sortable.
+ * - listId: The column/list this card belongs to (for drag data)
+ * - isDragging: External dragging state (e.g., from parent)
+ * - isDragOverlay: True when this card is rendered as a drag overlay
  */
 
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './KanbanCard.css';
 
 /**
@@ -59,7 +66,38 @@ export function KanbanCard({
   onDoubleClick,
   maxLabels = 3,
   maxAssignees = 2,
+  listId,
+  isDragging = false,
+  isDragOverlay = false,
 }) {
+  // Setup sortable hook for drag-and-drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: task.id,
+    data: { taskId: task.id, listId },
+  });
+
+  // Build transform style for drag animation
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  // Build dynamic className
+  const classNames = ['kanban-card'];
+  if (isDragging || isSortableDragging) {
+    classNames.push('kanban-card-dragging');
+  }
+  if (isDragOverlay) {
+    classNames.push('drag-overlay');
+  }
+
   const labels = parseLabels(task.labels);
   const assignees = parseAssignees(task.assigned);
   const dueInfo = formatDueDate(task.end);
@@ -84,9 +122,13 @@ export function KanbanCard({
 
   return (
     <div
-      className="kanban-card"
+      ref={setNodeRef}
+      style={style}
+      className={classNames.join(' ')}
       onDoubleClick={handleDoubleClick}
       data-task-id={task.id}
+      {...attributes}
+      {...listeners}
     >
       {/* Issue ID and Title */}
       <div className="kanban-card-header">

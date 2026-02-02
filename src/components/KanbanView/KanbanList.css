@@ -73,3 +73,18 @@
   padding: 20px 10px;
   font-style: italic;
 }
+
+/* Drop target highlight styles */
+.kanban-list-over {
+  background: #dbeafe;
+}
+
+.kanban-list-over .kanban-list-content {
+  background: #eff6ff;
+}
+
+.kanban-list-over .kanban-list-empty {
+  border: 2px dashed #93c5fd;
+  background: #dbeafe;
+  border-radius: 4px;
+}
