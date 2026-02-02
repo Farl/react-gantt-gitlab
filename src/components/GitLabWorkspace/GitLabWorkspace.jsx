@@ -15,12 +15,12 @@ import { GitLabDataProvider } from '../../contexts/GitLabDataContext';
 import { GanttView } from '../GanttView/GanttView';
 import { KanbanView } from '../KanbanView/KanbanView';
 import { SharedToolbar } from './SharedToolbar';
+import { SharedFilterPanel } from './SharedFilterPanel';
 import './GitLabWorkspace.css';
 
 export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
   const [activeView, setActiveView] = useState('gantt'); // 'gantt' | 'kanban'
   const [showSettings, setShowSettings] = useState(false);
-  const [showFilter, setShowFilter] = useState(false);
 
   return (
     <GitLabDataProvider initialConfigId={initialConfigId} autoSync={autoSync}>
@@ -30,9 +30,10 @@ export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
           activeView={activeView}
           onViewChange={setActiveView}
           onSettingsClick={() => setShowSettings(true)}
-          onFilterToggle={() => setShowFilter((prev) => !prev)}
-          showFilter={showFilter}
         />
+
+        {/* Shared Filter Panel */}
+        <SharedFilterPanel />
 
         {/* View Content */}
         <div className="gitlab-workspace-content">
@@ -41,7 +42,6 @@ export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
               hideSharedToolbar={true}
               showSettings={showSettings}
               onSettingsClose={() => setShowSettings(false)}
-              showFilter={showFilter}
             />
           )}
           {activeView === 'kanban' && <KanbanView />}

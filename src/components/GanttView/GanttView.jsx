@@ -137,17 +137,16 @@ function sortByDeletionOrder(taskIds, allTasks) {
 
 /**
  * GanttView Props
- * @param {boolean} hideSharedToolbar - Hide shared toolbar elements (project selector, sync, filter toggle)
- *                                      when embedded in GitLabWorkspace which provides these
+ * @param {boolean} hideSharedToolbar - Hide shared toolbar elements (project selector, sync button)
+ *                                      when embedded in GitLabWorkspace which provides these.
+ *                                      FilterPanel is always shown regardless of this prop.
  * @param {boolean} showSettings - Control settings modal visibility from parent
  * @param {function} onSettingsClose - Callback when settings modal is closed
- * @param {boolean} showFilter - Control filter panel visibility from parent
  */
 export function GanttView({
   hideSharedToolbar = false,
   showSettings: externalShowSettings,
   onSettingsClose,
-  showFilter: externalShowFilter,
 }) {
   // === Get data from GitLabDataContext ===
   const {
@@ -2538,8 +2537,8 @@ export function GanttView({
         </div>
       )}
 
-      {/* FilterPanel - shown when not hiding toolbar, OR when external filter control is active */}
-      {(!hideSharedToolbar || externalShowFilter) && (
+      {/* FilterPanel - only shown when not embedded in GitLabWorkspace */}
+      {!hideSharedToolbar && (
         <FilterPanel
           key={currentConfig?.id || 'no-config'}
           milestones={milestones}

@@ -64,8 +64,5 @@ export {
   KanbanCard,
 } from './components/KanbanView';
 
-// ViewSwitcher export
-export { ViewSwitcher } from './components/GitLabWorkspace/ViewSwitcher';
-
 // Backward compatibility: GitLabGantt now wraps GitLabWorkspace
 export { GitLabGantt } from './components/GitLabGantt.jsx';

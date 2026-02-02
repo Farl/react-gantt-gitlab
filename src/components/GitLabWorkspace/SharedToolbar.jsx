@@ -19,15 +19,11 @@ import './SharedToolbar.css';
  * @param {string} activeView - Current active view ('gantt' | 'kanban')
  * @param {function} onViewChange - Callback when view changes (view: string) => void
  * @param {function} onSettingsClick - Callback when settings button is clicked
- * @param {function} onFilterToggle - Callback when filter toggle button is clicked
- * @param {boolean} showFilter - Whether filter panel is currently visible
  */
 export function SharedToolbar({
   activeView,
   onViewChange,
   onSettingsClick,
-  onFilterToggle,
-  showFilter,
 }) {
   // Get data from context
   const {
@@ -100,19 +96,6 @@ export function SharedToolbar({
         filterOptions={filterOptions}
       />
 
-      {/* Spacer to push filter toggle to the right */}
-      <div className="shared-toolbar-spacer" />
-
-      {/* Filter Toggle Button */}
-      <button
-        onClick={onFilterToggle}
-        className={`shared-toolbar-btn shared-toolbar-btn-filter ${showFilter ? 'active' : ''}`}
-        title={showFilter ? 'Hide Filters' : 'Show Filters'}
-      >
-        <i className="fas fa-filter" />
-        <span>Filter</span>
-        <i className={`fas fa-chevron-${showFilter ? 'up' : 'down'} chevron-icon`} />
-      </button>
     </div>
   );
 }
