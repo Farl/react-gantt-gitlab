@@ -228,6 +228,39 @@ export function KanbanView() {
     [editingList, addList, updateList, showToast]
   );
 
+  // Handle list sort change from header dropdown
+  const handleListSortChange = useCallback(
+    async (listId, newSortBy) => {
+      if (!currentBoard) return;
+
+      // Handle special lists (Others, Closed)
+      if (listId === '__others__') {
+        await updateBoard({
+          ...currentBoard,
+          othersSortBy: newSortBy,
+        });
+        return;
+      }
+      if (listId === '__closed__') {
+        await updateBoard({
+          ...currentBoard,
+          closedSortBy: newSortBy,
+        });
+        return;
+      }
+
+      // Regular list: update the list's sortBy
+      const list = currentBoard.lists.find((l) => l.id === listId);
+      if (list) {
+        await updateList({
+          ...list,
+          sortBy: newSortBy,
+        });
+      }
+    },
+    [currentBoard, updateBoard, updateList]
+  );
+
   // Render empty state when no board
   const renderEmptyState = () => (
     <div className="kanban-view-empty">
@@ -274,6 +307,7 @@ export function KanbanView() {
             onCardDoubleClick={handleCardDoubleClick}
             onSameListReorder={handleSameListReorder}
             onCrossListDrag={handleCrossListDrag}
+            onListSortChange={handleListSortChange}
           />
         )}
       </div>

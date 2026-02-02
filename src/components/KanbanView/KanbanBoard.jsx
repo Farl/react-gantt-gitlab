@@ -44,6 +44,7 @@ export function KanbanBoard({
   labelColorMap,
   labelPriorityMap,
   onCardDoubleClick,
+  onListSortChange, // Callback: (listId, newSortBy) => void
   activeTaskId = null,
   overListId = null,
 }) {
@@ -66,8 +67,8 @@ export function KanbanBoard({
         id: '__others__',
         name: 'Others',
         tasks: othersTasks,
-        sortBy: 'position',
-        sortOrder: 'asc',
+        sortBy: board.othersSortBy || 'position',
+        sortOrder: board.othersSortOrder || 'asc',
         isSpecial: true,
         specialType: 'others',
       });
@@ -92,8 +93,8 @@ export function KanbanBoard({
         id: '__closed__',
         name: 'Closed',
         tasks: closedTasks,
-        sortBy: 'position',
-        sortOrder: 'asc',
+        sortBy: board.closedSortBy || 'position',
+        sortOrder: board.closedSortOrder || 'asc',
         isSpecial: true,
         specialType: 'closed',
       });
@@ -129,8 +130,10 @@ export function KanbanBoard({
           isSpecial={list.isSpecial}
           specialType={list.specialType}
           onCardDoubleClick={onCardDoubleClick}
+          onSortChange={(newSortBy) => onListSortChange?.(list.id, newSortBy)}
           activeTaskId={activeTaskId}
           isOver={overListId === list.id}
+          isDragEnabled={list.sortBy === 'position'}
         />
       ))}
     </div>

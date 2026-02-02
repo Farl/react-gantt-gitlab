@@ -16,6 +16,14 @@ export interface IssueBoardList {
   sortOrder: 'asc' | 'desc';
 }
 
+/** Sort field type */
+export type SortField =
+  | 'position'
+  | 'due_date'
+  | 'created_at'
+  | 'label_priority'
+  | 'id';
+
 /** Issue Board 定義 */
 export interface IssueBoard {
   /** UUID */
@@ -28,6 +36,14 @@ export interface IssueBoard {
   showOthers: boolean;
   /** 是否顯示 Closed list（已關閉的 issues） */
   showClosed: boolean;
+  /** Others list 的排序欄位 */
+  othersSortBy?: SortField;
+  /** Others list 的排序順序 */
+  othersSortOrder?: 'asc' | 'desc';
+  /** Closed list 的排序欄位 */
+  closedSortBy?: SortField;
+  /** Closed list 的排序順序 */
+  closedSortOrder?: 'asc' | 'desc';
   /** 預留擴充的 metadata */
   metadata?: {
     createdAt?: string;

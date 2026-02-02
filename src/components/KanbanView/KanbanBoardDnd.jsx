@@ -85,6 +85,23 @@ function findTaskListId(taskId, board, tasks) {
   return '__others__';
 }
 
+/**
+ * Check if a list allows same-list drag (manual sorting)
+ * @param {string} listId - The list ID
+ * @param {Object} board - The board configuration
+ * @returns {boolean}
+ */
+function isListDragEnabled(listId, board) {
+  if (listId === '__others__') {
+    return (board?.othersSortBy || 'position') === 'position';
+  }
+  if (listId === '__closed__') {
+    return (board?.closedSortBy || 'position') === 'position';
+  }
+  const list = board?.lists?.find((l) => l.id === listId);
+  return (list?.sortBy || 'position') === 'position';
+}
+
 export function KanbanBoardDnd({
   board,
   tasks,
@@ -93,6 +110,7 @@ export function KanbanBoardDnd({
   onCardDoubleClick,
   onSameListReorder,
   onCrossListDrag,
+  onListSortChange, // Callback: (listId, newSortBy) => void
 }) {
   // Drag state
   const [activeTask, setActiveTask] = useState(null);
@@ -149,8 +167,12 @@ export function KanbanBoardDnd({
       const sourceList = getListInfo(currentActiveListId, board);
       const targetList = getListInfo(targetListId, board);
 
-      // Same list reorder
+      // Same list reorder - only if list is in manual (position) sort mode
       if (currentActiveListId === targetListId && targetTaskId) {
+        if (!isListDragEnabled(currentActiveListId, board)) {
+          // Non-manual sort mode - don't allow same-list reorder
+          return;
+        }
         if (onSameListReorder) {
           await onSameListReorder(active.id, targetTaskId, 'after');
         }
@@ -193,6 +215,7 @@ export function KanbanBoardDnd({
         labelColorMap={labelColorMap}
         labelPriorityMap={labelPriorityMap}
         onCardDoubleClick={onCardDoubleClick}
+        onListSortChange={onListSortChange}
         activeTaskId={activeTask?.id}
         overListId={overListId}
       />

@@ -70,6 +70,14 @@ function sortTasks(tasks, sortBy, sortOrder, labelPriorityMap) {
   return sorted;
 }
 
+/** Sort options for the list dropdown */
+const SORT_OPTIONS = [
+  { value: 'position', label: 'Position (Manual)' },
+  { value: 'due_date', label: 'Due Date' },
+  { value: 'created_at', label: 'Created' },
+  { value: 'label_priority', label: 'Label Priority' },
+];
+
 export function KanbanList({
   id,
   name,
@@ -81,8 +89,10 @@ export function KanbanList({
   isSpecial = false, // true for Others and Closed lists
   specialType = null, // 'others' | 'closed'
   onCardDoubleClick,
+  onSortChange, // Callback when sort changes: (newSortBy) => void
   activeTaskId = null, // ID of the currently dragged task
   isOver = false, // Whether a dragged item is over this list (from parent)
+  isDragEnabled = true, // Whether same-list drag is enabled (false when sortBy !== 'position')
 }) {
   // Setup droppable for this list
   const { setNodeRef, isOver: isOverDroppable } = useDroppable({
@@ -119,6 +129,19 @@ export function KanbanList({
       <div className={headerClass}>
         <span className="kanban-list-name">{name}</span>
         <span className="kanban-list-count">{tasks.length}</span>
+        <select
+          className="kanban-list-sort-select"
+          value={sortBy}
+          onChange={(e) => onSortChange?.(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          title="Sort by"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* List Content with SortableContext for drag-and-drop ordering */}
@@ -135,6 +158,7 @@ export function KanbanList({
                 labelColorMap={labelColorMap}
                 onDoubleClick={onCardDoubleClick}
                 isDragging={task.id === activeTaskId}
+                isDragDisabled={!isDragEnabled}
               />
             ))
           )}

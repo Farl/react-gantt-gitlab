@@ -32,6 +32,15 @@
   cursor: grabbing;
 }
 
+/* Drag disabled state: when list is not in manual sort mode */
+.kanban-card-drag-disabled {
+  cursor: default;
+}
+
+.kanban-card-drag-disabled:active {
+  cursor: default;
+}
+
 .kanban-card-header {
   margin-bottom: 4px;
 }

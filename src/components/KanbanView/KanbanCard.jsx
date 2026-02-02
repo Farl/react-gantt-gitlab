@@ -69,8 +69,10 @@ export function KanbanCard({
   listId,
   isDragging = false,
   isDragOverlay = false,
+  isDragDisabled = false, // When true, same-list drag is disabled (non-manual sort mode)
 }) {
   // Setup sortable hook for drag-and-drop
+  // Note: disabled only affects same-list sortable behavior, cross-list drag still works
   const {
     attributes,
     listeners,
@@ -81,6 +83,7 @@ export function KanbanCard({
   } = useSortable({
     id: task.id,
     data: { taskId: task.id, listId },
+    disabled: isDragDisabled,
   });
 
   // Build transform style for drag animation
@@ -96,6 +99,9 @@ export function KanbanCard({
   }
   if (isDragOverlay) {
     classNames.push('drag-overlay');
+  }
+  if (isDragDisabled) {
+    classNames.push('kanban-card-drag-disabled');
   }
 
   const labels = parseLabels(task.labels);

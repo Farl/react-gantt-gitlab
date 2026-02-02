@@ -15,7 +15,7 @@
 .kanban-list-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 8px 10px;
   background: #e5e7eb;
   border-bottom: 1px solid #d1d5db;
@@ -54,6 +54,37 @@
 
 .kanban-list-header-closed .kanban-list-count {
   background: #3b82f6;
+}
+
+/* Sort dropdown in header */
+.kanban-list-sort-select {
+  margin-left: auto;
+  padding: 2px 4px;
+  font-size: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  color: #6b7280;
+  max-width: 100px;
+}
+
+.kanban-list-sort-select:hover {
+  border-color: #1f75cb;
+}
+
+.kanban-list-sort-select:focus {
+  outline: none;
+  border-color: #1f75cb;
+  box-shadow: 0 0 0 2px rgba(31, 117, 203, 0.1);
+}
+
+.kanban-list-header-others .kanban-list-sort-select {
+  border-color: #fcd34d;
+}
+
+.kanban-list-header-closed .kanban-list-sort-select {
+  border-color: #93c5fd;
 }
 
 .kanban-list-content {
