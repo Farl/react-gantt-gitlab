@@ -135,7 +135,20 @@ function sortByDeletionOrder(taskIds, allTasks) {
   return [...taskIds].sort((a, b) => (depthMap.get(b) || 0) - (depthMap.get(a) || 0));
 }
 
-export function GanttView() {
+/**
+ * GanttView Props
+ * @param {boolean} hideSharedToolbar - Hide shared toolbar elements (project selector, sync, filter toggle)
+ *                                      when embedded in GitLabWorkspace which provides these
+ * @param {boolean} showSettings - Control settings modal visibility from parent
+ * @param {function} onSettingsClose - Callback when settings modal is closed
+ * @param {boolean} showFilter - Control filter panel visibility from parent
+ */
+export function GanttView({
+  hideSharedToolbar = false,
+  showSettings: externalShowSettings,
+  onSettingsClose,
+  showFilter: externalShowFilter,
+}) {
   // === Get data from GitLabDataContext ===
   const {
     // Core Data
@@ -201,7 +214,12 @@ export function GanttView() {
 
   // === GanttView-specific State ===
   const [api, setApi] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
+  // Settings modal can be controlled externally (from GitLabWorkspace) or internally
+  const [internalShowSettings, setInternalShowSettings] = useState(false);
+  const showSettings = externalShowSettings !== undefined ? externalShowSettings : internalShowSettings;
+  const setShowSettings = onSettingsClose
+    ? (value) => { if (!value) onSettingsClose(); else setInternalShowSettings(true); }
+    : setInternalShowSettings;
   const [showViewOptions, setShowViewOptions] = useState(false);
 
   // MoveInModal state
@@ -2233,6 +2251,8 @@ export function GanttView() {
     <div className="gitlab-gantt-container">
       {/* Toast notifications are now handled by GitLabDataProvider */}
 
+      {/* Header section - hidden when hideSharedToolbar is true (e.g., embedded in unified toolbar) */}
+      {!hideSharedToolbar && (
       <div className="gitlab-gantt-header">
         <div className="project-switcher">
           <select
@@ -2294,8 +2314,9 @@ export function GanttView() {
           )}
         </div>
       </div>
+      )}
 
-      {showViewOptions && (
+      {!hideSharedToolbar && showViewOptions && (
         <div className="view-controls">
           <label className="control-label">
             Range:
@@ -2517,30 +2538,33 @@ export function GanttView() {
         </div>
       )}
 
-      <FilterPanel
-        key={currentConfig?.id || 'no-config'}
-        milestones={milestones}
-        epics={epics}
-        tasks={allTasks}
-        onFilterChange={handleFilterChange}
-        initialFilters={filterOptions}
-        presets={filterPresets}
-        presetsLoading={presetsLoading}
-        presetsSaving={presetsSaving}
-        canEditPresets={canEditHolidays}
-        onCreatePreset={createNewPreset}
-        onUpdatePreset={updatePreset}
-        onRenamePreset={renamePreset}
-        onDeletePreset={deletePreset}
-        onPresetSelect={handlePresetSelect}
-        initialPresetId={lastUsedPresetId}
-        isGroupMode={currentConfig?.type === 'group'}
-        filterOptions={serverFilterOptions}
-        filterOptionsLoading={serverFilterOptionsLoading}
-        serverFilters={activeServerFilters}
-        onServerFilterApply={handleServerFilterApply}
-        isDirty={filterDirty}
-      />
+      {/* FilterPanel - shown when not hiding toolbar, OR when external filter control is active */}
+      {(!hideSharedToolbar || externalShowFilter) && (
+        <FilterPanel
+          key={currentConfig?.id || 'no-config'}
+          milestones={milestones}
+          epics={epics}
+          tasks={allTasks}
+          onFilterChange={handleFilterChange}
+          initialFilters={filterOptions}
+          presets={filterPresets}
+          presetsLoading={presetsLoading}
+          presetsSaving={presetsSaving}
+          canEditPresets={canEditHolidays}
+          onCreatePreset={createNewPreset}
+          onUpdatePreset={updatePreset}
+          onRenamePreset={renamePreset}
+          onDeletePreset={deletePreset}
+          onPresetSelect={handlePresetSelect}
+          initialPresetId={lastUsedPresetId}
+          isGroupMode={currentConfig?.type === 'group'}
+          filterOptions={serverFilterOptions}
+          filterOptionsLoading={serverFilterOptionsLoading}
+          serverFilters={activeServerFilters}
+          onServerFilterApply={handleServerFilterApply}
+          isDirty={filterDirty}
+        />
+      )}
 
       {syncState.error && (
         <div className="error-banner">
