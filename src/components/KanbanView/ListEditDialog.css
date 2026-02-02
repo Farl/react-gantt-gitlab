@@ -125,95 +125,19 @@
   margin-top: 4px;
 }
 
-/* Selected labels */
-.list-edit-selected-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+/* Labels field using FilterMultiSelect */
+.list-edit-labels-field .filter-multi-select {
+  margin-top: 4px;
 }
 
-.selected-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: #dbeafe;
-  color: #1e40af;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+/* Hide the FilterMultiSelect header since we have our own label */
+.list-edit-labels-field .fms-header {
+  display: none;
 }
 
-.selected-label button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: #3b82f6;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.15s;
-}
-
-.selected-label button:hover:not(:disabled) {
-  background: #bfdbfe;
-  color: #1e40af;
-}
-
-.selected-label button i {
-  font-size: 10px;
-}
-
-/* Label search */
-.list-edit-label-search {
-  margin-bottom: 8px;
-}
-
-/* Labels list */
-.list-edit-labels-list {
+/* Increase the options list height for better visibility */
+.list-edit-labels-field .fms-options {
   max-height: 180px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-}
-
-.list-edit-no-labels {
-  padding: 16px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.list-edit-label-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background 0.15s;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.list-edit-label-option:last-child {
-  border-bottom: none;
-}
-
-.list-edit-label-option:hover {
-  background: #f9fafb;
-}
-
-.list-edit-label-option input[type='checkbox'] {
-  cursor: pointer;
-}
-
-.list-edit-label-option span {
-  font-size: 13px;
-  color: #1f2937;
 }
 
 /* Sort settings */

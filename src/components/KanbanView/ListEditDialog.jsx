@@ -3,18 +3,19 @@
  *
  * Dialog for creating or editing a list within a board.
  * - List name
- * - Label selection (multi-select)
+ * - Label selection (multi-select using FilterMultiSelect)
  * - Sort settings
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { FilterMultiSelect } from '../FilterMultiSelect';
 import './ListEditDialog.css';
 
 /**
  * @param {Object} props
  * @param {boolean} props.isOpen - Whether dialog is visible
  * @param {import('../../types/issueBoard').IssueBoardList | null} props.list - List to edit (null for new)
- * @param {string[]} props.availableLabels - List of available labels in the project
+ * @param {Array<{title: string, color?: string}>} props.availableLabels - List of available labels with colors
  * @param {function} props.onClose - Callback to close dialog
  * @param {function} props.onSave - Callback when changes are saved (listData) => void
  * @param {boolean} props.saving - Whether a save operation is in progress
@@ -31,7 +32,6 @@ export function ListEditDialog({
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [sortBy, setSortBy] = useState('position');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [labelSearch, setLabelSearch] = useState('');
   const [error, setError] = useState('');
 
   const isNewList = !list;
@@ -49,9 +49,17 @@ export function ListEditDialog({
       setSortBy('position');
       setSortOrder('asc');
     }
-    setLabelSearch('');
     setError('');
   }, [list, isOpen]);
+
+  // Convert availableLabels to FilterMultiSelect options format
+  const labelOptions = useMemo(() => {
+    return availableLabels.map((label) => ({
+      value: typeof label === 'string' ? label : label.title || label.name,
+      label: typeof label === 'string' ? label : label.title || label.name,
+      color: typeof label === 'string' ? undefined : label.color,
+    }));
+  }, [availableLabels]);
 
   if (!isOpen) return null;
 
@@ -73,27 +81,14 @@ export function ListEditDialog({
     onSave(listData);
   };
 
-  const handleToggleLabel = (label) => {
-    setSelectedLabels((prev) =>
-      prev.includes(label)
-        ? prev.filter((l) => l !== label)
-        : [...prev, label]
-    );
-  };
-
-  const handleRemoveLabel = (label) => {
-    setSelectedLabels((prev) => prev.filter((l) => l !== label));
+  const handleLabelsChange = (newLabels) => {
+    setSelectedLabels(newLabels);
   };
 
   const handleClose = () => {
     setError('');
     onClose();
   };
-
-  // Filter labels by search
-  const filteredLabels = availableLabels.filter((label) =>
-    label.toLowerCase().includes(labelSearch.toLowerCase())
-  );
 
   return (
     <div className="list-edit-overlay" onClick={handleClose}>
@@ -132,59 +127,17 @@ export function ListEditDialog({
           </div>
 
           {/* Labels selection */}
-          <div className="list-edit-field">
+          <div className="list-edit-field list-edit-labels-field">
             <label>Labels (issues must have ALL selected)</label>
-
-            {/* Selected labels */}
-            {selectedLabels.length > 0 && (
-              <div className="list-edit-selected-labels">
-                {selectedLabels.map((label) => (
-                  <span key={label} className="selected-label">
-                    {label}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLabel(label)}
-                      disabled={saving}
-                    >
-                      <i className="fas fa-times" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Label search */}
-            <input
-              type="text"
-              value={labelSearch}
-              onChange={(e) => setLabelSearch(e.target.value)}
+            <FilterMultiSelect
+              title=""
+              options={labelOptions}
+              selected={selectedLabels}
+              onChange={handleLabelsChange}
               placeholder="Search labels..."
-              className="list-edit-label-search"
-              disabled={saving}
+              emptyMessage="No labels available"
+              showCount={false}
             />
-
-            {/* Available labels */}
-            <div className="list-edit-labels-list">
-              {filteredLabels.length === 0 ? (
-                <div className="list-edit-no-labels">
-                  {labelSearch
-                    ? 'No labels match your search'
-                    : 'No labels available'}
-                </div>
-              ) : (
-                filteredLabels.map((label) => (
-                  <label key={label} className="list-edit-label-option">
-                    <input
-                      type="checkbox"
-                      checked={selectedLabels.includes(label)}
-                      onChange={() => handleToggleLabel(label)}
-                      disabled={saving}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))
-              )}
-            </div>
           </div>
 
           {/* Sort settings */}

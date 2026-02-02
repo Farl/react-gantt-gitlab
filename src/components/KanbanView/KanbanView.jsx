@@ -89,11 +89,12 @@ export function KanbanView() {
     return map;
   }, [serverFilterOptions?.labels]);
 
-  // Get available labels for list editing
+  // Get available labels for list editing (with colors for FilterMultiSelect)
   const availableLabels = useMemo(() => {
-    return (serverFilterOptions?.labels || []).map(
-      (label) => label.title || label.name
-    );
+    return (serverFilterOptions?.labels || []).map((label) => ({
+      title: label.title || label.name,
+      color: label.color,
+    }));
   }, [serverFilterOptions?.labels]);
 
   // Add labelPriority to tasks
