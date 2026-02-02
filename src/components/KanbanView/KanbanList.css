@@ -5,9 +5,11 @@
   flex-direction: column;
   min-width: 260px;
   max-width: 300px;
+  height: 100%; /* Fill parent height */
   background: #f3f4f6;
   border-radius: 6px;
   overflow: hidden;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .kanban-list-header {

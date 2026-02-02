@@ -48,14 +48,24 @@ export const DEFAULT_BOARD_TEMPLATES = {
   kanban: {
     name: 'To Do / In Progress / Done',
     lists: [
-      { name: 'To Do', labels: ['todo'], sortBy: 'position', sortOrder: 'asc' },
       {
-        name: 'In Progress',
-        labels: ['doing'],
+        name: 'To Do',
+        labels: ['State::To Do'],
         sortBy: 'position',
         sortOrder: 'asc',
       },
-      { name: 'Done', labels: ['done'], sortBy: 'position', sortOrder: 'asc' },
+      {
+        name: 'In Progress',
+        labels: ['State::Doing'],
+        sortBy: 'position',
+        sortOrder: 'asc',
+      },
+      {
+        name: 'Done',
+        labels: ['State::Done'],
+        sortBy: 'position',
+        sortOrder: 'asc',
+      },
     ],
   },
   bugTriage: {

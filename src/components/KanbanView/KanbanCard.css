@@ -27,7 +27,11 @@
 
 .kanban-card-title {
   color: #1f2937;
-  word-break: break-word;
+  /* Single line with ellipsis for overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .kanban-card-icon {
