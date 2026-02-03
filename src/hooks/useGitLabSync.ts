@@ -230,12 +230,40 @@ export function useGitLabSync(
 
   /**
    * Optimistically reorder a task's position relative to a target task.
-   * Updates local state immediately and returns a rollback function.
+   *
+   * ## Algorithm: Midpoint Calculation
+   * Instead of modifying GitLab's relativePosition (which requires API sync),
+   * we assign a temporary _localOrder value that positions the task correctly
+   * in the sort order. The value is calculated as the midpoint between the
+   * target and its neighbor:
+   *
+   * - Place after target: _localOrder = (target + next) / 2
+   * - Place before target: _localOrder = (prev + target) / 2
+   *
+   * This ensures stable sorting during rapid consecutive drags without
+   * waiting for GitLab API responses.
+   *
+   * ## Example
+   * Tasks: A(1000), B(2000), C(3000)
+   * 1. Move C after A: C._localOrder = (1000 + 2000) / 2 = 1500
+   *    Result: A(1000), C(1500), B(2000)
+   * 2. Move B before C: B._localOrder = (1000 + 1500) / 2 = 1250
+   *    Result: A(1000), B(1250), C(1500)
+   *
+   * ## Cleanup
+   * _localOrder is automatically cleared when sync() fetches fresh data
+   * from GitLab, as the new task objects won't have this property.
+   *
+   * ## Limitation
+   * JavaScript floating-point precision allows ~52 subdivisions before
+   * values become indistinguishable. For typical usage this is sufficient;
+   * a full sync resets the values. For unlimited precision, consider
+   * string-based fractional indexing (e.g., Figma's approach).
    *
    * @param taskId - The ID of the task to move
    * @param targetTaskId - The ID of the target task
    * @param position - 'before' or 'after' the target
-   * @returns Object with rollback function
+   * @returns Object with rollback function to restore previous state on failure
    */
   const reorderTaskLocal = useCallback(
     (
@@ -245,43 +273,50 @@ export function useGitLabSync(
     ): { rollback: () => void } => {
       const previousTasks = tasksRef.current;
 
-      const taskIndex = previousTasks.findIndex((t) => t.id === taskId);
-      const targetIndex = previousTasks.findIndex((t) => t.id === targetTaskId);
+      const task = previousTasks.find((t) => t.id === taskId);
+      const targetTask = previousTasks.find((t) => t.id === targetTaskId);
 
-      if (taskIndex === -1 || targetIndex === -1) {
+      if (!task || !targetTask) {
         return { rollback: () => {} };
       }
 
-      const targetTask = previousTasks[targetIndex];
+      // Get sort value: prefer _localOrder (from previous drag), then relativePosition
+      const getSortValue = (t: ITask): number =>
+        t._localOrder ?? t._gitlab?.relativePosition ?? (t.id as number);
 
-      // Calculate new relativePosition
-      // Use a simple offset from target position for optimistic update.
-      // The actual position will be determined by GitLab API - this is just
-      // for immediate UI feedback to ensure the task appears near the target.
-      const targetPos = targetTask._gitlab?.relativePosition ?? targetTask.id;
+      // Sort all tasks (excluding the dragged one) to find correct neighbors
+      const otherTasks = previousTasks
+        .filter((t) => t.id !== taskId)
+        .map((t) => ({ task: t, sortValue: getSortValue(t) }))
+        .sort((a, b) => a.sortValue - b.sortValue);
 
-      // Simple offset: place slightly after or before target
-      // Using small offset (1) so it appears adjacent to target in sort order
-      const newPosition = position === 'after' ? targetPos + 1 : targetPos - 1;
+      // Find target's position in sorted list
+      const targetIdx = otherTasks.findIndex((t) => t.task.id === targetTaskId);
+      const targetSortValue = otherTasks[targetIdx].sortValue;
 
-      // Optimistic update: update the task's relativePosition
-      const updatedTasks = previousTasks.map((t) => {
-        if (t.id === taskId) {
-          return {
-            ...t,
-            _gitlab: {
-              ...t._gitlab,
-              relativePosition: newPosition,
-            },
-          };
-        }
-        return t;
-      });
+      // Calculate midpoint between target and neighbor
+      let newLocalOrder: number;
+
+      if (position === 'after') {
+        const nextTask = otherTasks[targetIdx + 1];
+        newLocalOrder = nextTask
+          ? (targetSortValue + nextTask.sortValue) / 2
+          : targetSortValue + 1;
+      } else {
+        const prevTask = otherTasks[targetIdx - 1];
+        newLocalOrder = prevTask
+          ? (prevTask.sortValue + targetSortValue) / 2
+          : targetSortValue - 1;
+      }
+
+      // Only update the dragged task's _localOrder
+      const updatedTasks = previousTasks.map((t) =>
+        t.id === taskId ? { ...t, _localOrder: newLocalOrder } : t,
+      );
 
       setTasks(updatedTasks);
       tasksRef.current = updatedTasks;
 
-      // Return rollback function
       return {
         rollback: () => {
           setTasks(previousTasks);

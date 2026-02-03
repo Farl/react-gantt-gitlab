@@ -16,7 +16,15 @@ import { SortControl } from './SortControl';
 import './KanbanList.css';
 
 /**
- * Sort tasks based on sortBy and sortOrder
+ * Sort tasks based on sortBy and sortOrder.
+ *
+ * For 'position' sorting, uses a priority chain:
+ * 1. _localOrder - Temporary value from optimistic drag updates (see useGitLabSync.reorderTaskLocal)
+ * 2. relativePosition - GitLab's server-side position value
+ * 3. id - Fallback for tasks without position data
+ *
+ * This allows immediate UI feedback during drag operations while
+ * maintaining correct order after GitLab sync.
  */
 function sortTasks(tasks, sortBy, sortOrder) {
   const sorted = [...tasks];
@@ -26,9 +34,9 @@ function sortTasks(tasks, sortBy, sortOrder) {
 
     switch (sortBy) {
       case 'position': {
-        // Use relative_position from GitLab, fallback to id
-        const posA = a._gitlab?.relativePosition ?? a.id;
-        const posB = b._gitlab?.relativePosition ?? b.id;
+        // Priority: _localOrder (drag) > relativePosition (GitLab) > id (fallback)
+        const posA = a._localOrder ?? a._gitlab?.relativePosition ?? a.id;
+        const posB = b._localOrder ?? b._gitlab?.relativePosition ?? b.id;
         comparison = posA - posB;
         break;
       }
@@ -79,9 +87,9 @@ function sortTasks(tasks, sortBy, sortOrder) {
       }
 
       default: {
-        // Fallback to position
-        const defaultPosA = a._gitlab?.relativePosition ?? a.id;
-        const defaultPosB = b._gitlab?.relativePosition ?? b.id;
+        // Fallback to position (same logic as 'position' case)
+        const defaultPosA = a._localOrder ?? a._gitlab?.relativePosition ?? a.id;
+        const defaultPosB = b._localOrder ?? b._gitlab?.relativePosition ?? b.id;
         comparison = defaultPosA - defaultPosB;
         break;
       }
