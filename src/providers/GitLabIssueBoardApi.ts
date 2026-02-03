@@ -69,11 +69,6 @@ export async function findIssueBoardsSnippet(
   configType: 'project' | 'group' = 'project',
 ): Promise<GitLabSnippet | null> {
   const prefix = getEndpointPrefix(fullPath, configType);
-  console.log('[GitLabIssueBoardApi] findIssueBoardsSnippet:', {
-    fullPath,
-    configType,
-    prefix,
-  });
 
   try {
     // Use paginated request to handle projects with many snippets
@@ -180,13 +175,8 @@ function parseStorageContent(content: string): IssueBoardStorage {
   try {
     const data = JSON.parse(content);
 
-    // Validate version
-    if (data.version !== STORAGE_VERSION) {
-      console.warn(
-        '[GitLabIssueBoardApi] Storage version mismatch:',
-        data.version,
-      );
-    }
+    // Validate version - silent fallback for version mismatch
+    // Future migrations can be handled here if needed
 
     return {
       version: STORAGE_VERSION,
@@ -225,7 +215,6 @@ export async function loadIssueBoards(
   );
 
   if (!snippet) {
-    console.log('[GitLabIssueBoardApi] No existing snippet found');
     return [];
   }
 
@@ -239,7 +228,6 @@ export async function loadIssueBoards(
 
   // Parse content
   const storage = parseStorageContent(content);
-  console.log('[GitLabIssueBoardApi] Loaded boards:', storage.boards.length);
 
   return storage.boards;
 }
@@ -277,11 +265,9 @@ export async function saveIssueBoards(
       proxyConfig,
       configType,
     );
-    console.log('[GitLabIssueBoardApi] Updated existing snippet');
   } else {
     // Create new
     await createIssueBoardsSnippet(fullPath, content, proxyConfig, configType);
-    console.log('[GitLabIssueBoardApi] Created new snippet');
   }
 }
 
@@ -319,7 +305,6 @@ export async function createBoard(
   // Save
   await saveIssueBoards(fullPath, boards, proxyConfig, configType);
 
-  console.log('[GitLabIssueBoardApi] Created board:', newBoard.id);
   return newBoard;
 }
 
@@ -351,8 +336,6 @@ export async function updateBoard(
 
   // Save
   await saveIssueBoards(fullPath, boards, proxyConfig, configType);
-
-  console.log('[GitLabIssueBoardApi] Updated board:', board.id);
 }
 
 /**
@@ -376,6 +359,4 @@ export async function deleteBoard(
 
   // Save
   await saveIssueBoards(fullPath, filteredBoards, proxyConfig, configType);
-
-  console.log('[GitLabIssueBoardApi] Deleted board:', boardId);
 }
