@@ -1,7 +1,6 @@
 # React Gantt for GitLab
 
-- https://farl.github.io/react-gantt-gitlab/
-- https://react-gantt-gitlab-8d7d33.pages.rayark.io/
+- https://farl.github.io/react-gantt-gitlab
 
 ## GitLab Gantt
 
@@ -61,6 +60,15 @@
 
 - 新建 milestone 裡面的 issue, task 會隔一小段時間同步後才會正常顯示
 - 目前不支援拖曳到其他 Milestone / Issue 底下
+
+## Kanban View
+
+![GitLab Kanban Screenshot](./assets/kanban-view.png)
+
+### Features
+
+- 使用 Project Snippets 儲存 Kanban board, Kanban board list。
+- Kanban board list 可以進行排序。
 
 ## Workload View
 
