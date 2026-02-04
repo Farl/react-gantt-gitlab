@@ -212,6 +212,7 @@ export function GanttView({
     showToast,
     countWorkdays,
     calculateEndDateByWorkdays,
+    highlightTime,
   } = useGitLabData();
 
   // === GanttView-specific State ===
@@ -2069,34 +2070,6 @@ export function GanttView({
       },
     ];
   }, []);
-
-  // highlightTime using useHighlightTime from context (via countWorkdays dependency)
-  // This function is used by Gantt to highlight weekends and holidays
-  // Note: holidays and workdays are HolidayEntry[] with { date: string } format
-  const highlightTime = useCallback((date) => {
-    // Check if date is a weekend (Saturday = 6, Sunday = 0)
-    const dayOfWeek = date.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-    // Format date for comparison (YYYY-MM-DD)
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-    // Check if date is in workdays list (extra working days on weekends)
-    // workdays is HolidayEntry[] with { date: 'YYYY-MM-DD' } format
-    const isExtraWorkday = workdays.some(w => w.date === dateStr);
-
-    // Check if date is a holiday
-    // holidays is HolidayEntry[] with { date: 'YYYY-MM-DD' } format
-    const isHoliday = holidays.some(h => h.date === dateStr);
-
-    // Return 'wx-weekend' class for non-working days
-    // Weekend is non-working UNLESS it's an extra workday
-    // Holiday is always non-working
-    if (isHoliday || (isWeekend && !isExtraWorkday)) {
-      return 'wx-weekend';
-    }
-    return '';
-  }, [holidays, workdays]);
 
   // Date cell component for custom formatting
   // For regular tasks: Check _gitlab.startDate / _gitlab.dueDate to determine if GitLab actually has the date

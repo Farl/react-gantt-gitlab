@@ -8,6 +8,7 @@ import type { SyncState } from '../hooks/useGitLabSync';
 import type { FilterPreset } from '../types/filterPreset';
 import type { GitLabDataProvider } from '../providers/GitLabDataProvider';
 import type { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
+import type { HolidayEntry } from '../providers/GitLabSnippetApi';
 
 /** Server filter options from GitLab (labels, milestones, members) */
 export interface ServerFilterOptions {
@@ -112,8 +113,8 @@ export interface GitLabDataContextValue {
   canEditHolidays: boolean;
 
   // === Holidays & Workdays ===
-  holidays: Date[];
-  workdays: Date[];
+  holidays: HolidayEntry[];
+  workdays: HolidayEntry[];
   colorRules: unknown[];
   holidaysText: string;
   workdaysText: string;
@@ -128,4 +129,5 @@ export interface GitLabDataContextValue {
   showToast: ShowToastFn;
   countWorkdays: (start: Date, end: Date) => number;
   calculateEndDateByWorkdays: (start: Date, workdays: number) => Date;
+  highlightTime: (date: Date, unit: string) => string;
 }

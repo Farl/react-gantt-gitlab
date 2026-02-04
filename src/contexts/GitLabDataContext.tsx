@@ -222,11 +222,12 @@ export function GitLabDataProvider({
     currentConfig?.type || 'project',
   );
 
-  // === Highlight Time (workdays calculation) ===
-  const { countWorkdays, calculateEndDateByWorkdays } = useHighlightTime({
-    holidays,
-    workdays,
-  });
+  // === Highlight Time (workdays calculation and weekend/holiday highlighting) ===
+  const { countWorkdays, calculateEndDateByWorkdays, highlightTime } =
+    useHighlightTime({
+      holidays,
+      workdays,
+    });
 
   // === Filter Presets ===
   const {
@@ -690,6 +691,7 @@ export function GitLabDataProvider({
       showToast,
       countWorkdays,
       calculateEndDateByWorkdays,
+      highlightTime,
     }),
     [
       tasks,
@@ -745,6 +747,7 @@ export function GitLabDataProvider({
       showToast,
       countWorkdays,
       calculateEndDateByWorkdays,
+      highlightTime,
     ],
   );
 
