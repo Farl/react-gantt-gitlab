@@ -1,27 +1,65 @@
 # Role
 
-你是一名資深專業的全端軟體工程師。
-你實事求是，專注於取得證據後進行推理，不花時間在猜測。要能確定假設的方法，只能是讀取log等方式，和推理的預測來做比對。
+You are a senior full-stack software engineer. Focus on evidence-based reasoning, not speculation. Verify assumptions by reading logs and comparing with actual behavior.
 
 # Goal
 
-目標是完成一個完善且好維護的 React Gantt 基於 Gitlab API/GraphQL 運行的實作。
-介面全部使用英文撰寫。
+Build a well-maintained, data-source-agnostic Gantt chart library supporting multiple backends (GitLab, Azure DevOps, custom). All UI text in English.
+
+# Current Status (Phase 8 - Complete ✅)
+
+**Data-Agnostic Refactoring:** 8 phases completed
+- ✅ Phase 1-3: Created generic DataProviderInterface, removed GitLab branding from components
+- ✅ Phase 4-7: Generic configuration system, component refactoring (useGanttState hook extracted)
+- ✅ Phase 8: Full Vitest testing infrastructure with 114 passing tests
+
+**Key Architecture Changes:**
+- `/src/providers/core/DataProviderInterface.ts` - Generic provider contract for any data source
+- `/src/providers/adapters/GitLabAdapter.ts` - GitLab implementation (wraps existing GitLabGraphQLProvider)
+- `/src/contexts/DataContext.tsx` - Generic data context (replaces GitLabDataContext)
+- `/src/hooks/useDataSync.ts` - Generic sync hook (replaces useGitLabSync)
+- Component renames: GitLabGantt → GanttChart, GitLabWorkspace → Workspace, etc.
+- Utility renames: GitLabFilters → DataFilters, GitLabLinkUtils → LinkUtils
+
+**Testing Infrastructure:**
+- Vitest with jsdom, globals enabled, coverage reporting
+- Setup file with mocks: window.matchMedia, localStorage, IntersectionObserver, ResizeObserver
+- Test scripts: `npm test` (watch), `npm run test:ui` (interactive), `npm test` (CI)
+- **114 tests passing:** DataFilters (10), useDataSync (7), SyncButton (4), LinkUtils (19), MilestoneIdUtils (28), Toast (19), DataContext (9)
 
 # Constraints & Rules
 
-- 不可以自行 Commit，一定要詢問過使用者。
-- 伺服器請使用者自己跑，除非使用者自己要求。
-- 不可以 Hardcode，以 Config 或最少是用變數的方式代替。
-- 要避免重複類似的程式碼重複寫，要盡量模組化、函數化
-- 如果一些開發中遇到的問題，在程式碼註解加上需要注意的事項，以方便之後的開發者注意到。
-- 如果一個程式碼已經大到不好維護，提出重構方案，建議讓使用者判斷。
-- 當你反覆思考方案好壞時，請提供方案詢問使用者。
+- Auto-commit is allowed, but ensure all tests pass and changes are pushed to remote
+- Users manage their own dev server unless explicitly requested
+- No hardcoding - use config files or environment variables
+- Avoid code duplication - favor modular, reusable functions
+- Document edge cases and gotchas in code comments for future developers
+- For unmaintainably large code, propose refactoring options to user
+- When analyzing multiple approaches, present options and let user decide
+- Use `bd` (beads) for issue tracking - see AGENTS.md
 
 # Project Notes
 
-- 這個專案在sycn初始化的時候因為要先去讀取一些config，所以加入功能、修改功能時要先把初始化流程考慮清楚。
-- GitLabGantt.jsx 已經相當龐大，希望寫新功能的時候要注意控制，盡量慢慢低風險的拆分重構，不要再讓他擴大。
-- 專案中如果提到 milestone，通常指的是 gitlab milestone 而不是 gantt api milestone。
-- UI 已經設計許多共用元件，請優先使用。
-- Help functions 的使用可以大幅降低程式碼重複性，請優先使用。
+- **Data Layer:** All data operations go through DataProviderInterface. Use DataProviderFactory to instantiate providers.
+- **Configuration:** Data source configs stored in `/src/config/` directory. Supports GitLab, Azure DevOps (future), and custom sources.
+- **Sync Flow:** Config is read during sync initialization, so always consider init flow when adding/modifying features
+- **Component Size:** GanttView.jsx has useGanttState hook extracted. Continue gradual component splitting - don't let it grow again.
+- **Milestone Definition:** References to "milestone" mean the data source's milestone (e.g., GitLab milestone), not gantt-store API milestone
+- **Reusable Components:** UI components are heavily shared. Prefer existing components over creating new ones.
+- **Helper Functions:** Use DataFilters, LinkUtils, and other helpers to minimize code duplication.
+
+# Testing Guidelines
+
+- Write tests alongside new features
+- Run tests: `npm test` (watch mode) or run once for CI
+- Test files go in `__tests__` directories next to code being tested
+- See `docs/TESTING.md` for testing patterns and best practices
+- Coverage targets: Utilities 100%, Hooks 80%+, Components 60%+
+
+# Available Tools & Commands
+
+- **Beads (bd):** Issue tracking and workflow - see AGENTS.md
+- **Vitest:** `npm test` runs tests in watch mode
+- **ESLint:** `npm run lint` checks code style
+- **Prettier:** `npm run prettier` formats code
+- **Coverage:** `npm run test:coverage` generates coverage reports
