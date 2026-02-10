@@ -1,8 +1,16 @@
-# React Gantt for GitLab
+# React Gantt Chart
+
+Data-agnostic Gantt chart component supporting multiple data sources (GitLab, Azure DevOps, and custom sources).
 
 - https://farl.github.io/react-gantt-gitlab
 
-## GitLab Gantt
+## Features
+
+### Supported Data Sources
+
+- **GitLab** - Full support for GitLab projects and groups
+- **Azure DevOps** - Planned for future release
+- **Custom** - Extensible interface for custom data sources
 
 ![GitLab Gantt Screenshot](./assets/gitlab-gantt.png)
 

@@ -25,7 +25,7 @@ import { BoardSelector } from './BoardSelector';
 import { CreateBoardDialog } from './CreateBoardDialog';
 import { BoardSettingsModal } from './BoardSettingsModal';
 import { ListEditDialog } from './ListEditDialog';
-import { GitLabFilters } from '../../utils/DataFilters';
+import { DataFilters } from '../../utils/DataFilters';
 import { useDragOperations } from '../../hooks/useDragOperations';
 import { ProjectSelector } from '../ProjectSelector';
 import { ColorRulesEditor } from '../ColorRulesEditor';
