@@ -32,9 +32,9 @@
     "preview": "vite preview",
     "prepare": "husky",
     "prettier": "prettier --write ./src/ ./demos/",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "exports": {

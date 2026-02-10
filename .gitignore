@@ -28,3 +28,10 @@ dist-ssr
 
 # Worktrees
 .worktrees
+
+# Claude Code auto-generated directories
+.agent/
+.agents/
+.claude/skills/
+.ralph-tui/
+skills/
