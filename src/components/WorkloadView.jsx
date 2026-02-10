@@ -10,12 +10,12 @@ import { WorkloadChart } from './WorkloadChart.jsx';
 import { WorkloadSidebar } from './WorkloadSidebar.jsx';
 import { useProjectConfig } from '../hooks/useProjectConfig.ts';
 import { useCellDimensions } from '../hooks/useCellDimensions.ts';
-import { useGitLabDataInit } from '../hooks/useGitLabDataInit.ts';
+import { useDataInit } from '../hooks/useDataInit.ts';
 import { useFilterPresets } from '../hooks/useFilterPresets.ts';
-import { useGitLabHolidays } from '../hooks/useGitLabHolidays.ts';
+import { useHolidays } from '../hooks/useHolidays.ts';
 import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
 import { useHighlightTime } from '../hooks/useHighlightTime.ts';
-import { GitLabFilters, toGitLabServerFilters } from '../utils/GitLabFilters.ts';
+import { DataFilters, toGitLabServerFilters } from '../utils/DataFilters.ts';
 import {
   getUniqueAssignees,
   getUniqueLabels,
@@ -135,7 +135,7 @@ export function WorkloadView({ initialConfigId }) {
     setActiveServerFilters,
     lastUsedPresetId,
     setLastUsedPresetId,
-  } = useGitLabDataInit({
+  } = useDataInit({
     provider,
     proxyConfig,
     configVersion,
@@ -148,11 +148,11 @@ export function WorkloadView({ initialConfigId }) {
 
   // Apply client-side filters to tasks (same as GitLabGantt)
   const filteredTasks = useMemo(() => {
-    return GitLabFilters.applyFilters(allTasks, filterOptions);
+    return DataFilters.applyFilters(allTasks, filterOptions);
   }, [allTasks, filterOptions]);
 
   // Use GitLab holidays hook
-  const { holidays, workdays } = useGitLabHolidays(
+  const { holidays, workdays } = useHolidays(
     projectPath,
     proxyConfig,
     canEditHolidays,

@@ -18,7 +18,7 @@ import {
 import type { GitLabProxyConfig } from '../providers/GitLabApiUtils';
 import type { ColorRule } from '../types/colorRule';
 
-export interface UseGitLabHolidaysResult {
+export interface UseHolidaysResult {
   /** Holiday entries (date + optional name) */
   holidays: HolidayEntry[];
   /** Workday entries (date + optional name) */
@@ -88,7 +88,7 @@ function textToEntries(text: string): HolidayEntry[] {
  * - Saving is disabled
  * - Holidays, Workdays, and ColorRules features are unavailable
  */
-export function useGitLabHolidays(
+export function useHolidays(
   fullPath: string | null,
   proxyConfig: GitLabProxyConfig | null,
   canEdit: boolean,

@@ -6,7 +6,7 @@
 import type {
   FilterOptions,
   ServerFilterOptions,
-} from '../utils/GitLabFilters';
+} from '../../utils/DataFilters';
 
 /**
  * 儲存的 Filter 狀態

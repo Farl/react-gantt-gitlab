@@ -5,7 +5,7 @@
  * This component is kept for backward compatibility.
  */
 
-import { GitLabWorkspace } from './GitLabWorkspace';
+import { Workspace } from './Workspace';
 
 export function GitLabGantt(props) {
   // Log deprecation warning in development
@@ -17,5 +17,5 @@ export function GitLabGantt(props) {
     );
   }
 
-  return <GitLabWorkspace {...props} />;
+  return <Workspace {...props} />;
 }

@@ -16,7 +16,7 @@ import { GanttView } from '../GanttView/GanttView';
 import { KanbanView } from '../KanbanView/KanbanView';
 import { SharedToolbar } from './SharedToolbar';
 import { SharedFilterPanel } from './SharedFilterPanel';
-import './GitLabWorkspace.css';
+import './Workspace.css';
 
 const VIEW_MODE_KEY = 'gitlab-gantt-view-mode';
 
@@ -40,7 +40,7 @@ function storeViewMode(mode) {
   }
 }
 
-export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
+export function Workspace({ initialConfigId, autoSync = false }) {
   const [activeView, setActiveView] = useState(getStoredViewMode); // 'gantt' | 'kanban'
   const [showSettings, setShowSettings] = useState(false);
   const [showViewOptions, setShowViewOptions] = useState(false);

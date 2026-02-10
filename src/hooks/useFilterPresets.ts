@@ -14,7 +14,7 @@ import {
 } from '../providers/GitLabFilterPresetsApi';
 import type { GitLabProxyConfig } from '../providers/GitLabApiUtils';
 import type { FilterPreset, FilterPresetsConfig } from '../types/filterPreset';
-import type { FilterOptions } from '../utils/GitLabFilters';
+import type { FilterOptions } from '../../utils/DataFilters';
 
 export interface UseFilterPresetsResult {
   /** Array of saved presets */

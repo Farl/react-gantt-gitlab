@@ -10,8 +10,8 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
-import { gitlabConfigManager } from '../config/GitLabConfigManager';
-import { gitlabCredentialManager } from '../config/GitLabCredentialManager';
+import { gitlabConfigManager } from '../config/DataSourceConfigManager';
+import { gitlabCredentialManager } from '../config/DataSourceCredentialManager';
 import type { GitLabConfigV2, GitLabCredential } from '../types/credential';
 
 /**

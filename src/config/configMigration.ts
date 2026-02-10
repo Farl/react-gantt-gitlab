@@ -14,7 +14,7 @@ import type { GitLabConfigV2, GitLabConfigLegacy } from '../types/credential';
 import {
   GitLabCredentialManager,
   gitlabCredentialManager,
-} from './GitLabCredentialManager';
+} from './DataSourceCredentialManager';
 
 const CONFIGS_STORAGE_KEY = 'gitlab_gantt_configs';
 const MIGRATION_FLAG_KEY = 'gitlab_gantt_migration_v2_done';

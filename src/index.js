@@ -41,20 +41,20 @@ export {
 export {
   gitlabCredentialManager,
   GitLabCredentialManager,
-} from './config/GitLabCredentialManager';
+} from './config/DataSourceCredentialManager';
 export { CredentialManager } from './components/CredentialManager';
 export { ProjectBrowser } from './components/ProjectBrowser';
 
-// GitLabWorkspace (new entry point for shared data layer)
-export { GitLabWorkspace } from './components/GitLabWorkspace';
+// Workspace (new entry point for shared data layer)
+export { Workspace } from './components/Workspace';
 export { GanttView } from './components/GanttView';
 
 // Context exports
 export {
-  GitLabDataProvider,
-  useGitLabData,
-  useGitLabDataOptional,
-} from './contexts/GitLabDataContext';
+  DataProvider,
+  useData,
+  useDataOptional,
+} from './contexts/DataContext';
 
 // KanbanView exports
 export {
@@ -64,5 +64,5 @@ export {
   KanbanCard,
 } from './components/KanbanView';
 
-// Backward compatibility: GitLabGantt now wraps GitLabWorkspace
-export { GitLabGantt } from './components/GitLabGantt.jsx';
+// Backward compatibility: GitLabGantt now wraps Workspace
+export { GitLabGantt } from './components/GanttChart.jsx';

@@ -25,7 +25,7 @@ import { BoardSelector } from './BoardSelector';
 import { CreateBoardDialog } from './CreateBoardDialog';
 import { BoardSettingsModal } from './BoardSettingsModal';
 import { ListEditDialog } from './ListEditDialog';
-import { GitLabFilters } from '../../utils/GitLabFilters';
+import { GitLabFilters } from '../../utils/DataFilters';
 import { useDragOperations } from '../../hooks/useDragOperations';
 import { ProjectSelector } from '../ProjectSelector';
 import { ColorRulesEditor } from '../ColorRulesEditor';
@@ -150,7 +150,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
         (task.$isIssue || task._gitlab?.type === 'issue') &&
         task._gitlab?.workItemType !== 'Task'
     );
-    return GitLabFilters.applyFilters(issuesOnly, filterOptions);
+    return DataFilters.applyFilters(issuesOnly, filterOptions);
   }, [tasksWithPriority, filterOptions]);
 
   // Build child tasks map: issueId -> childTasks[]

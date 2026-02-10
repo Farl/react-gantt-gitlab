@@ -20,7 +20,7 @@ import ContextMenu from '../ContextMenu.jsx';
 import SmartTaskContent from '../SmartTaskContent.jsx';
 import { useGitLabData } from '../../contexts/GitLabDataContext';
 import { useDateRangePreset } from '../../hooks/useDateRangePreset.ts';
-import { GitLabFilters } from '../../utils/GitLabFilters.ts';
+import { DataFilters } from '../../utils/DataFilters';
 import { formatDateToLocalString, createStartDate, createEndDate } from '../../utils/dateUtils.js';
 import { ProjectSelector } from '../ProjectSelector.jsx';
 import { SyncButton } from '../SyncButton.jsx';
@@ -46,7 +46,7 @@ import { isLegacyMilestoneId, migrateLegacyMilestoneId } from '../../utils/Miles
 import {
   findLinkBySourceTarget,
   validateLinkGitLabMetadata,
-} from '../../utils/GitLabLinkUtils';
+} from '../../utils/LinkUtils';
 
 /**
  * Extract tasks array from SVAR Gantt store state
@@ -544,12 +544,12 @@ export function GanttView({
 
   // Apply filters to tasks
   const filteredTasks = useMemo(() => {
-    return GitLabFilters.applyFilters(tasksWithWorkdays, filterOptions);
+    return DataFilters.applyFilters(tasksWithWorkdays, filterOptions);
   }, [tasksWithWorkdays, filterOptions]);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    return GitLabFilters.calculateStats(filteredTasks);
+    return DataFilters.calculateStats(filteredTasks);
   }, [filteredTasks]);
 
   // Dynamic scales based on lengthUnit (lengthUnit = the smallest time unit to display)

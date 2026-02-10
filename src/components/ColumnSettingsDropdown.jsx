@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { getGitLabLinkInfo } from '../utils/GitLabLinkUtils';
+import { getGitLabLinkInfo } from '../utils/LinkUtils';
 
 const STORAGE_KEY = 'gantt-column-settings';
 

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { GitLabFilters } from '../utils/GitLabFilters';
+import { DataFilters } from '../utils/DataFilters';
 import { FilterPresetSelector } from './FilterPresetSelector';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import { presetHasServerFilters, presetHasClientFilters } from '../types/projectSettings';
@@ -111,7 +111,7 @@ export function FilterPanel({
     const serverLabelMap = new Map(serverLabels.map(l => [l.title, l]));
 
     // Then get labels from tasks (client source)
-    const taskLabels = tasks ? GitLabFilters.getUniqueLabels(tasks) : [];
+    const taskLabels = tasks ? DataFilters.getUniqueLabels(tasks) : [];
 
     // Merge: prefer server data for color info
     const merged = new Map();
@@ -144,7 +144,7 @@ export function FilterPanel({
     const serverMemberMap = new Map(serverMembers.map(m => [m.username, m]));
 
     // Then get assignees from tasks (client source) - these are display names
-    const taskAssignees = tasks ? GitLabFilters.getUniqueAssignees(tasks) : [];
+    const taskAssignees = tasks ? DataFilters.getUniqueAssignees(tasks) : [];
 
     // Merge: for client we use display name as value, for server we need username
     // Since client filters use assignee display name, we'll create options with name as value

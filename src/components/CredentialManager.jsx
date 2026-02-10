@@ -14,8 +14,8 @@ import './shared/modal-close-button.css';
 import {
   gitlabCredentialManager,
   GitLabCredentialManager,
-} from '../config/GitLabCredentialManager';
-import { gitlabConfigManager } from '../config/GitLabConfigManager';
+} from '../config/DataSourceCredentialManager';
+import { gitlabConfigManager } from '../config/DataSourceConfigManager';
 import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
 
 /**

@@ -61,7 +61,7 @@ export function toGitLabServerFilters(
   };
 }
 
-export class GitLabFilters {
+export class DataFilters {
   /**
    * Filter tasks by milestone using _gitlab.milestoneIid
    * Supports "NONE" (as 0) to filter tasks without milestone

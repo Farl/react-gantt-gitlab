@@ -14,7 +14,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { openGitLabLink } from '../../utils/GitLabLinkUtils';
+import { openGitLabLink } from '../../utils/LinkUtils';
 import './KanbanCard.css';
 
 /**

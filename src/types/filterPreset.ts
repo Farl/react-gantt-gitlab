@@ -3,7 +3,7 @@
  * Types for saving and managing filter presets stored in GitLab Snippets
  */
 
-import type { FilterOptions } from '../utils/GitLabFilters';
+import type { FilterOptions } from '../../utils/DataFilters';
 
 /**
  * A single filter preset

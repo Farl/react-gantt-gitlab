@@ -26,11 +26,11 @@ import type {
 import type { GitLabSyncOptions } from '../types/gitlab';
 import { useProjectConfig } from '../hooks/useProjectConfig';
 import { useGitLabSync } from '../hooks/useGitLabSync';
-import { useGitLabHolidays } from '../hooks/useGitLabHolidays';
+import { useHolidays } from '../hooks/useHolidays';
 import { useFilterPresets } from '../hooks/useFilterPresets';
 import { useHighlightTime } from '../hooks/useHighlightTime';
 import { ToastContainer, useToast } from '../components/Toast';
-import { toGitLabServerFilters } from '../utils/GitLabFilters';
+import { toGitLabServerFilters } from '../utils/DataFilters';
 import {
   loadProjectSettings,
   updateProjectFilterSettings,
@@ -215,7 +215,7 @@ export function GitLabDataProvider({
     setHolidaysText,
     setWorkdaysText,
     setColorRules,
-  } = useGitLabHolidays(
+  } = useHolidays(
     projectPath,
     proxyConfig,
     canEditHolidays,

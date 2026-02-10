@@ -16,7 +16,7 @@ import { useStore, useWritableProp } from '@svar-ui/lib-react';
 
 // helpers
 import { modeObserver } from '../helpers/modeResizeObserver';
-import { getGitLabUrl, openGitLabLink } from '../utils/GitLabLinkUtils';
+import { getGitLabUrl, openGitLabLink } from '../utils/LinkUtils';
 
 import './Editor.css';
 

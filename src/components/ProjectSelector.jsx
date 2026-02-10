@@ -12,11 +12,11 @@
 
 import { useState, useEffect } from 'react';
 import './shared/modal-close-button.css';
-import { gitlabConfigManager, GitLabConfigManager } from '../config/GitLabConfigManager';
+import { gitlabConfigManager, GitLabConfigManager } from '../config/DataSourceConfigManager';
 import {
   gitlabCredentialManager,
   GitLabCredentialManager,
-} from '../config/GitLabCredentialManager';
+} from '../config/DataSourceCredentialManager';
 import { CredentialManager } from './CredentialManager';
 import { ProjectBrowser } from './ProjectBrowser';
 import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';

@@ -8,7 +8,7 @@
  */
 
 import type { GitLabConfigV2, GitLabCredential } from '../types/credential';
-import { gitlabCredentialManager } from './GitLabCredentialManager';
+import { gitlabCredentialManager } from './DataSourceCredentialManager';
 import { runMigrationIfNeeded } from './configMigration';
 
 const STORAGE_KEY = 'gitlab_gantt_configs';
@@ -298,7 +298,7 @@ export class GitLabConfigManager {
   }): Promise<{ success: boolean; error?: string }> {
     // Delegate to CredentialManager which has the canonical implementation
     const { GitLabCredentialManager } = await import(
-      './GitLabCredentialManager'
+      './DataSourceCredentialManager'
     );
     return GitLabCredentialManager.testConnection(config);
   }
