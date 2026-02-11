@@ -11,8 +11,8 @@ export default defineConfig(({ command, mode }) => {
 
   if (isDemoBuild) {
     // Demo build configuration - includes all dependencies
-    // Use relative path for GitHub/GitLab Pages compatibility
-    // GitLab Pages typically uses root path '/' while GitHub Pages may use subpath
+    // Use relative path for static hosting compatibility
+    // Some hosts use root path '/' while GitHub Pages may use subpath
     const base = process.env.VITE_BASE_PATH || '/';
 
     return {
@@ -71,18 +71,18 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react()],
     server: {
       proxy: {
-        '/api/gitlab-proxy': {
+        '/api/data-proxy': {
           // Default target - will be dynamically changed per-request
-          target: 'https://gitlab.rayark.com',
+          target: 'https://example.com',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/gitlab-proxy/, ''),
+          rewrite: (path) => path.replace(/^\/api\/data-proxy/, ''),
           configure: (proxy, options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
               // Forward the Authorization header
-              if (req.headers['x-gitlab-token']) {
+              if (req.headers['x-auth-token']) {
                 proxyReq.setHeader(
-                  'PRIVATE-TOKEN',
-                  req.headers['x-gitlab-token'],
+                  'Authorization',
+                  `Bearer ${req.headers['x-auth-token']}`,
                 );
               }
             });

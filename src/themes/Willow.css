@@ -78,35 +78,35 @@
   /* sidebar */
   --wx-sidebar-close-icon: #c0c3ce;
 
-  /* GitLab Gantt Header & Controls */
-  --wx-gitlab-header-background: #fff;
-  --wx-gitlab-header-border: #ddd;
-  --wx-gitlab-control-background: #f8f9fa;
-  --wx-gitlab-control-border: #e0e0e0;
-  --wx-gitlab-control-text: #666;
-  --wx-gitlab-control-value: #333;
-  --wx-gitlab-button-background: #fff;
-  --wx-gitlab-button-border: #ccc;
-  --wx-gitlab-button-hover-background: #f5f5f5;
-  --wx-gitlab-button-text: #666;
-  --wx-gitlab-button-hover-text: #333;
+  /* Gantt Header & Controls */
+  --wx-gantt-header-background: #fff;
+  --wx-gantt-header-border: #ddd;
+  --wx-gantt-control-background: #f8f9fa;
+  --wx-gantt-control-border: #e0e0e0;
+  --wx-gantt-control-text: #666;
+  --wx-gantt-control-value: #333;
+  --wx-gantt-button-background: #fff;
+  --wx-gantt-button-border: #ccc;
+  --wx-gantt-button-hover-background: #f5f5f5;
+  --wx-gantt-button-text: #666;
+  --wx-gantt-button-hover-text: #333;
 
-  /* GitLab Filter Panel */
-  --wx-gitlab-filter-background: #f5f5f5;
-  --wx-gitlab-filter-border: #ddd;
-  --wx-gitlab-filter-text: #333;
-  --wx-gitlab-filter-hover-background: rgba(0, 0, 0, 0.05);
-  --wx-gitlab-filter-input-background: #fff;
-  --wx-gitlab-filter-input-border: #ccc;
+  /* Filter Panel */
+  --wx-gantt-filter-background: #f5f5f5;
+  --wx-gantt-filter-border: #ddd;
+  --wx-gantt-filter-text: #333;
+  --wx-gantt-filter-hover-background: rgba(0, 0, 0, 0.05);
+  --wx-gantt-filter-input-background: #fff;
+  --wx-gantt-filter-input-border: #ccc;
 
-  /* GitLab Settings Modal */
-  --wx-gitlab-modal-overlay: rgba(0, 0, 0, 0.5);
-  --wx-gitlab-modal-background: #fff;
-  --wx-gitlab-modal-header-background: #f8f9fa;
-  --wx-gitlab-modal-border: #ddd;
-  --wx-gitlab-modal-section-border: #eee;
-  --wx-gitlab-modal-text: #333;
-  --wx-gitlab-modal-hint-text: #666;
+  /* Settings Modal */
+  --wx-gantt-modal-overlay: rgba(0, 0, 0, 0.5);
+  --wx-gantt-modal-background: #fff;
+  --wx-gantt-modal-header-background: #f8f9fa;
+  --wx-gantt-modal-border: #ddd;
+  --wx-gantt-modal-section-border: #eee;
+  --wx-gantt-modal-text: #333;
+  --wx-gantt-modal-hint-text: #666;
 
   /* Demo Sidebar & Top Bar */
   --wx-demo-sidebar-background: #fbfbfb;
@@ -121,44 +121,44 @@
   --wx-demo-segmented-background: #fff;
 }
 
-/* GitLab Integration specific styling - override default colors */
-.wx-willow-theme .wx-gitlab-issue {
-  /* GitLab Issue = blue */
+/* Integration specific styling - override default colors */
+.wx-willow-theme .wx-issue {
+  /* Issue = blue */
   color: #fff;
   background-color: #3983eb;
   border: 1px solid transparent;
 }
 
-.wx-willow-theme .wx-gitlab-issue.wx-selected {
+.wx-willow-theme .wx-issue.wx-selected {
   border: 1px solid #1f6bd9;
   box-shadow: var(--wx-gantt-bar-shadow);
 }
 
-.wx-willow-theme .wx-gitlab-issue:hover {
+.wx-willow-theme .wx-issue:hover {
   box-shadow: var(--wx-gantt-bar-shadow);
 }
 
-.wx-willow-theme .wx-gitlab-issue .wx-progress-percent {
+.wx-willow-theme .wx-issue .wx-progress-percent {
   background-color: #1f6bd9;
 }
 
-.wx-willow-theme .wx-gitlab-task {
-  /* GitLab Task = green */
+.wx-willow-theme .wx-task {
+  /* Task = green */
   color: #ffffff;
   background-color: #00ba94;
   border: 1px solid transparent;
 }
 
-.wx-willow-theme .wx-gitlab-task.wx-selected {
+.wx-willow-theme .wx-task.wx-selected {
   border: 1px solid #099f81;
   box-shadow: var(--wx-gantt-bar-shadow);
 }
 
-.wx-willow-theme .wx-gitlab-task:hover {
+.wx-willow-theme .wx-task:hover {
   box-shadow: var(--wx-gantt-bar-shadow);
 }
 
-.wx-willow-theme .wx-gitlab-task .wx-progress-percent {
+.wx-willow-theme .wx-task .wx-progress-percent {
   background-color: #099f81;
 }
 
@@ -218,12 +218,12 @@
   background-size: 45px 45px !important;
 }
 
-/* === GitLab Milestone Color Rules === */
-/* GitLab milestones are horizontal bars (not diamond shaped) */
+/* === Milestone Color Rules === */
+/* Gantt milestones are horizontal bars (not diamond shaped) */
 
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-single,
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-double,
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-triple {
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-single,
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-double,
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-triple {
   overflow: visible;
   border: 1px solid transparent !important;
   /* GPU acceleration for smoother rendering */
@@ -232,8 +232,8 @@
   backface-visibility: hidden;
 }
 
-/* Single color stripe for GitLab milestone */
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-single {
+/* Single color stripe for milestone */
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-single {
   background: repeating-linear-gradient(
     45deg,
     var(--wx-color-rule-1) 0px,
@@ -244,8 +244,8 @@
   background-size: 34px 34px !important;
 }
 
-/* Double color stripe for GitLab milestone */
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-double {
+/* Double color stripe for milestone */
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-double {
   background: repeating-linear-gradient(
     45deg,
     var(--wx-color-rule-1) 0px,
@@ -258,8 +258,8 @@
   background-size: 42px 42px !important;
 }
 
-/* Triple color stripe for GitLab milestone */
-.wx-willow-theme .wx-bar.wx-gitlab-milestone.wx-color-rule-triple {
+/* Triple color stripe for milestone */
+.wx-willow-theme .wx-bar.wx-milestone.wx-color-rule-triple {
   background: repeating-linear-gradient(
     45deg,
     var(--wx-color-rule-1) 0px,

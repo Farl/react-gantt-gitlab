@@ -5,8 +5,8 @@
   width: 100%;
 }
 
-/* GitLab link button with Font Awesome icon */
-.wx-button.gitlab-link-btn::before {
+/* Gantt link button with Font Awesome icon */
+.wx-button.source-link-btn::before {
   font-family: 'Font Awesome 5 Free';
   font-weight: 900;
   content: '\f35d'; /* fa-external-link-alt */

@@ -1,11 +1,11 @@
 /**
  * DataContext
  *
- * Generic data context for working with any data source (GitLab, Azure DevOps, custom).
- * Provides access to tasks, links, sync operations, and filter state.
+ * Generic data context for working with any data source.
+ * Provides access to tasks, links, sync operations, filter state,
+ * holidays/workdays, and highlight time calculations.
  *
- * This context replaces the GitLab-specific GitLabDataContext with a data-source-agnostic
- * version that works with any provider implementing DataProviderInterface.
+ * This is the sole data context - replaces the former provider-specific context.
  */
 
 import {
@@ -13,8 +13,6 @@ import {
   useContext,
   useState,
   useCallback,
-  useRef,
-  useEffect,
   useMemo,
   type ReactNode,
 } from 'react';
@@ -22,13 +20,14 @@ import type {
   DataContextValue,
   FilterOptions,
   DataSourceConfig,
+  HolidayEntry,
 } from './DataContext.types';
 import type {
   SyncOptions,
   DataProviderInterface,
 } from '../providers/core/DataProviderInterface';
 import { useDataSync } from '../hooks/useDataSync';
-import { useFilterPresets } from '../hooks/useFilterPresets';
+import { useHighlightTime } from '../hooks/useHighlightTime';
 import { ToastContainer, useToast } from '../components/Toast';
 
 /**
@@ -58,8 +57,8 @@ export function useDataOptional(): DataContextValue | null {
 
 export interface DataProviderProps {
   children: ReactNode;
-  /** Initial config ID to load */
-  initialConfigId?: string;
+  /** Data provider instance */
+  provider: DataProviderInterface;
   /** Whether to auto-sync on mount */
   autoSync?: boolean;
 }
@@ -68,28 +67,17 @@ export interface DataProviderProps {
  * DataProvider
  *
  * Provider component that manages data state and exposes it via context.
- * Coordinates:
- * - Data source configuration and provider creation
- * - Data synchronization (sync, createTask, deleteTask, etc.)
- * - Filter state and presets
- * - Toast notifications
- *
- * Note: This is a minimal implementation that provides the core data layer.
- * Additional features like holidays, workdays, and source-specific features
- * should be managed by adapters or specialized hooks.
+ * Accepts a pre-built provider instance (no internal provider creation).
  */
 export function DataProvider({
   children,
-  initialConfigId,
-  autoSync = false,
+  provider,
+  autoSync = true,
 }: DataProviderProps) {
   // === Configuration State ===
-  // TODO: Implement configuration management using DataSourceConfigManager
-  // For now, accept null provider to allow flexibility during transition
   const [currentConfig, setCurrentConfig] = useState<DataSourceConfig | null>(
     null,
   );
-  const [provider, setProvider] = useState<DataProviderInterface | null>(null);
   const [configs, setConfigs] = useState<DataSourceConfig[]>([]);
   const [projectPath, setProjectPath] = useState('');
 
@@ -105,7 +93,15 @@ export function DataProvider({
     useState<SyncOptions | null>(null);
 
   // === Permissions ===
-  const [canEdit, setCanEdit] = useState(false);
+  const [canEdit, setCanEdit] = useState(true);
+  const [canEditHolidays, setCanEditHolidays] = useState(false);
+
+  // === Holidays & Workdays (local state, no API) ===
+  const [holidays, setHolidays] = useState<HolidayEntry[]>([]);
+  const [workdays, setWorkdays] = useState<HolidayEntry[]>([]);
+  const [colorRules, setColorRules] = useState<unknown[]>([]);
+  const [holidaysText, setHolidaysText] = useState('');
+  const [workdaysText, setWorkdaysText] = useState('');
 
   // === Toast ===
   const { toasts, showToast, removeToast } = useToast();
@@ -125,8 +121,11 @@ export function DataProvider({
     deleteLink,
   } = useDataSync(provider, autoSync);
 
-  // === Filter Presets ===
-  // TODO: Implement preset management - for now use stub
+  // === Highlight Time ===
+  const { countWorkdays, calculateEndDateByWorkdays, highlightTime } =
+    useHighlightTime({ holidays, workdays });
+
+  // === Filter Presets (stub) ===
   const [filterPresets, setFilterPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
   const [presetsSaving, setPresetsSaving] = useState(false);
@@ -134,22 +133,16 @@ export function DataProvider({
   const [filterDirty, setFilterDirty] = useState(false);
 
   // === Configuration Management ===
-  const reloadConfigs = useCallback(() => {
-    // TODO: Load configs from DataSourceConfigManager
-  }, []);
+  const reloadConfigs = useCallback(() => {}, []);
 
   const handleConfigChange = useCallback((config: DataSourceConfig) => {
-    // TODO: Create provider from config using DataProviderFactory
     setCurrentConfig(config);
-    // Clear filter state when switching config
     setFilterOptions({});
     setServerFilterOptions(null);
     setActiveServerFilters(null);
   }, []);
 
-  const handleQuickSwitch = useCallback((configId: string) => {
-    // TODO: Implement quick switch using configs
-  }, []);
+  const handleQuickSwitch = useCallback((configId: string) => {}, []);
 
   // === Filter Management ===
   const handleFilterChange = useCallback(
@@ -163,35 +156,33 @@ export function DataProvider({
   );
 
   const handleServerFilterApply = useCallback(
-    async (serverFilters: unknown, isUserAction = false) => {
-      // TODO: Implement server filter application
-    },
+    async (serverFilters: unknown, isUserAction = false) => {},
     [],
   );
 
-  const handlePresetSelect = useCallback((presetId: string | null) => {
-    // TODO: Implement preset selection
-  }, []);
+  const handlePresetSelect = useCallback((presetId: string | null) => {}, []);
 
-  // === Filter Preset Operations ===
   const createNewPreset = useCallback(
-    async (name: string, filters: unknown) => {
-      // TODO: Implement using preset manager
-    },
+    async (name: string, filters: unknown) => {},
     [],
   );
+  const updatePreset = useCallback(
+    async (id: string, filters: unknown) => {},
+    [],
+  );
+  const renamePreset = useCallback(
+    async (id: string, name: string) => {},
+    [],
+  );
+  const deletePreset = useCallback(async (id: string) => {}, []);
 
-  const updatePreset = useCallback(async (id: string, filters: unknown) => {
-    // TODO: Implement using preset manager
-  }, []);
-
-  const renamePreset = useCallback(async (id: string, name: string) => {
-    // TODO: Implement using preset manager
-  }, []);
-
-  const deletePreset = useCallback(async (id: string) => {
-    // TODO: Implement using preset manager
-  }, []);
+  // === createMilestone (delegates to createTask) ===
+  const createMilestone = useCallback(
+    async (milestone: any) => {
+      return createTask(milestone);
+    },
+    [createTask],
+  );
 
   // === Context Value ===
   const value = useMemo<DataContextValue>(
@@ -200,6 +191,8 @@ export function DataProvider({
       tasks,
       links,
       metadata,
+      milestones: [],
+      epics: [],
 
       // Sync State & Actions
       syncState,
@@ -207,6 +200,7 @@ export function DataProvider({
       syncTask,
       reorderTaskLocal,
       createTask,
+      createMilestone,
       deleteTask,
       createLink,
       deleteLink,
@@ -219,6 +213,8 @@ export function DataProvider({
       handleConfigChange,
       handleQuickSwitch,
       projectPath,
+      proxyConfig: null,
+      configVersion: 0,
 
       // Filter State
       filterOptions,
@@ -244,9 +240,26 @@ export function DataProvider({
 
       // Permissions
       canEdit,
+      canEditHolidays,
+
+      // Holidays & Workdays
+      holidays,
+      workdays,
+      colorRules,
+      holidaysText,
+      workdaysText,
+      holidaysLoading: false,
+      holidaysSaving: false,
+      holidaysError: null,
+      setHolidaysText,
+      setWorkdaysText,
+      setColorRules,
 
       // Utilities
       showToast,
+      countWorkdays,
+      calculateEndDateByWorkdays,
+      highlightTime,
     }),
     [
       tasks,
@@ -257,6 +270,7 @@ export function DataProvider({
       syncTask,
       reorderTaskLocal,
       createTask,
+      createMilestone,
       deleteTask,
       createLink,
       deleteLink,
@@ -286,7 +300,19 @@ export function DataProvider({
       handleFilterChange,
       handleServerFilterApply,
       canEdit,
+      canEditHolidays,
+      holidays,
+      workdays,
+      colorRules,
+      holidaysText,
+      workdaysText,
+      setHolidaysText,
+      setWorkdaysText,
+      setColorRules,
       showToast,
+      countWorkdays,
+      calculateEndDateByWorkdays,
+      highlightTime,
     ],
   );
 

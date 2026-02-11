@@ -182,8 +182,8 @@
 .wx-willow-dark-theme .sort-control-select,
 .wx-willow-dark-theme .sort-control-order-btn,
 .wx-willow-dark-theme .sort-control-reset-btn {
-  border-color: var(--wx-gitlab-header-border, #384047);
-  background: var(--wx-gitlab-control-background, #23262a);
+  border-color: var(--wx-gantt-header-border, #384047);
+  background: var(--wx-gantt-control-background, #23262a);
   color: var(--wx-demo-text-secondary, #9fa1ae);
 }
 
@@ -193,7 +193,7 @@
 
 .wx-willow-dark-theme .sort-control-select-modified {
   border-color: #d97706;
-  background: var(--wx-gitlab-header-background, #2c2f33);
+  background: var(--wx-gantt-header-background, #2c2f33);
 }
 
 .wx-willow-dark-theme .sort-control-select-others {
@@ -232,7 +232,7 @@
 
 .wx-willow-dark-theme .sort-control-reset-btn {
   border-color: #d97706;
-  background: var(--wx-gitlab-header-background, #2c2f33);
+  background: var(--wx-gantt-header-background, #2c2f33);
   color: #f59e0b;
 }
 

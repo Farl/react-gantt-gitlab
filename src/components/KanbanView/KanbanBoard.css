@@ -49,9 +49,9 @@
 }
 
 .wx-willow-dark-theme .kanban-board-empty i {
-  color: var(--wx-gitlab-header-border, #384047);
+  color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .kanban-board-empty-hint {
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }

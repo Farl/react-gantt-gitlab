@@ -85,19 +85,19 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
       if (task.$x === undefined || task.$y === undefined) return;
 
       // Check if task has valid dates for showing arrows
-      // GitLab milestones: dates stored directly on task.start/end (not in _gitlab)
-      // Regular tasks: need at least dueDate in _gitlab
+      // Milestones: dates stored directly on task.start/end
+      // Regular tasks: need at least dueDate
       // (if no startDate, system uses createdAt as fallback to display bar)
       const isMilestone =
-        task.$isMilestone || task._gitlab?.type === 'milestone';
+        task.$isMilestone || task.type === 'milestone';
       if (!isMilestone) {
-        if (!task._gitlab?.dueDate) return;
+        if (!task.dueDate) return;
       }
 
       const barLeft = task.$x;
       const barRight = task.$x + task.$w;
 
-      // All GitLab items display title to the RIGHT of the bar
+      // All items display title to the RIGHT of the bar
       // Include label width when checking if visual element is off-screen
       const labelWidth = estimateLabelWidth(task.text || task.label, cellWidth);
       const visualRight = barRight + labelWidth;
@@ -226,7 +226,6 @@ function estimateLabelWidth(text, cellWidth) {
 function getTaskColor(task) {
   if (
     task.$isMilestone ||
-    task._gitlab?.type === 'milestone' ||
     task.type === 'milestone'
   ) {
     return '#ad44ab'; // Purple for milestones

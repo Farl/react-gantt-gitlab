@@ -1,6 +1,6 @@
 /**
  * Sync Progress Types
- * Provides detailed progress information during GitLab data synchronization
+ * Provides detailed progress information during data synchronization
  */
 
 /**
@@ -8,7 +8,7 @@
  */
 export type SyncResourceType =
   | 'workItems' // Main work items (issues/tasks)
-  | 'milestones' // GitLab milestones
+  | 'milestones' // Milestones
   | 'issues' // Issues query (for relativePosition)
   | 'members' // Project/group members
   | 'labels' // Labels (REST API)

@@ -37,15 +37,7 @@ export {
   WillowDark,
 };
 
-// Credential management (shared-credentials feature)
-export {
-  gitlabCredentialManager,
-  GitLabCredentialManager,
-} from './config/DataSourceCredentialManager';
-export { CredentialManager } from './components/CredentialManager';
-export { ProjectBrowser } from './components/ProjectBrowser';
-
-// Workspace (new entry point for shared data layer)
+// Workspace (entry point for shared data layer)
 export { Workspace } from './components/Workspace';
 export { GanttView } from './components/GanttView';
 
@@ -60,5 +52,5 @@ export {
   KanbanCard,
 } from './components/KanbanView';
 
-// Backward compatibility: GitLabGantt now wraps Workspace
-export { GitLabGantt } from './components/GanttChart.jsx';
+// Providers
+export { StaticDataProvider } from './providers/StaticDataProvider';

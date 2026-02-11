@@ -10,7 +10,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--wx-gitlab-modal-overlay, rgba(0, 0, 0, 0.5));
+  background: var(--wx-gantt-modal-overlay, rgba(0, 0, 0, 0.5));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +19,7 @@
 
 /* Modal Container */
 .blueprint-modal {
-  background: var(--wx-gitlab-modal-background, #fff);
+  background: var(--wx-gantt-modal-background, #fff);
   border-radius: 8px;
   width: 480px;
   max-width: 90vw;
@@ -35,8 +35,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
-  border-bottom: 1px solid var(--wx-gitlab-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gantt-modal-border, #ddd);
   border-radius: 8px 8px 0 0;
   flex-shrink: 0;
 }
@@ -45,7 +45,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 /* Modal Body */
@@ -68,16 +68,16 @@
 .blueprint-modal .form-group > label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .blueprint-modal .form-group input[type='text'] {
   padding: 8px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
   font-size: 14px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  color: var(--wx-gitlab-modal-text, #333);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .blueprint-modal .form-group input[type='text']:focus {
@@ -98,7 +98,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -132,18 +132,18 @@
 .storage-option .option-title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .storage-option .option-desc {
   font-size: 12px;
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
 }
 
 /* Blueprint Preview */
 .blueprint-preview {
-  background: var(--wx-gitlab-filter-background, #f5f5f5);
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  background: var(--wx-gantt-filter-background, #f5f5f5);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 6px;
   padding: 12px;
 }
@@ -153,7 +153,7 @@
   align-items: center;
   gap: 8px;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-bottom: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   margin-bottom: 10px;
 }
 
@@ -165,7 +165,7 @@
 .preview-header .milestone-title {
   font-size: 14px;
   font-weight: 500;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .preview-stats {
@@ -183,12 +183,12 @@
 .preview-stats .stat-value {
   font-size: 18px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .preview-stats .stat-label {
   font-size: 11px;
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
   text-transform: uppercase;
 }
 
@@ -205,13 +205,13 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  background: var(--wx-gitlab-modal-background, #fff);
+  background: var(--wx-gantt-modal-background, #fff);
   border-radius: 4px;
   font-size: 12px;
 }
 
 .preview-item i {
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
   font-size: 12px;
   width: 14px;
   text-align: center;
@@ -219,23 +219,23 @@
 
 .preview-item .item-title {
   flex: 1;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .preview-item .item-type {
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
   font-size: 11px;
   padding: 2px 6px;
-  background: var(--wx-gitlab-filter-background, #f5f5f5);
+  background: var(--wx-gantt-filter-background, #f5f5f5);
   border-radius: 3px;
 }
 
 .preview-more {
   font-size: 12px;
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
   text-align: center;
   padding: 6px;
 }
@@ -256,8 +256,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--wx-gitlab-modal-border, #ddd);
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
+  border-top: 1px solid var(--wx-gantt-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
   border-radius: 0 0 8px 8px;
   flex-shrink: 0;
 }
@@ -279,13 +279,13 @@
 }
 
 .blueprint-modal .btn-secondary {
-  background: var(--wx-gitlab-button-background, #fff);
-  color: var(--wx-gitlab-button-text, #666);
-  border: 1px solid var(--wx-gitlab-button-border, #ddd);
+  background: var(--wx-gantt-button-background, #fff);
+  color: var(--wx-gantt-button-text, #666);
+  border: 1px solid var(--wx-gantt-button-border, #ddd);
 }
 
 .blueprint-modal .btn-secondary:hover:not(:disabled) {
-  background: var(--wx-gitlab-button-hover-background, #f5f5f5);
+  background: var(--wx-gantt-button-hover-background, #f5f5f5);
 }
 
 .blueprint-modal .btn-primary {

@@ -12,7 +12,7 @@ import './DateEditCell.css';
  * - Click to open DatePicker popover (using Portal to avoid overflow clipping)
  * - Support clearing date (set to null)
  * - For milestones: Always shows the date (milestones always have dates)
- * - For regular tasks: Checks _gitlab.startDate/_gitlab.dueDate to determine if GitLab has the date
+ * - For regular tasks: Checks startDate/dueDate to determine if the source has the date
  *
  * NOTE: Uses Portal with position:fixed for popup positioning because Grid cells
  * have overflow:hidden which clips absolutely positioned elements.
@@ -28,22 +28,22 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
   const cellRef = useRef(null);
   const pickerRef = useRef(null);
 
-  const isMilestone = row.$isMilestone || row._gitlab?.type === 'milestone';
+  const isMilestone = row.$isMilestone || row.type === 'milestone';
 
-  // Always use _gitlab.startDate/_gitlab.dueDate as the source of truth
-  // This ensures we show "None" when GitLab has no date, regardless of what svar gantt does
-  const gitlabFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
-  const gitlabDateValue = row._gitlab?.[gitlabFieldName]; // string like "2026-01-27" or null/undefined
+  // Use startDate/dueDate as the source of truth for whether a date exists
+  // This ensures we show "None" when the source has no date, regardless of what svar gantt does
+  const dateFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
+  const sourceDateValue = row[dateFieldName]; // string like "2026-01-27" or null/undefined
 
-  // For milestones: always show the date (milestones always have dates in GitLab)
-  // For regular tasks: check _gitlab field
+  // For milestones: always show the date (milestones always have dates)
+  // For regular tasks: check the date field
   let date = null;
   if (isMilestone) {
     // Milestones always have dates
     date = row[column.id];
-  } else if (gitlabDateValue) {
-    // GitLab has a date - parse it
-    date = new Date(gitlabDateValue + 'T00:00:00');
+  } else if (sourceDateValue) {
+    // Source has a date - parse it
+    date = new Date(sourceDateValue + 'T00:00:00');
   }
   // else: date remains null, will show "None"
 

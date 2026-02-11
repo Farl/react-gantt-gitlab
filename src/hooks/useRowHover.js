@@ -42,10 +42,10 @@ export function useRowHover({
    * A task "needs bar" if it doesn't have explicit startDate AND dueDate.
    *
    * We check both:
-   * 1. _gitlab.startDate/_gitlab.dueDate - original values from GitLab
+   * 1. task.startDate/task.dueDate - original values from the data source
    * 2. task.$w - if the task already has a rendered bar (width > minimum threshold)
    *
-   * This handles the case where user just drew a bar but GitLab hasn't synced yet.
+   * This handles the case where user just drew a bar but data hasn't synced yet.
    */
   const taskNeedsBar = useCallback((task) => {
     if (!task) return false;
@@ -59,10 +59,10 @@ export function useRowHover({
       return false;
     }
 
-    // Check _gitlab for original GitLab values (not the fallback values)
-    // Task needs bar if it doesn't have BOTH startDate AND dueDate from GitLab
-    const hasRealStartDate = task._gitlab?.startDate;
-    const hasRealDueDate = task._gitlab?.dueDate;
+    // Check for original data source values (not the fallback values)
+    // Task needs bar if it doesn't have BOTH startDate AND dueDate from the data source
+    const hasRealStartDate = task.startDate;
+    const hasRealDueDate = task.dueDate;
     return !hasRealStartDate || !hasRealDueDate;
   }, []);
 

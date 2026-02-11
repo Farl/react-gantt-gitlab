@@ -10,8 +10,8 @@ import { locale } from '@svar-ui/lib-dom';
 import { en } from '@svar-ui/gantt-locales';
 import { context } from '@svar-ui/react-core';
 
-// Custom locale for GitLab integration
-const gitlabLocale = {
+// Custom locale for Gantt integration
+const ganttLocale = {
   gantt: {
     ...en.gantt,
     'New task': 'Issue', // Override toolbar button text
@@ -26,7 +26,7 @@ export default function Toolbar({
 }) {
   const i18nCtx = useContext(context.i18n);
   const i18nLocal = useMemo(
-    () => (i18nCtx ? i18nCtx : locale(gitlabLocale)),
+    () => (i18nCtx ? i18nCtx : locale(ganttLocale)),
     [i18nCtx],
   );
   const _ = useMemo(() => i18nLocal.getGroup('gantt'), [i18nLocal]);

@@ -102,8 +102,8 @@
 }
 
 .wx-willow-dark-theme .kanban-list-header {
-  background: var(--wx-gitlab-control-background, #23262a);
-  border-bottom-color: var(--wx-gitlab-header-border, #384047);
+  background: var(--wx-gantt-control-background, #23262a);
+  border-bottom-color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .kanban-list-header-others {
@@ -121,11 +121,11 @@
 }
 
 .wx-willow-dark-theme .kanban-list-count {
-  background: var(--wx-gitlab-control-text, #9fa1ae);
+  background: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .kanban-list-empty {
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .kanban-list-over {

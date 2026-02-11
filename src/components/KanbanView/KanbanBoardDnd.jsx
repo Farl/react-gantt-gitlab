@@ -71,7 +71,7 @@ function findTaskListId(taskId, board, tasks) {
   if (!task) return null;
 
   // Check if closed
-  if (task.state === 'closed' || task._gitlab?.state === 'closed') {
+  if (task.state === 'closed') {
     return '__closed__';
   }
 

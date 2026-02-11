@@ -3,7 +3,7 @@
 /**
  * KanbanView
  *
- * Main Kanban view component. Consumes data from GitLabDataContext.
+ * Main Kanban view component. Consumes data from DataContext.
  * Displays issues in a board layout with customizable lists.
  *
  * Phase 3: Board management functionality
@@ -18,8 +18,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useGitLabData } from '../../contexts/GitLabDataContext';
-import { useIssueBoard } from '../../hooks/useIssueBoard';
+import { useData } from '../../contexts/DataContext';
 import { KanbanBoardDnd } from './KanbanBoardDnd';
 import { BoardSelector } from './BoardSelector';
 import { CreateBoardDialog } from './CreateBoardDialog';
@@ -27,7 +26,7 @@ import { BoardSettingsModal } from './BoardSettingsModal';
 import { ListEditDialog } from './ListEditDialog';
 import { DataFilters } from '../../utils/DataFilters';
 import { useDragOperations } from '../../hooks/useDragOperations';
-import { ProjectSelector } from '../ProjectSelector';
+// ProjectSelector removed - data source is provided via DataProvider
 import { ColorRulesEditor } from '../ColorRulesEditor';
 import './KanbanView.css';
 import '../shared/SettingsModal.css';
@@ -59,27 +58,21 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     setHolidaysText,
     setWorkdaysText,
     setColorRules,
-  } = useGitLabData();
+  } = useData();
 
-  // Board management state from hook
-  const {
-    boards,
-    currentBoard,
-    loading: boardsLoading,
-    saving: boardsSaving,
-    error: boardsError,
-    createBoard,
-    updateBoard,
-    deleteBoard,
-    selectBoard,
-    addList,
-    updateList,
-  } = useIssueBoard({
-    proxyConfig,
-    fullPath: currentConfig?.fullPath || '',
-    isGroup: currentConfig?.type === 'group',
-    autoLoad: !!proxyConfig && !!currentConfig?.fullPath,
-  });
+  // Board management state
+  // TODO: Replace with generic board management when provider supports it
+  const boards = [];
+  const currentBoard = null;
+  const boardsLoading = false;
+  const boardsSaving = false;
+  const boardsError = null;
+  const createBoard = async () => null;
+  const updateBoard = async () => {};
+  const deleteBoard = async () => {};
+  const selectBoard = () => {};
+  const addList = async () => {};
+  const updateList = async () => {};
 
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -147,8 +140,8 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     // Only include issues (not milestones, not Tasks which are child items)
     const issuesOnly = tasksWithPriority.filter(
       (task) =>
-        (task.$isIssue || task._gitlab?.type === 'issue') &&
-        task._gitlab?.workItemType !== 'Task',
+        task.$isIssue &&
+        task.workItemType !== 'Task',
     );
     return DataFilters.applyFilters(issuesOnly, filterOptions);
   }, [tasksWithPriority, filterOptions]);
@@ -159,7 +152,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     const map = new Map();
     tasksWithPriority.forEach((task) => {
       // Check if this is a Task (child item) with a parent
-      if (task._gitlab?.workItemType === 'Task' && task.parent) {
+      if (task.workItemType === 'Task' && task.parent) {
         const parentId = task.parent;
         if (!map.has(parentId)) {
           map.set(parentId, []);
@@ -171,7 +164,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
   }, [tasksWithPriority]);
 
   // === Drag-and-Drop Operations ===
-  // Reorder task wrapper: converts task ID to GitLab IID for API call
+  // Reorder task wrapper: converts task ID for API call
   // Uses optimistic update for immediate UI feedback
   const reorderTask = useCallback(
     async (taskId, targetTaskId, position) => {
@@ -180,7 +173,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
       }
       const task = filteredTasks.find((t) => t.id === taskId);
       const targetTask = filteredTasks.find((t) => t.id === targetTaskId);
-      if (!task?._gitlab?.iid || !targetTask?._gitlab?.iid) {
+      if (!task?.issueId || !targetTask?.issueId) {
         throw new Error('Task IID not found');
       }
 
@@ -188,10 +181,10 @@ export function KanbanView({ showSettings, onSettingsClose }) {
       const { rollback } = reorderTaskLocal(taskId, targetTaskId, position);
 
       try {
-        // Sync to GitLab
+        // Sync to provider
         await provider.reorderWorkItem(
-          task._gitlab.iid,
-          targetTask._gitlab.iid,
+          task.issueId,
+          targetTask.issueId,
           position,
         );
       } catch (error) {
@@ -221,7 +214,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
   const handleCardDoubleClick = useCallback(
     (task) => {
       showToast(
-        `Opening editor for #${task._gitlab?.iid || task.id}...`,
+        `Opening editor for #${task.issueId || task.id}...`,
         'info',
       );
       // TODO: Implement editor integration
@@ -393,15 +386,10 @@ export function KanbanView({ showSettings, onSettingsClose }) {
 
             <div className="settings-modal-body">
               <div className="settings-section">
-                <h4>Project</h4>
-                <ProjectSelector
-                  onProjectChange={(config) => {
-                    handleConfigChange(config);
-                    onSettingsClose?.();
-                  }}
-                  currentConfigId={currentConfig?.id}
-                  onConfigsChange={reloadConfigs}
-                />
+                <h4>Data Source</h4>
+                <p style={{ fontSize: '13px', color: '#666' }}>
+                  Data source is configured via the DataProvider wrapper.
+                </p>
               </div>
 
               <div className="settings-section">
@@ -411,7 +399,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}
@@ -459,7 +447,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}
@@ -496,7 +484,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}

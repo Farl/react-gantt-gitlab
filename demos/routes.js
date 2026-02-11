@@ -29,7 +29,6 @@ import GanttTaskTypes from './cases/GanttTaskTypes.jsx';
 import ChartCellBorders from './cases/ChartBorders.jsx';
 import ContextMenu from './cases/ContextMenu.jsx';
 import ContextMenuHandler from './cases/ContextMenuHandler.jsx';
-// import DropDownMenu from "./cases/DropDownMenu.jsx";
 import ContextMenuOptions from './cases/ContextMenuOptions.jsx';
 import GanttHolidays from './cases/GanttHolidays.jsx';
 import GanttSort from './cases/GanttSort.jsx';
@@ -50,19 +49,17 @@ import HeaderMenu from './cases/GridHeaderMenu.jsx';
 import GridInlineEditors from './cases/GridInlineEditors.jsx';
 import GanttEditorReadonly from './cases/GanttEditorReadonly.jsx';
 import GanttEditorValidation from './cases/GanttEditorValidation.jsx';
-import GitLabIntegration from './cases/GitLabIntegration.jsx';
+import AzureDevOpsPortfolio from './cases/AzureDevOpsPortfolio.jsx';
 import WorkloadViewDemo from './cases/WorkloadView.jsx';
-import TestReorderAPI from './cases/TestReorderAPI.jsx';
 
 export const links = [
   [
-    '/gitlab-integration/:skin',
-    'GitLab Gantt',
-    GitLabIntegration,
-    'GitLabIntegration',
+    '/azure-portfolio/:skin',
+    'Azure DevOps Portfolio',
+    AzureDevOpsPortfolio,
+    'AzureDevOpsPortfolio',
   ],
   ['/workload/:skin', 'Workload View', WorkloadViewDemo, 'WorkloadView'],
-  ['/test-reorder/:skin', 'Test Reorder API', TestReorderAPI, 'TestReorderAPI'],
   ['Demos', null, null, null],
   ['/base/:skin', 'Basic Gantt', BasicInit, 'BasicInit'],
 
@@ -174,7 +171,6 @@ export const links = [
     ContextMenuHandler,
     'ContextMenuHandler',
   ],
-  //["/outer-menu/:skin", "Dropdown menu", DropDownMenu, "DropDownMenu"],
   [
     '/menu-options/:skin',
     'Context menu: custom options',

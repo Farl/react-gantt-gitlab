@@ -14,7 +14,7 @@
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -24,5 +24,5 @@
 }
 
 .modal-close-btn:hover {
-  background: var(--wx-gitlab-button-hover-background, rgba(0, 0, 0, 0.05));
+  background: var(--wx-gantt-button-hover-background, rgba(0, 0, 0, 0.05));
 }

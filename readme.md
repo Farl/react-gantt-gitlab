@@ -1,6 +1,6 @@
 # React Gantt Chart
 
-Data-agnostic Gantt chart component supporting multiple data sources (GitLab, Azure DevOps, and custom sources).
+A data-source-agnostic Gantt chart component for React. Supports multiple data backends through a pluggable provider interface, with a built-in Azure DevOps demo data set.
 
 - https://farl.github.io/react-gantt-gitlab
 
@@ -8,85 +8,90 @@ Data-agnostic Gantt chart component supporting multiple data sources (GitLab, Az
 
 ### Supported Data Sources
 
-- **GitLab** - Full support for GitLab projects and groups
-- **Azure DevOps** - Planned for future release
-- **Custom** - Extensible interface for custom data sources
+- **Azure DevOps** - Demo data included for quick evaluation
+- **Custom Providers** - Extensible `DataProviderInterface` for any data source
+- **Pluggable Architecture** - Add new backends by implementing the provider contract
 
-![GitLab Gantt Screenshot](./assets/gitlab-gantt.png)
+<!-- Screenshot placeholder: add a gantt-chart.png to ./assets/ -->
 
-### How to start
+### How to Start
 
-- 先到你的 GitLab 去取得 Access Token
-  - https://gitlab.com/-/user_settings/personal_access_tokens
-    - 必須要有 api 權限
-    - 可以設定較長的使用期限
-- 到 GitLab Gantt +Add 新增 Project
-  - 選擇 Type，推薦使用 Project 才有全部功能。
-  - 選擇 Credential，第一次需要先新增
-    - 填寫 GitLab URL, Access Token
-    - Test Connection 確認可以正確連接
-    - Save Credential
-  - 選擇 Project 或直接填寫 Project ID / Project Full Path (從網址可以看出例如: gitlab.com/group/subgroup/project = group/subgroup/project)
-  - 確認後就可以同步專案內容了。
+1. Run `npm install` and then `npm run dev`
+2. Open the demo in your browser
+3. Use the **+Add** button to add a new project configuration
+   - Select the data source type
+   - Configure credentials (if required by the provider)
+   - Test the connection and save
+4. The chart will sync and display tasks from the configured data source
 
-### Features
+### Core Features
 
-- 設置 GitLab 專案
-  - 需要 Base URL, Access Token
-  - 設置國定假日和特殊工作日 (使用 GitLab Snippets 存放)
-- 簡易的篩選器
-- 新增/編輯/刪除 GitLab Milestone
-  - 在旁邊按 + 可以新增內層 Issue
-- 新增/編輯/刪除 GitLab Issue / GitLab Task
-  - 在旁邊按 + 可以新增內層 Task
-  - 支援批次新增
-- 雙擊打開 Milestone, Issue, Task 編輯器
-  - 可以從編輯器連進 GitLab 頁面
-- 支援 Issue / Task 排序
-  - 與 GitLab 內的排序連動
-- 在時間軸調整 Milestone / Issue / Task 時間
-- 可以設置 Issue/Task 之間的連結 (Link)
-  - 點擊時間bar兩旁的圓圈，可以進入 Link 設置，點另外一個圓圈就會連結
-  - 可以在編輯視窗裡面刪除/修改連線
-- 支援調整的時距
-- 使用 Server / Client Filter 用來對 Issues, Tasks 進行篩選
-  - 使用 Server 篩選器可以大幅改善過多 Issues 讀取的狀況
-- Color Rule 色彩規則
-  - 用標題或是 Label 設定條件，來讓 timeline bar 顯示指定的顏色條紋（最多顯示三個顏色）
-  - 會儲存在專案 snippet (必須要有 Maintainer 權限)
-- Grid Column 可自訂需要的欄位和順序
-  - 包含: Issue ID, Start, Due, Assignee, Weight, Workdays, Iteration, Epic, Labels, Order(手動排序)
-- 建立 Blueprint (範本) 功能
-  - 現在可以把一個 milestone 裡面所有的 issues/tasks 以及它們之間的關聯性全部包成一個範本，下次要做類似的事情的時候就可以直接新增這個範本。可以自動幫忙把 issues 的名字加上 prefix，也能保持他們原本的工期。
-  - 範本可以存在 local 也可以存在 snippet 裡面共享。
-- 批次將 Issues / Tasks 重新指定 Milestone / Issues parent / Epic
-  - 左邊的任務清單可以按著 shift / ctrl 複選，然後按右鍵找到 Move In 選項，就可以開啟 ui 決定要放入的 Milestone / Issue / Epic
-- 新增可以直接用拖曳新增時間軸 bar 的功能。
-- 箭頭指向畫面外的任務 bar，點擊可以快速捲動畫面。
+- **Project Configuration**
+  - Configure base URL and access tokens for your data source
+  - Set up holidays and special working days (stored as provider snippets)
+- **Filtering**
+  - Simple filter panel for tasks and milestones
+- **Milestone Management**
+  - Create, edit, and delete milestones
+  - Click + next to a milestone to add a child issue
+- **Issue / Task Management**
+  - Create, edit, and delete issues and tasks
+  - Click + next to an issue to add a child task
+  - Batch creation supported
+- **Inline Editing**
+  - Double-click a milestone, issue, or task to open the editor
+  - Link to the original data source page from the editor
+- **Sorting**
+  - Drag-and-drop reordering of issues and tasks
+  - Ordering syncs back to the data source
+- **Timeline Adjustments**
+  - Drag timeline bars to adjust milestone, issue, and task dates
+- **Task Links**
+  - Click the circles on either side of a timeline bar to create links between tasks
+  - Delete or modify links from the editor
+- **Time Scale**
+  - Adjustable time units (day, week, month)
+- **Server / Client Filters**
+  - Server-side filters reduce data load for large projects
+- **Color Rules**
+  - Define color rules based on title or label to display colored stripes on timeline bars (up to three colors)
+  - Rules are stored in the project configuration
+- **Custom Grid Columns**
+  - Choose and reorder columns: Issue ID, Start, Due, Assignee, Weight, Workdays, Iteration, Epic, Labels, Order
+- **Blueprints (Templates)**
+  - Save a milestone with all its issues, tasks, and relationships as a reusable template
+  - Auto-prefix issue names and preserve durations
+  - Store locally or share via provider snippets
+- **Batch Operations**
+  - Multi-select tasks (Shift/Ctrl+click), then right-click > Move In to reassign milestone, parent issue, or epic
+- **Drag-to-Create**
+  - Drag on the timeline to create a new task bar directly
+- **Off-screen Indicators**
+  - Arrows point to tasks outside the visible area; click to scroll to them
 
-### 已知問題
+### Known Issues
 
-- 新建 milestone 裡面的 issue, task 會隔一小段時間同步後才會正常顯示
-- 目前不支援拖曳到其他 Milestone / Issue 底下
+- Newly created items inside a milestone may take a moment to appear after sync
+- Drag-and-drop between milestones / issues is not yet supported
 
 ## Kanban View
 
-![GitLab Kanban Screenshot](./assets/kanban-view.png)
+![Kanban Screenshot](./assets/kanban-view.png)
 
 ### Features
 
-- 使用 Project Snippets 儲存 Kanban board, Kanban board list。
-- Kanban board list 可以進行排序。
+- Kanban boards stored as provider snippets
+- Board lists support drag-and-drop reordering
 
 ## Workload View
 
 ![Workload View Screenshot](./assets/workload-view.png)
 
-- 從側邊欄開啟
-- 可以用 Assignee 和 Labels 來篩選，觀察工作負荷量
-- 可以調整時間
-- 可以上下拖曳將工作指派到不同人或是移動到不同的 Labels
-- 在設定裡面可以開啟 Other，看到還沒有指派的工作
+- Open from the sidebar
+- Filter by assignee and labels to visualize workload
+- Adjustable time range
+- Drag tasks between assignees or label groups
+- Enable "Other" in settings to see unassigned work
 
 ## Acknowledgements
 

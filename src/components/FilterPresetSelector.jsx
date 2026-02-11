@@ -705,7 +705,7 @@ export function FilterPresetSelector({
                   <i className="fas fa-lock"></i>
                   <span>
                     {isGroupMode
-                      ? 'Filter Presets not available for Groups (GitLab limitation)'
+                      ? 'Filter Presets not available for Groups'
                       : 'Create Snippet permission required to save presets'}
                   </span>
                 </div>
@@ -798,19 +798,19 @@ export function FilterPresetSelector({
           align-items: center;
           gap: 6px;
           padding: 4px 8px;
-          background: var(--wx-gitlab-filter-input-background);
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gantt-filter-input-background);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 4px;
           font-size: 12px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           transition: all 0.2s;
           min-width: 36px;
         }
 
         .btn-filter-preset:hover:not(:disabled) {
-          background: var(--wx-gitlab-filter-hover-background);
-          border-color: var(--wx-gitlab-control-text);
+          background: var(--wx-gantt-filter-hover-background);
+          border-color: var(--wx-gantt-control-text);
         }
 
         .btn-filter-preset:disabled {
@@ -847,8 +847,8 @@ export function FilterPresetSelector({
           margin-top: 4px;
           min-width: 280px;
           max-width: 360px;
-          background: var(--wx-gitlab-filter-input-background);
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gantt-filter-input-background);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 8px;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
           z-index: 1000;
@@ -859,12 +859,12 @@ export function FilterPresetSelector({
           display: flex;
           align-items: center;
           padding: 8px 12px;
-          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
-          background: var(--wx-gitlab-filter-hover-background);
+          border-bottom: 1px solid var(--wx-gantt-filter-input-border);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .preset-search .search-icon {
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           font-size: 12px;
           margin-right: 8px;
         }
@@ -875,38 +875,38 @@ export function FilterPresetSelector({
           border: none;
           outline: none;
           font-size: 13px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
         }
 
         .preset-search-input::placeholder {
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .search-clear {
           background: none;
           border: none;
           padding: 2px 4px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           cursor: pointer;
           border-radius: 4px;
         }
 
         .search-clear:hover {
-          color: var(--wx-gitlab-filter-text);
-          background: var(--wx-gitlab-filter-input-border);
+          color: var(--wx-gantt-filter-text);
+          background: var(--wx-gantt-filter-input-border);
         }
 
         .preset-loading {
           padding: 20px;
           text-align: center;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           font-size: 13px;
         }
 
         .preset-empty {
           padding: 16px;
           text-align: center;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           font-size: 13px;
           font-style: italic;
         }
@@ -918,7 +918,7 @@ export function FilterPresetSelector({
 
         /* Folder styles */
         .preset-folder {
-          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+          border-bottom: 1px solid var(--wx-gantt-filter-input-border);
         }
 
         .preset-folder:last-child {
@@ -934,18 +934,18 @@ export function FilterPresetSelector({
           background: none;
           border: none;
           font-size: 13px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           text-align: left;
         }
 
         .preset-folder-header:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .preset-folder-header .folder-arrow {
           font-size: 10px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           width: 10px;
         }
 
@@ -961,8 +961,8 @@ export function FilterPresetSelector({
 
         .preset-folder-header .folder-count {
           font-size: 11px;
-          color: var(--wx-gitlab-control-text);
-          background: var(--wx-gitlab-filter-input-border);
+          color: var(--wx-gantt-control-text);
+          background: var(--wx-gantt-filter-input-border);
           padding: 1px 6px;
           border-radius: 10px;
         }
@@ -976,7 +976,7 @@ export function FilterPresetSelector({
           display: flex;
           align-items: center;
           padding: 0 4px 0 0;
-          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+          border-bottom: 1px solid var(--wx-gantt-filter-input-border);
         }
 
         .preset-item:last-child {
@@ -997,13 +997,13 @@ export function FilterPresetSelector({
           background: none;
           border: none;
           font-size: 13px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           text-align: left;
         }
 
         .preset-select-btn:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .preset-item-name {
@@ -1021,7 +1021,7 @@ export function FilterPresetSelector({
           padding: 6px 8px;
           background: none;
           border: none;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           cursor: pointer;
           border-radius: 4px;
           opacity: 0.5;
@@ -1033,13 +1033,13 @@ export function FilterPresetSelector({
         }
 
         .preset-menu-btn:hover {
-          background: var(--wx-gitlab-filter-hover-background);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-hover-background);
+          color: var(--wx-gantt-filter-text);
         }
 
         .preset-menu-fixed {
-          background: var(--wx-gitlab-filter-input-background);
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gantt-filter-input-background);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 6px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           overflow: hidden;
@@ -1054,13 +1054,13 @@ export function FilterPresetSelector({
           background: none;
           border: none;
           font-size: 13px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           white-space: nowrap;
         }
 
         .preset-menu-fixed button:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .preset-menu-fixed button.delete {
@@ -1073,8 +1073,8 @@ export function FilterPresetSelector({
 
         .preset-actions {
           padding: 8px;
-          border-top: 1px solid var(--wx-gitlab-filter-input-border);
-          background: var(--wx-gitlab-filter-hover-background);
+          border-top: 1px solid var(--wx-gantt-filter-input-border);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .btn-save-preset {
@@ -1099,8 +1099,8 @@ export function FilterPresetSelector({
         }
 
         .btn-save-preset:disabled {
-          background: var(--wx-gitlab-control-background);
-          color: var(--wx-gitlab-control-text);
+          background: var(--wx-gantt-control-background);
+          color: var(--wx-gantt-control-text);
           cursor: not-allowed;
         }
 
@@ -1110,9 +1110,9 @@ export function FilterPresetSelector({
           gap: 8px;
           padding: 12px;
           font-size: 12px;
-          color: var(--wx-gitlab-control-text);
-          border-top: 1px solid var(--wx-gitlab-filter-input-border);
-          background: var(--wx-gitlab-filter-hover-background);
+          color: var(--wx-gantt-control-text);
+          border-top: 1px solid var(--wx-gantt-filter-input-border);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .preset-permission-notice i {
@@ -1132,7 +1132,7 @@ export function FilterPresetSelector({
         }
 
         .preset-dialog {
-          background: var(--wx-gitlab-filter-input-background);
+          background: var(--wx-gantt-filter-input-background);
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
           width: 360px;
@@ -1143,8 +1143,8 @@ export function FilterPresetSelector({
           padding: 16px 20px;
           font-size: 16px;
           font-weight: 600;
-          color: var(--wx-gitlab-filter-text);
-          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+          color: var(--wx-gantt-filter-text);
+          border-bottom: 1px solid var(--wx-gantt-filter-input-border);
         }
 
         .dialog-body {
@@ -1156,16 +1156,16 @@ export function FilterPresetSelector({
           margin-bottom: 8px;
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
         }
 
         .dialog-body input {
           width: 100%;
           padding: 10px 12px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 6px;
-          background: var(--wx-gitlab-filter-background);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-background);
+          color: var(--wx-gantt-filter-text);
           font-size: 14px;
         }
 
@@ -1178,7 +1178,7 @@ export function FilterPresetSelector({
         .dialog-hint {
           margin-top: 8px;
           font-size: 12px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .dialog-footer {
@@ -1186,24 +1186,24 @@ export function FilterPresetSelector({
           justify-content: flex-end;
           gap: 8px;
           padding: 16px 20px;
-          border-top: 1px solid var(--wx-gitlab-filter-input-border);
-          background: var(--wx-gitlab-filter-hover-background);
+          border-top: 1px solid var(--wx-gantt-filter-input-border);
+          background: var(--wx-gantt-filter-hover-background);
           border-radius: 0 0 12px 12px;
         }
 
         .btn-cancel {
           padding: 10px 18px;
           background: none;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 6px;
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
         }
 
         .btn-cancel:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .btn-save {
@@ -1222,8 +1222,8 @@ export function FilterPresetSelector({
         }
 
         .btn-save:disabled {
-          background: var(--wx-gitlab-control-background);
-          color: var(--wx-gitlab-control-text);
+          background: var(--wx-gantt-control-background);
+          color: var(--wx-gantt-control-text);
           cursor: not-allowed;
         }
       `}</style>

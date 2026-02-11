@@ -38,32 +38,26 @@ const sampleTasks = [
   {
     id: 't1',
     text: 'Task 1',
-    _gitlab: {
-      labels: ['bug', 'urgent'],
-      milestoneIid: 1,
-      assignees: ['Alice'],
-      state: 'opened',
-    },
+    labels: ['bug', 'urgent'],
+    milestoneIid: 1,
+    assignees: ['Alice'],
+    state: 'opened',
   },
   {
     id: 't2',
     text: 'Task 2',
-    _gitlab: {
-      labels: ['feature'],
-      milestoneIid: 2,
-      assignees: ['Bob'],
-      state: 'opened',
-    },
+    labels: ['feature'],
+    milestoneIid: 2,
+    assignees: ['Bob'],
+    state: 'opened',
   },
   {
     id: 't3',
     text: 'Task 3',
-    _gitlab: {
-      labels: ['bug'],
-      milestoneIid: 1,
-      assignees: ['Alice', 'Charlie'],
-      state: 'closed',
-    },
+    labels: ['bug'],
+    milestoneIid: 1,
+    assignees: ['Alice', 'Charlie'],
+    state: 'closed',
   },
 ];
 
@@ -169,7 +163,7 @@ describe('FilterPanel', () => {
     fireEvent.click(screen.getByText('Server').closest('button'));
 
     expect(
-      screen.getByText(/Filters applied when fetching from GitLab/),
+      screen.getByText(/Filters applied when fetching from data source/),
     ).toBeInTheDocument();
   });
 

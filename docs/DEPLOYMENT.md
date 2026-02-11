@@ -1,11 +1,10 @@
 # Deployment Guide
 
-This guide explains how to deploy this React Gantt application to GitHub Pages and GitLab Pages.
+This guide explains how to deploy the React Gantt application to GitHub Pages or other static hosting platforms.
 
 ## Table of Contents
 
 - [Deployment Options](#deployment-options)
-- [GitLab Pages (Recommended)](#gitlab-pages-recommended)
 - [GitHub Pages](#github-pages)
 - [CORS Issues and Solutions](#cors-issues-and-solutions)
 
@@ -13,35 +12,7 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
 
 ## Deployment Options
 
-### Option 1: GitLab Pages (Recommended)
-
-**Advantages:**
-
-- Same domain as GitLab API (`gitlab.rayark.com`)
-- No CORS issues
-- Direct API access without proxy
-
-**Deployment Steps:**
-
-1. Push your code to GitLab repository:
-
-   ```bash
-   git push gitlab main
-   ```
-
-2. CI/CD pipeline will automatically run (`.gitlab-ci.yml`)
-
-3. Once the pipeline completes, your site will be available at:
-
-   ```
-   https://<username>.gitlab.rayark.com/<project-name>/
-   ```
-
-4. Check deployment status:
-   - Go to: `https://gitlab.rayark.com/<username>/<project-name>/-/pipelines`
-   - Or: Settings > Pages
-
-### Option 2: GitHub Pages
+### GitHub Pages
 
 **Advantages:**
 
@@ -50,8 +21,8 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
 
 **Limitations:**
 
-- CORS issues when accessing GitLab API from different domain
-- Requires CORS proxy for API calls
+- CORS issues when accessing external APIs from a different domain
+- Requires CORS proxy for cross-origin API calls
 
 **Deployment Steps:**
 
@@ -72,6 +43,18 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
    https://<username>.github.io/<repository-name>/
    ```
 
+### Other Static Hosting
+
+You can deploy the built demo to any static hosting provider (Vercel, Netlify, Cloudflare Pages, etc.):
+
+1. Build the demo:
+
+   ```bash
+   npm run build:pages
+   ```
+
+2. Upload the `dist-demos/` directory to your hosting provider.
+
 ---
 
 ## CORS Issues and Solutions
@@ -82,17 +65,13 @@ Cross-Origin Resource Sharing (CORS) is a browser security feature that blocks r
 
 ### The Problem
 
-When your app is hosted on `github.io` but tries to access GitLab API at `gitlab.rayark.com`, the browser blocks these requests due to CORS policy.
+When your app is hosted on one domain but tries to access a data source API on a different domain, the browser blocks these requests due to CORS policy.
 
 ### Solutions
 
-#### Solution 1: Deploy to GitLab Pages (Easiest)
+#### Solution 1: Use CORS Proxy
 
-Deploy your app to GitLab Pages on the same domain as your GitLab instance. No additional configuration needed!
-
-#### Solution 2: Use CORS Proxy (For GitHub Pages)
-
-A CORS proxy acts as a middleman between your app and the GitLab API.
+A CORS proxy acts as a middleman between your app and the data source API.
 
 **Setup Steps:**
 
@@ -131,7 +110,7 @@ A CORS proxy acts as a middleman between your app and the GitLab API.
    - New repository secret: `CORS_PROXY_URL`
    - Value: Your CORS proxy URL
 
-#### Solution 3: Deploy Your Own CORS Proxy
+#### Solution 2: Deploy Your Own CORS Proxy
 
 **Using Cloudflare Workers (Free Tier Available):**
 
@@ -145,8 +124,8 @@ async function handleRequest(request) {
   const url = new URL(request.url);
   const targetUrl = url.pathname.slice(1); // Remove leading slash
 
-  // Only allow requests to your GitLab instance
-  if (!targetUrl.startsWith('https://gitlab.rayark.com')) {
+  // Only allow requests to your data source
+  if (!targetUrl.startsWith('https://your-api-domain.com')) {
     return new Response('Forbidden', { status: 403 });
   }
 
@@ -166,7 +145,7 @@ async function handleRequest(request) {
   );
   newResponse.headers.set(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, PRIVATE-TOKEN',
+    'Content-Type, Authorization',
   );
 
   return newResponse;
@@ -180,16 +159,15 @@ async function handleRequest(request) {
 export default async function handler(req, res) {
   const { url } = req.query;
 
-  // Validate GitLab URL
-  if (!url || !url.startsWith('https://gitlab.rayark.com')) {
-    return res.status(403).json({ error: 'Forbidden' });
+  if (!url) {
+    return res.status(400).json({ error: 'Missing url parameter' });
   }
 
   try {
     const response = await fetch(url, {
       method: req.method,
       headers: {
-        'PRIVATE-TOKEN': req.headers['private-token'] || '',
+        Authorization: req.headers['authorization'] || '',
         'Content-Type': 'application/json',
       },
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
@@ -204,7 +182,7 @@ export default async function handler(req, res) {
     );
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, PRIVATE-TOKEN',
+      'Content-Type, Authorization',
     );
 
     res.status(response.status).json(data);
@@ -251,10 +229,10 @@ npm run preview
 Create `.env.local` for local development:
 
 ```env
-# GitLab Configuration
-VITE_GITLAB_URL=https://gitlab.rayark.com
-VITE_GITLAB_TOKEN=your-token-here
-VITE_GITLAB_PROJECT_ID=your-project-id
+# Data Source Configuration
+VITE_DATA_SOURCE_URL=https://your-api-domain.com
+VITE_DATA_SOURCE_TOKEN=your-token-here
+VITE_DATA_SOURCE_PROJECT_ID=your-project-id
 
 # Optional: CORS Proxy (for production on different domain)
 # VITE_CORS_PROXY=https://your-cors-proxy.com
@@ -266,27 +244,15 @@ VITE_GITLAB_PROJECT_ID=your-project-id
 
 ## Troubleshooting
 
-### Issue: GitLab CI Pipeline Not Running
-
-**Cause:** Runner not configured or wrong tags
-
-**Solution:** Ensure `.gitlab-ci.yml` has correct tags:
-
-```yaml
-pages:
-  tags:
-    - docker # Use the correct tag for your GitLab instance
-```
-
 ### Issue: CORS Error on GitHub Pages
 
 **Symptoms:**
 
 ```
-Access to fetch at 'https://gitlab.rayark.com/...' has been blocked by CORS policy
+Access to fetch at 'https://api.example.com/...' has been blocked by CORS policy
 ```
 
-**Solution:** Use one of the CORS solutions above, or deploy to GitLab Pages instead.
+**Solution:** Use one of the CORS solutions above.
 
 ### Issue: 404 on GitHub Pages
 
@@ -311,30 +277,11 @@ base: process.env.VITE_BASE_PATH || './';
 
 ---
 
-## Multiple Remotes Setup
-
-You can push to both GitHub and GitLab:
-
-```bash
-# Add remotes
-git remote add origin git@github.com:username/repo.git
-git remote add gitlab git@gitlab.rayark.com:username/repo.git
-
-# Push to both
-git push origin main
-git push gitlab main
-
-# View remotes
-git remote -v
-```
-
----
-
 ## Security Notes
 
-1. **Never commit GitLab tokens** to the repository
+1. **Never commit access tokens** to the repository
 2. Use GitHub Secrets for sensitive environment variables
-3. If using a CORS proxy, **whitelist only your GitLab domain**
+3. If using a CORS proxy, **whitelist only your data source domain**
 4. Consider using short-lived tokens or OAuth for production
 
 ---
@@ -343,5 +290,4 @@ git remote -v
 
 - [Vite Deployment Guide](https://vitejs.dev/guide/static-deploy.html)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
-- [GitLab Pages Documentation](https://docs.gitlab.com/ee/user/project/pages/)
 - [CORS MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)

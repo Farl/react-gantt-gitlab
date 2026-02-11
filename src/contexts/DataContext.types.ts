@@ -8,7 +8,6 @@
 import type { ITask, ILink } from '@svar-ui/gantt-store';
 import type {
   DataProviderInterface,
-  DataProviderConfig,
   SyncOptions,
 } from '../providers/core/DataProviderInterface';
 import type { SyncState } from '../hooks/useDataSync';
@@ -24,10 +23,16 @@ export interface FilterOptions {
 /** Generic data source configuration */
 export interface DataSourceConfig {
   id: string;
-  type: 'gitlab' | 'azure-devops' | 'custom';
+  type: string;
   credentialId?: string;
   projectId?: string | number;
   metadata?: Record<string, unknown>;
+}
+
+/** Holiday entry */
+export interface HolidayEntry {
+  date: string;
+  name?: string;
 }
 
 /** Toast notification function type */
@@ -42,6 +47,8 @@ export interface DataContextValue {
   tasks: ITask[];
   links: ILink[];
   metadata: Record<string, unknown>;
+  milestones: unknown[];
+  epics: unknown[];
 
   // === Sync State & Actions ===
   syncState: SyncState;
@@ -53,9 +60,10 @@ export interface DataContextValue {
     position: 'before' | 'after',
   ) => { rollback: () => void };
   createTask: (task: Partial<ITask>) => Promise<ITask>;
+  createMilestone: (milestone: Partial<ITask>) => Promise<ITask>;
   deleteTask: (id: number | string, taskData?: ITask) => Promise<void>;
   createLink: (link: Partial<ILink>) => Promise<ILink>;
-  deleteLink: (linkId: number | string, metadata?: unknown) => Promise<void>;
+  deleteLink: (linkId: number | string, ...args: unknown[]) => Promise<void>;
 
   // === Configuration ===
   currentConfig: DataSourceConfig | null;
@@ -65,6 +73,8 @@ export interface DataContextValue {
   handleConfigChange: (config: DataSourceConfig) => void;
   handleQuickSwitch: (configId: string) => void;
   projectPath: string;
+  proxyConfig: unknown | null;
+  configVersion: number;
 
   // === Filter State ===
   filterOptions: Record<string, unknown>;
@@ -96,7 +106,24 @@ export interface DataContextValue {
 
   // === Permissions ===
   canEdit: boolean;
+  canEditHolidays: boolean;
+
+  // === Holidays & Workdays ===
+  holidays: HolidayEntry[];
+  workdays: HolidayEntry[];
+  colorRules: unknown[];
+  holidaysText: string;
+  workdaysText: string;
+  holidaysLoading: boolean;
+  holidaysSaving: boolean;
+  holidaysError: string | null;
+  setHolidaysText: (text: string) => void;
+  setWorkdaysText: (text: string) => void;
+  setColorRules: (rules: unknown[]) => void;
 
   // === Utility Functions ===
   showToast: ShowToastFn;
+  countWorkdays: (start: Date, end: Date) => number;
+  calculateEndDateByWorkdays: (start: Date, workdays: number) => Date;
+  highlightTime: (date: Date, unit: string) => string;
 }

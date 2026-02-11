@@ -134,12 +134,12 @@
 
 /* ========== Dark Theme ========== */
 .wx-willow-dark-theme .kanban-view {
-  background: var(--wx-gitlab-control-background, #23262a);
+  background: var(--wx-gantt-control-background, #23262a);
 }
 
 .wx-willow-dark-theme .kanban-view-header {
-  background: var(--wx-gitlab-header-background, #2c2f33);
-  border-bottom-color: var(--wx-gitlab-header-border, #384047);
+  background: var(--wx-gantt-header-background, #2c2f33);
+  border-bottom-color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .kanban-view-board-name {
@@ -159,7 +159,7 @@
 }
 
 .wx-willow-dark-theme .kanban-view-empty > i {
-  color: var(--wx-gitlab-header-border, #384047);
+  color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .kanban-view-empty h3 {

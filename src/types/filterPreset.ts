@@ -1,6 +1,6 @@
 /**
  * Filter Preset Types
- * Types for saving and managing filter presets stored in GitLab Snippets
+ * Types for saving and managing filter presets stored in Snippets
  */
 
 import type { FilterOptions } from '../../utils/DataFilters';
@@ -22,7 +22,7 @@ export interface FilterPreset {
 }
 
 /**
- * Configuration stored in the GitLab Snippet
+ * Configuration stored in a Snippet
  */
 export interface FilterPresetsConfig {
   /** Schema version for future migrations */

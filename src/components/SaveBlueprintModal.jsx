@@ -5,10 +5,13 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import {
-  createBlueprintFromMilestone,
-  getBlueprintPreview,
-} from '../providers/BlueprintService';
+// Stub functions for blueprint creation (provider-specific implementations removed)
+function createBlueprintFromMilestone() {
+  return { name: '', items: [], links: [] };
+}
+function getBlueprintPreview() {
+  return { issueCount: 0, taskCount: 0, linkCount: 0, items: [] };
+}
 import './SaveBlueprintModal.css';
 import './shared/modal-close-button.css';
 
@@ -204,7 +207,7 @@ export function SaveBlueprintModal({
                   disabled={!canUseSnippet}
                 />
                 <div className="option-content">
-                  <span className="option-title">GitLab Snippet</span>
+                  <span className="option-title">Project Snippet</span>
                   <span className="option-desc">
                     {canUseSnippet
                       ? 'Team sharing, stored in project'

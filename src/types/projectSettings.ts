@@ -64,8 +64,8 @@ export interface ProjectSettings {
 // localStorage Key 常數
 // ============================================================
 
-const PROJECT_SETTINGS_PREFIX = 'gitlab-gantt-project-settings';
-const LEGACY_PRESET_PREFIX = 'gitlab-gantt-preset';
+const PROJECT_SETTINGS_PREFIX = 'gantt-project-settings';
+const LEGACY_PRESET_PREFIX = 'gantt-preset';
 
 // ============================================================
 // 工具函數

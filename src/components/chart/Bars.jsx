@@ -576,7 +576,6 @@ function Bars(props) {
         // Determine base color based on task type
         const isMilestone =
           task.$isMilestone ||
-          task._gitlab?.type === 'milestone' ||
           task.type === 'milestone';
         let baseColor = '#00ba94'; // Default: green for tasks
         if (isMilestone) {
@@ -612,11 +611,11 @@ function Bars(props) {
           (task.$parent ? ' wx-parent-task' : '') +
           (task.$isIssue !== undefined
             ? task.$isIssue
-              ? ' wx-gitlab-issue'
-              : ' wx-gitlab-task'
+              ? ' wx-issue'
+              : ' wx-task'
             : '') +
-          (task.$isMilestone || task._gitlab?.type === 'milestone'
-            ? ' wx-gitlab-milestone'
+          (task.$isMilestone || task.type === 'milestone'
+            ? ' wx-milestone-bar'
             : '') +
           stripeClass;
         const leftLinkClass =
@@ -710,8 +709,7 @@ function Bars(props) {
                   task={task}
                   isMilestone={
                     task.type === 'milestone' ||
-                    task.$isMilestone ||
-                    task._gitlab?.type === 'milestone'
+                    task.$isMilestone
                   }
                   cellWidth={cellWidthValue}
                 />
@@ -721,8 +719,7 @@ function Bars(props) {
                   className={
                     'wx-GKbcLEGA wx-baseline' +
                     (task.type === 'milestone' ||
-                    task.$isMilestone ||
-                    task._gitlab?.type === 'milestone'
+                    task.$isMilestone
                       ? ' wx-milestone'
                       : '')
                   }

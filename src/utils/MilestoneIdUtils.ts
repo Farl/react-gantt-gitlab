@@ -12,7 +12,7 @@ const MILESTONE_ID_PREFIX = 'm-';
 
 /**
  * Create a milestone task ID from a milestone IID
- * @param iid - The milestone's IID from GitLab
+ * @param iid - The milestone's IID from the data source
  * @returns String ID in format "m-{iid}"
  */
 export function createMilestoneTaskId(iid: number | string): string {

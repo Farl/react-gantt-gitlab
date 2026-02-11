@@ -119,17 +119,17 @@ bd dep add <new-id> <depends-on-id>  # Create dependencies
 
 ### Current Project State (Phase 8 Complete)
 
-**Recent Refactoring:** React Gantt transformed from GitLab-specific to data-source-agnostic library
+**Architecture:** Data-source-agnostic Gantt chart library
 
-- Generic DataProviderInterface for any data source (GitLab, Azure DevOps, custom)
+- Generic DataProviderInterface for any data source (Azure DevOps, custom)
 - DataProviderFactory pattern for provider instantiation
-- Removed GitLab branding: GitLabGantt → GanttChart, GitLabWorkspace → Workspace
-- Generic hooks: useDataSync (replaces useGitLabSync), useGanttState extracted from GanttView
+- Generic components: GanttChart, Workspace, GanttView
+- Generic hooks: useDataSync, useGanttState extracted from GanttView
 
 **Testing Infrastructure Established:**
 
 - Vitest with jsdom environment, globals enabled, coverage reporting
-- Browser-based UI available at http://localhost:51204/__vitest__/
+- Browser-based UI available at http://localhost:51204/**vitest**/
 - Run with `npm run test:ui` for interactive test exploration
 - 114 tests passing across 7 test files
 - Test setup includes mocks for browser APIs (matchMedia, localStorage, IntersectionObserver)
@@ -140,25 +140,25 @@ bd dep add <new-id> <depends-on-id>  # Create dependencies
 **Core Data Layer:**
 
 - `/src/providers/core/DataProviderInterface.ts` - Provider contract
-- `/src/providers/adapters/GitLabAdapter.ts` - GitLab implementation
+- `/src/providers/adapters/` - Provider implementations (one per data source)
 - `/src/contexts/DataContext.tsx` - Generic data context provider
 
 **Generic Components:**
 
-- `/src/components/Workspace/` - Main UI container (replaces GitLabWorkspace)
-- `/src/components/GanttChart.jsx` - Chart component (replaces GitLabGantt)
+- `/src/components/Workspace/` - Main UI container
+- `/src/components/GanttChart.jsx` - Chart component
 - `/src/components/GanttView/GanttView.jsx` - Main Gantt view (partially refactored)
 
 **Utilities:**
 
-- `/src/utils/DataFilters.ts` - Filter logic (replaces GitLabFilters)
-- `/src/utils/LinkUtils.ts` - Link utilities (replaces GitLabLinkUtils)
+- `/src/utils/DataFilters.ts` - Filter logic
+- `/src/utils/LinkUtils.ts` - Link utilities
 - `/src/utils/MilestoneIdUtils.ts` - Milestone ID handling
 - `/src/utils/WorkloadUtils.ts` - Workload grouping
 
 **Configuration:**
 
-- `/src/config/DataSourceConfigManager.ts` - Config management (replaces GitLabConfigManager)
+- `/src/config/DataSourceConfigManager.ts` - Config management
 - `/src/config/DataSourceCredentialManager.ts` - Credential management
 
 ### Common Development Tasks

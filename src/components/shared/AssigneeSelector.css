@@ -1,7 +1,7 @@
 /**
  * AssigneeSelector Styles
  *
- * 使用 --wx-gitlab-* CSS 變數以支援主題切換
+ * 使用 --wx-gantt-* CSS 變數以支援主題切換
  */
 
 .assignee-selector {
@@ -23,10 +23,10 @@
 .as-search-input {
   width: 100%;
   padding: 6px 28px 6px 8px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  border: 1px solid var(--wx-gantt-filter-input-border, #dcdcde);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  color: var(--wx-gitlab-filter-text, #303030);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  color: var(--wx-gantt-filter-text, #303030);
   font-size: 13px;
 }
 
@@ -36,7 +36,7 @@
 }
 
 .as-search-input:disabled {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .as-search-clear {
@@ -46,7 +46,7 @@
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
@@ -54,15 +54,15 @@
 }
 
 .as-search-clear:hover {
-  color: var(--wx-gitlab-filter-text, #303030);
+  color: var(--wx-gantt-filter-text, #303030);
 }
 
 /* Options list */
 .as-options {
   overflow-y: auto;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  border: 1px solid var(--wx-gantt-filter-input-border, #dcdcde);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
+  background: var(--wx-gantt-filter-input-background, #fff);
 }
 
 .as-options::-webkit-scrollbar {
@@ -70,11 +70,11 @@
 }
 
 .as-options::-webkit-scrollbar-track {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .as-options::-webkit-scrollbar-thumb {
-  background: var(--wx-gitlab-control-text, #999);
+  background: var(--wx-gantt-control-text, #999);
   border-radius: 3px;
 }
 
@@ -86,12 +86,12 @@
   padding: 6px 8px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--wx-gitlab-filter-text, #303030);
+  color: var(--wx-gantt-filter-text, #303030);
   transition: background 0.1s;
 }
 
 .as-option:hover {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .as-option.selected {
@@ -121,7 +121,7 @@
 
 .as-option-subtitle {
   font-size: 11px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -131,7 +131,7 @@
 .as-empty {
   padding: 16px;
   text-align: center;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   font-size: 12px;
   font-style: italic;
 }
@@ -152,17 +152,17 @@
 
 .as-action-btn {
   padding: 4px 8px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  border: 1px solid var(--wx-gitlab-filter-input-border, #dcdcde);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  border: 1px solid var(--wx-gantt-filter-input-border, #dcdcde);
   border-radius: 4px;
   font-size: 11px;
-  color: var(--wx-gitlab-filter-text, #303030);
+  color: var(--wx-gantt-filter-text, #303030);
   cursor: pointer;
   transition: background 0.1s;
 }
 
 .as-action-btn:hover:not(:disabled) {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .as-action-btn:disabled {
@@ -173,6 +173,6 @@
 /* Selected hint */
 .as-selected-hint {
   font-size: 11px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   margin-left: auto;
 }

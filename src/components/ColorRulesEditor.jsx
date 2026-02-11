@@ -13,9 +13,9 @@ const PREDEFINED_COLORS = [
   '#FF0000', // Red
   '#FF6B00', // Orange
   '#FFD700', // Gold
-  '#00BA94', // Green (same as GitLab Task)
+  '#00BA94', // Green (green)
   '#00BFFF', // Deep Sky Blue
-  '#3983EB', // Blue (same as GitLab Issue)
+  '#3983EB', // Blue (blue)
   '#8B5CF6', // Purple
   '#EC4899', // Pink
   '#6B7280', // Gray

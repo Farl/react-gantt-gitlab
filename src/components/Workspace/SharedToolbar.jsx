@@ -1,4 +1,4 @@
-// src/components/GitLabWorkspace/SharedToolbar.jsx
+// src/components/Workspace/SharedToolbar.jsx
 
 /**
  * SharedToolbar
@@ -6,11 +6,11 @@
  * Shared toolbar component for Gantt and Kanban views.
  * Contains view switcher, project selector, settings button, sync button, and filter toggle.
  *
- * NOTE: This component gets most data from GitLabDataContext to reduce prop drilling.
+ * NOTE: This component gets most data from DataContext to reduce prop drilling.
  * Only view-specific callbacks and state are passed as props.
  */
 
-import { useGitLabData } from '../../contexts/GitLabDataContext';
+import { useData } from '../../contexts/DataContext';
 import { SyncButton } from '../SyncButton';
 import './SharedToolbar.css';
 
@@ -38,22 +38,22 @@ export function SharedToolbar({
     syncState,
     filterOptions,
     tasks,
-  } = useGitLabData();
+  } = useData();
 
   // Calculate stats from tasks
   const stats = {
     total: tasks?.length || 0,
     completed:
-      tasks?.filter((t) => t.progress === 100 || t._gitlab?.state === 'closed')
+      tasks?.filter((t) => t.progress === 100 || t.state === 'closed')
         .length || 0,
     inProgress:
       tasks?.filter((t) => t.progress > 0 && t.progress < 100).length || 0,
     notStarted:
-      tasks?.filter((t) => t.progress === 0 && t._gitlab?.state !== 'closed')
+      tasks?.filter((t) => t.progress === 0 && t.state !== 'closed')
         .length || 0,
     overdue:
       tasks?.filter((t) => {
-        if (!t.end || t._gitlab?.state === 'closed') return false;
+        if (!t.end || t.state === 'closed') return false;
         return new Date(t.end) < new Date();
       }).length || 0,
   };

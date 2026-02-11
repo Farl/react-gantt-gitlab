@@ -115,7 +115,7 @@
   margin-left: 2px;
 }
 
-/* Child Tasks (GitLab Tasks) */
+/* Child Tasks (Tasks) */
 .kanban-card-tasks {
   display: flex;
   flex-direction: column;
@@ -170,7 +170,7 @@
 }
 
 .wx-willow-dark-theme .kanban-card-dragging {
-  border-color: var(--wx-gitlab-control-text, #9fa1ae);
+  border-color: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .kanban-card-id {
@@ -179,7 +179,7 @@
 
 .wx-willow-dark-theme .kanban-card-due {
   color: var(--wx-demo-text-secondary, #9fa1ae);
-  background: var(--wx-gitlab-control-background, #23262a);
+  background: var(--wx-gantt-control-background, #23262a);
 }
 
 .wx-willow-dark-theme .kanban-card-due-overdue {
@@ -192,7 +192,7 @@
 }
 
 .wx-willow-dark-theme .kanban-card-icon {
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .kanban-card-assignees,
@@ -201,11 +201,11 @@
 }
 
 .wx-willow-dark-theme .kanban-card-overflow {
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .kanban-card-tasks {
-  border-top-color: var(--wx-gitlab-header-border, #384047);
+  border-top-color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .kanban-card-task-item {
@@ -213,5 +213,5 @@
 }
 
 .wx-willow-dark-theme .kanban-card-task-done {
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }

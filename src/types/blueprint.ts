@@ -2,9 +2,9 @@
  * Blueprint Types
  *
  * Blueprint 是以 Milestone 為單位的範本系統，用於儲存和重複使用 Milestone 結構。
- * 欄位命名盡量沿用 GitLab Export 格式的 snake_case 慣例。
+ * 欄位命名沿用 snake_case 慣例。
  *
- * @see https://docs.gitlab.com/development/import_export/
+ * @see Blueprint type definitions
  */
 
 /**
@@ -33,7 +33,7 @@ export interface BlueprintItem {
    */
   workdays: number | null;
 
-  // === 組織資訊 (沿用 GitLab 命名) ===
+  // === 組織資訊 (organization info) ===
   /** 標籤名稱列表 */
   labels?: string[];
   /** 受指派者 username 列表 */
@@ -171,7 +171,7 @@ export interface ApplyBlueprintResult {
 // === 常數定義 ===
 
 /**
- * GitLab Snippet 設定
+ * Snippet 設定
  */
 export const BLUEPRINT_SNIPPET = {
   TITLE: 'gantt-blueprints',
@@ -183,8 +183,7 @@ export const BLUEPRINT_SNIPPET = {
  * localStorage Key 模板
  * 使用時替換 {type} 為 'project' | 'group'，{id} 為專案/群組 ID
  */
-export const BLUEPRINT_STORAGE_KEY_TEMPLATE =
-  'gitlab-gantt-blueprints-{type}-{id}';
+export const BLUEPRINT_STORAGE_KEY_TEMPLATE = 'gantt-blueprints-{type}-{id}';
 
 /**
  * 取得 localStorage Key

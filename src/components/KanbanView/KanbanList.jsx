@@ -22,12 +22,12 @@ import './KanbanList.css';
  * Sort tasks based on sortBy and sortOrder.
  *
  * For 'position' sorting, uses a priority chain:
- * 1. _localOrder - Temporary value from optimistic drag updates (see useGitLabSync.reorderTaskLocal)
- * 2. relativePosition - GitLab's server-side position value
+ * 1. _localOrder - Temporary value from optimistic drag updates (see useDataSync.reorderTaskLocal)
+ * 2. relativePosition - Server-side position value
  * 3. id - Fallback for tasks without position data
  *
  * This allows immediate UI feedback during drag operations while
- * maintaining correct order after GitLab sync.
+ * maintaining correct order after data sync.
  */
 function sortTasks(tasks, sortBy, sortOrder) {
   const sorted = [...tasks];
@@ -37,9 +37,9 @@ function sortTasks(tasks, sortBy, sortOrder) {
 
     switch (sortBy) {
       case 'position': {
-        // Priority: _localOrder (drag) > relativePosition (GitLab) > id (fallback)
-        const posA = a._localOrder ?? a._gitlab?.relativePosition ?? a.id;
-        const posB = b._localOrder ?? b._gitlab?.relativePosition ?? b.id;
+        // Priority: _localOrder (drag) > relativePosition (server) > id (fallback)
+        const posA = a._localOrder ?? a.relativePosition ?? a.id;
+        const posB = b._localOrder ?? b.relativePosition ?? b.id;
         comparison = posA - posB;
         break;
       }
@@ -56,11 +56,11 @@ function sortTasks(tasks, sortBy, sortOrder) {
       }
 
       case 'created_at': {
-        const createdA = a._gitlab?.createdAt
-          ? new Date(a._gitlab.createdAt).getTime()
+        const createdA = a.createdAt
+          ? new Date(a.createdAt).getTime()
           : 0;
-        const createdB = b._gitlab?.createdAt
-          ? new Date(b._gitlab.createdAt).getTime()
+        const createdB = b.createdAt
+          ? new Date(b.createdAt).getTime()
           : 0;
         comparison = createdA - createdB;
         break;
@@ -96,9 +96,9 @@ function sortTasks(tasks, sortBy, sortOrder) {
       default: {
         // Fallback to position (same logic as 'position' case)
         const defaultPosA =
-          a._localOrder ?? a._gitlab?.relativePosition ?? a.id;
+          a._localOrder ?? a.relativePosition ?? a.id;
         const defaultPosB =
-          b._localOrder ?? b._gitlab?.relativePosition ?? b.id;
+          b._localOrder ?? b.relativePosition ?? b.id;
         comparison = defaultPosA - defaultPosB;
         break;
       }

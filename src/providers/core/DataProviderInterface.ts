@@ -1,11 +1,11 @@
 /**
  * Generic data provider interface for task management systems
  *
- * This interface abstracts the data source (GitLab, Azure DevOps, custom) from the UI layer.
+ * This interface abstracts the data source from the UI layer.
  * Any data source implementing this interface can work with the Gantt chart.
  *
  * Key design principles:
- * - Data-agnostic: No references to GitLab-specific concepts
+ * - Data-agnostic: No references to specific backends
  * - Sync-based: Fetch all data for a time period in one operation
  * - Extensible: metadata field allows source-specific data
  */
@@ -18,9 +18,9 @@ import type { ITask, ILink } from '@svar-ui/gantt-store';
  */
 export interface DataProviderConfig {
   /** Type of data source */
-  type: 'gitlab' | 'azure-devops' | 'custom';
+  type: string;
 
-  /** URL of the data source (e.g., GitLab instance URL) */
+  /** URL of the data source */
   sourceUrl?: string;
 
   /** Authentication credentials (format depends on type) */
@@ -29,7 +29,7 @@ export interface DataProviderConfig {
   /** Project/repository ID in the source system */
   projectId?: string | number;
 
-  /** Source-specific metadata (e.g., fullPath for GitLab) */
+  /** Source-specific metadata */
   metadata?: Record<string, unknown>;
 }
 

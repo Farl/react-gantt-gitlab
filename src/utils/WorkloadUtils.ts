@@ -130,7 +130,7 @@ export function generateWorkloadTasks(
 
   // Filter out milestone and summary tasks - only include actual work items
   const workItems = allTasks.filter((task) => {
-    const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
+    const isMilestone = task.$isMilestone || task.type === 'milestone';
     const isSummary = task.type === 'summary';
     return !isMilestone && !isSummary && task.start;
   });

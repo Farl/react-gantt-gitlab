@@ -244,12 +244,12 @@ export function FilterMultiSelect({
         .fms-title {
           font-size: 12px;
           font-weight: 600;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
         }
 
         .fms-count {
           font-weight: 400;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           margin-left: 2px;
         }
 
@@ -272,10 +272,10 @@ export function FilterMultiSelect({
         .fms-search-input {
           width: 100%;
           padding: 4px 24px 4px 8px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 3px;
-          background: var(--wx-gitlab-filter-input-background);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-input-background);
+          color: var(--wx-gantt-filter-text);
           font-size: 12px;
         }
 
@@ -291,7 +291,7 @@ export function FilterMultiSelect({
           transform: translateY(-50%);
           background: none;
           border: none;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           cursor: pointer;
           font-size: 14px;
           line-height: 1;
@@ -299,15 +299,15 @@ export function FilterMultiSelect({
         }
 
         .fms-search-clear:hover {
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
         }
 
         .fms-options {
           max-height: 120px;
           overflow-y: auto;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 3px;
-          background: var(--wx-gitlab-filter-input-background);
+          background: var(--wx-gantt-filter-input-background);
         }
 
         .fms-options::-webkit-scrollbar {
@@ -315,11 +315,11 @@ export function FilterMultiSelect({
         }
 
         .fms-options::-webkit-scrollbar-track {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .fms-options::-webkit-scrollbar-thumb {
-          background: var(--wx-gitlab-control-text);
+          background: var(--wx-gantt-control-text);
           border-radius: 3px;
         }
 
@@ -330,12 +330,12 @@ export function FilterMultiSelect({
           padding: 3px 6px;
           cursor: pointer;
           font-size: 12px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           transition: background 0.1s;
         }
 
         .fms-option:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .fms-option.selected {
@@ -367,7 +367,7 @@ export function FilterMultiSelect({
         .fms-empty {
           padding: 12px;
           text-align: center;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           font-size: 11px;
           font-style: italic;
         }
@@ -381,17 +381,17 @@ export function FilterMultiSelect({
         .fms-action-btn {
           flex: 1;
           padding: 2px 6px;
-          background: var(--wx-gitlab-filter-input-background);
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          background: var(--wx-gantt-filter-input-background);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 3px;
           font-size: 10px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           transition: background 0.1s;
         }
 
         .fms-action-btn:hover:not(:disabled) {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .fms-action-btn:disabled {

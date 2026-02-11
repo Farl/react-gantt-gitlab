@@ -4,15 +4,9 @@
  */
 
 import type { ITask } from '@svar-ui/gantt-store';
-import type {
-  GitLabMilestone,
-  GitLabEpic,
-  GitLabServerFilters,
-} from '../types/gitlab';
 
 /**
  * Server filter options for Preset storage
- * Matches GitLabServerFilters but with dateRange grouped
  */
 export interface ServerFilterOptions {
   labelNames?: string[];
@@ -45,11 +39,11 @@ export interface FilterOptions {
 }
 
 /**
- * Convert ServerFilterOptions to GitLabServerFilters for API call
+ * Convert ServerFilterOptions to a flat server filter format for API calls
  */
-export function toGitLabServerFilters(
+export function toServerFilters(
   options?: ServerFilterOptions,
-): GitLabServerFilters | undefined {
+): Record<string, unknown> | undefined {
   if (!options) return undefined;
 
   return {
@@ -63,11 +57,11 @@ export function toGitLabServerFilters(
 
 export class DataFilters {
   /**
-   * Filter tasks by milestone using _gitlab.milestoneIid
+   * Filter tasks by milestone
    * Supports "NONE" (as 0) to filter tasks without milestone
    *
-   * Note: We use _gitlab.milestoneIid for filtering (not the parent field).
-   * Milestone task IDs use string format "m-{iid}" to avoid collision with work item IIDs.
+   * Note: Milestone task IDs use string format "m-{iid}" to avoid collision with work item IIDs.
+   * Tasks store their milestone association in a milestoneIid field or via their parent field.
    */
   static filterByMilestone(tasks: ITask[], milestoneIids: number[]): ITask[] {
     if (milestoneIids.length === 0) {
@@ -80,12 +74,14 @@ export class DataFilters {
 
     return tasks.filter((task) => {
       // Skip milestone summary tasks when filtering for "no milestone"
-      if (task._gitlab?.type === 'milestone') {
-        return otherMilestoneIids.includes(task._gitlab?.iid as number);
+      if (task.$isMilestone || task.type === 'milestone') {
+        return otherMilestoneIids.includes(
+          (task.issueId as number) || (task.id as number),
+        );
       }
 
-      // Issue/Task - check by milestone association stored in _gitlab.milestoneIid
-      const taskMilestoneIid = task._gitlab?.milestoneIid;
+      // Issue/Task - check by milestone association stored in milestoneIid
+      const taskMilestoneIid = (task as any).milestoneIid;
 
       // Check for no milestone
       if (includeNoMilestone && !taskMilestoneIid) {
@@ -104,9 +100,6 @@ export class DataFilters {
   /**
    * Filter tasks by epic
    * Supports "NONE" (as 0) to filter tasks without epic
-   *
-   * Note: GitLab Issues can have Epic parents (actual parent relationship in GitLab)
-   * Epic parent ID is stored in _gitlab.epicParentId when Issue has Epic parent
    */
   static filterByEpic(tasks: ITask[], epicIds: number[]): ITask[] {
     if (epicIds.length === 0) {
@@ -118,8 +111,8 @@ export class DataFilters {
     const otherEpicIds = epicIds.filter((id) => id !== 0);
 
     return tasks.filter((task) => {
-      // Check if task has Epic parent ID stored
-      const epicParentId = task._gitlab?.epicParentId;
+      // Check if task has epic parent ID stored
+      const epicParentId = (task as any).epicParentId;
 
       // Check for no epic
       if (includeNoEpic && !epicParentId) {
@@ -215,17 +208,15 @@ export class DataFilters {
   /**
    * Filter tasks by state
    *
-   * Note: GitLab GraphQL API returns state as 'OPEN' / 'CLOSED' (uppercase, no 'ed' suffix)
-   * But the filter UI uses 'opened' / 'closed' for user-friendly display
-   * This function normalizes both formats for comparison
+   * State values are normalized for comparison:
+   * 'opened' -> 'OPEN', 'closed' -> 'CLOSED'
    */
   static filterByState(tasks: ITask[], states: string[]): ITask[] {
     if (states.length === 0) {
       return tasks;
     }
 
-    // Normalize filter states to match GitLab GraphQL format
-    // 'opened' -> 'OPEN', 'closed' -> 'CLOSED'
+    // Normalize filter states
     const normalizedStates = states.map((s) => {
       const lower = s.toLowerCase();
       if (lower === 'opened' || lower === 'open') return 'OPEN';
@@ -302,13 +293,8 @@ export class DataFilters {
    * This prevents orphaned tasks in the Gantt chart
    *
    * IMPORTANT: Parent field has different meanings:
-   *
-   * For GitLab Issues:
    *   - parent = "m-{iid}": Milestone (string format, e.g., "m-1", "m-8")
-   *   - parent = number: Epic ID from GitLab (Issues can have Epic parents, but we don't support Epic display)
-   *
-   * For GitLab Tasks:
-   *   - parent = another work item's IID (hierarchical relationship)
+   *   - parent = number: Could be an epic ID or a work item IID (hierarchical relationship)
    *
    * Note: Milestone IDs use string format to avoid collision with Issue IIDs > 10000
    */
@@ -319,21 +305,14 @@ export class DataFilters {
     const taskMap = new Map<number | string, ITask>();
 
     // Process each task
-    //
-    // GitLab Work Item Hierarchy Rules:
-    // - Issue's parent can ONLY be: Epic (via hierarchyWidget) or Milestone (via milestoneWidget, shown as parent in Gantt)
-    // - Task's parent can ONLY be: Issue (via hierarchyWidget)
-    // - NEVER use ID ranges (e.g., < 10000) to guess parent type - this is unreliable and causes bugs
-    // - Always use _gitlab metadata (workItemType, epicParentId, etc.) to determine relationships
-    //
     filteredTasks.forEach((task) => {
       // Check if this task has a parent
       if (task.parent && task.parent !== 0) {
-        // Check if this is an Issue (Issue's parent in Gantt = Milestone, Epic parent stored separately)
+        // Check if this is an Issue (Issue's parent in Gantt = Milestone)
         const isIssue =
           task.$isIssue ||
-          task._gitlab?.workItemType === 'Issue' ||
-          (task._gitlab?.workItemType !== 'Task' && !task._gitlab?.type);
+          (task as any).workItemType === 'Issue' ||
+          ((task as any).workItemType !== 'Task' && !(task as any).type);
 
         if (isIssue) {
           // Issue's parent in Gantt context is Milestone
@@ -357,12 +336,11 @@ export class DataFilters {
             taskMap.set(task.id, modifiedTask);
           }
         } else {
-          // Task's parent can ONLY be an Issue (never Epic, never Milestone)
+          // Task's parent is another work item (hierarchical relationship)
           const parentExists = allTasks.some((t) => t.id === task.parent);
 
           if (!parentExists) {
-            // Parent Issue doesn't exist - likely filtered out (e.g., closed issue)
-            // Move task to root level
+            // Parent doesn't exist - move task to root level
             const modifiedTask = { ...task, parent: 0 };
             taskMap.set(task.id, modifiedTask);
           } else {
@@ -402,7 +380,7 @@ export class DataFilters {
    */
   static groupByMilestone(
     tasks: ITask[],
-    milestones: GitLabMilestone[],
+    milestones: any[],
   ): Map<number, ITask[]> {
     const groups = new Map<number, ITask[]>();
 
@@ -417,7 +395,7 @@ export class DataFilters {
     // Assign tasks to groups
     tasks.forEach((task) => {
       // Skip milestone summary tasks
-      if (task._gitlab?.type === 'milestone') {
+      if (task.$isMilestone || task.type === 'milestone') {
         return;
       }
 
@@ -434,10 +412,7 @@ export class DataFilters {
   /**
    * Group tasks by epic
    */
-  static groupByEpic(
-    tasks: ITask[],
-    epics: GitLabEpic[],
-  ): Map<number, ITask[]> {
+  static groupByEpic(tasks: ITask[], epics: any[]): Map<number, ITask[]> {
     const groups = new Map<number, ITask[]>();
 
     // Initialize groups with epics
@@ -450,7 +425,7 @@ export class DataFilters {
 
     // Assign tasks to groups
     tasks.forEach((task) => {
-      const epicId = task._gitlab?.epic?.id || 0;
+      const epicId = (task as any).epicId || 0;
       const group = groups.get(epicId);
       if (group) {
         group.push(task);
@@ -562,7 +537,7 @@ export class DataFilters {
 
     tasks.forEach((task) => {
       // Skip milestone summary tasks
-      if (task._gitlab?.type === 'milestone') {
+      if (task.$isMilestone || task.type === 'milestone') {
         return;
       }
 
@@ -571,7 +546,7 @@ export class DataFilters {
       const progress = task.progress || 0;
       totalProgress += progress;
 
-      // Normalize state check (GraphQL returns 'OPEN'/'CLOSED', REST returns 'opened'/'closed')
+      // Normalize state check
       const isClosed =
         task.state?.toUpperCase() === 'CLOSED' ||
         task.state?.toLowerCase() === 'closed';

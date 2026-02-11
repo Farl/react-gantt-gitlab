@@ -41,7 +41,7 @@ export function CreateItemDialog({
   const titleInputRef = useRef(null);
   const batchInputRef = useRef(null);
 
-  // Milestone 不支援批次模式和 assignee（GitLab 限制）
+  // Milestone 不支援批次模式和 assignee（limitation）
   const isMilestone = itemType === 'milestone';
   const supportsBatchMode = !isMilestone;
   const supportsAssignees = !isMilestone && assigneeOptions.length > 0;

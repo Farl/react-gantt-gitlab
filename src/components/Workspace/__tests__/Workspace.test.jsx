@@ -2,21 +2,21 @@
  * Workspace Component Tests
  * Tests for view switching, toolbar rendering, filter panel, and settings toggle.
  *
- * The Workspace component wraps everything in GitLabDataProvider which uses
- * useGitLabData context heavily. We mock the entire context module to isolate
+ * The Workspace component wraps everything in DataProvider which uses
+ * useData context heavily. We mock the entire context module to isolate
  * the Workspace behavior.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-// Mock the GitLabDataContext module to avoid real provider initialization
-const mockUseGitLabData = vi.fn();
-vi.mock('../../../contexts/GitLabDataContext', () => ({
-  GitLabDataProvider: ({ children }) => (
+// Mock the DataContext module to avoid real provider initialization
+const mockUseData = vi.fn();
+vi.mock('../../../contexts/DataContext', () => ({
+  DataProvider: ({ children }) => (
     <div data-testid="data-provider">{children}</div>
   ),
-  useGitLabData: () => mockUseGitLabData(),
+  useData: () => mockUseData(),
 }));
 
 // Mock GanttView and KanbanView since they are heavy components
@@ -77,7 +77,7 @@ const defaultContextValue = {
 describe('Workspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseGitLabData.mockReturnValue(defaultContextValue);
+    mockUseData.mockReturnValue(defaultContextValue);
     // Reset localStorage mock to return 'gantt' by default
     localStorage.getItem.mockReturnValue('gantt');
   });
@@ -153,7 +153,7 @@ describe('Workspace', () => {
     fireEvent.click(kanbanBtn);
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
-      'gitlab-gantt-view-mode',
+      'gantt-view-mode',
       'kanban',
     );
   });

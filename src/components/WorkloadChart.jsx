@@ -23,7 +23,7 @@ function calculateTaskPosition(task, startDate, cellWidth, lengthUnit) {
   } else {
     // If no end date, check if this is using created date as start
     // (tasks without startDate use createdAt, and should have a default 7-day duration)
-    const isUsingCreatedDate = !task._gitlab?.startDate;
+    const isUsingCreatedDate = !task.startDate;
     if (isUsingCreatedDate) {
       // Default to 7 days for tasks using created date
       taskEnd = new Date(taskStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -93,7 +93,7 @@ function assignTasksToRows(tasks) {
     } else {
       // If no end date, check if this is using created date as start
       // (tasks without startDate use createdAt, and should have a default 7-day duration)
-      const isUsingCreatedDate = !task._gitlab?.startDate;
+      const isUsingCreatedDate = !task.startDate;
       if (isUsingCreatedDate) {
         // Default to 7 days for tasks using created date
         taskEnd = new Date(taskStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -146,7 +146,7 @@ function groupTasks(
 
   // Filter work items only
   const workItems = allTasks.filter((task) => {
-    const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
+    const isMilestone = task.$isMilestone || task.type === 'milestone';
     const isSummary = task.type === 'summary';
     return !isMilestone && !isSummary && task.start;
   });
@@ -579,7 +579,7 @@ export function WorkloadChart({
       lengthUnit,
     );
 
-    const isTask = task._gitlab?.workItemType === 'Task';
+    const isTask = task.type === 'task' || task.workItemType === 'Task';
     const barColor = isTask ? '#00ba94' : '#428fdc';
 
     // Generate tooltip text with proper date handling
@@ -592,7 +592,7 @@ export function WorkloadChart({
       endDateStr = displayEnd.toLocaleDateString();
     } else {
       // Handle tasks without end dates
-      const isUsingCreatedDate = !task._gitlab?.startDate;
+      const isUsingCreatedDate = !task.startDate;
       if (isUsingCreatedDate) {
         endDateStr = '(estimated +7 days)';
         dateRangeNote = '\n[Using created date as start]';
@@ -622,7 +622,7 @@ export function WorkloadChart({
     }
 
     // Add type info
-    tooltipParts.push(`Type: ${task._gitlab?.workItemType || 'Issue'}`);
+    tooltipParts.push(`Type: ${task.workItemType || task.type || 'Issue'}`);
 
     const tooltipText = tooltipParts.join('\n');
 

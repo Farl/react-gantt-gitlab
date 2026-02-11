@@ -1,9 +1,9 @@
 /**
  * GanttView Component
  *
- * Gantt chart view that uses shared GitLabDataContext for data.
- * Extracted from GitLabGantt.jsx - this component handles all Gantt-specific UI logic
- * while the data layer is managed by GitLabDataProvider.
+ * Gantt chart view that uses shared DataContext for data.
+ * Extracted from GanttView.jsx - this component handles all Gantt-specific UI logic
+ * while the data layer is managed by DataProvider.
  */
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
@@ -19,7 +19,7 @@ import Editor from '../Editor.jsx';
 import Toolbar from '../Toolbar.jsx';
 import ContextMenu from '../ContextMenu.jsx';
 import SmartTaskContent from '../SmartTaskContent.jsx';
-import { useGitLabData } from '../../contexts/GitLabDataContext';
+import { useData } from '../../contexts/DataContext';
 import { useDateRangePreset } from '../../hooks/useDateRangePreset.ts';
 import { DataFilters } from '../../utils/DataFilters';
 import {
@@ -27,7 +27,7 @@ import {
   createStartDate,
   createEndDate,
 } from '../../utils/dateUtils.js';
-import { ProjectSelector } from '../ProjectSelector.jsx';
+// ProjectSelector removed - data source is provided via DataProvider
 import { SyncButton } from '../SyncButton.jsx';
 import { FilterPanel } from '../FilterPanel.jsx';
 import {
@@ -41,8 +41,23 @@ import { MoveInModal } from '../MoveInModal.jsx';
 import { SaveBlueprintModal } from '../SaveBlueprintModal.jsx';
 import { ApplyBlueprintModal } from '../ApplyBlueprintModal.jsx';
 import { BlueprintManager } from '../BlueprintManager.jsx';
-import { useBlueprint } from '../../hooks/useBlueprint.ts';
-import { applyBlueprint as applyBlueprintService } from '../../providers/BlueprintService.ts';
+
+// Blueprint hook stub - provides empty data when no backend is available
+function useBlueprint() {
+  return {
+    blueprints: [],
+    loading: false,
+    addBlueprint: async () => {},
+    deleteBlueprint: async () => {},
+    renameBlueprint: async () => {},
+    reload: () => {},
+  };
+}
+
+// Blueprint service stub
+async function applyBlueprintService() {
+  return { tasks: [], links: [] };
+}
 import { defaultMenuOptions } from '@svar-ui/gantt-store';
 import { ConfirmDialog } from '../shared/dialogs/ConfirmDialog';
 import { CreateItemDialog } from '../shared/dialogs/CreateItemDialog';
@@ -53,7 +68,7 @@ import {
 } from '../../utils/MilestoneIdUtils.ts';
 import {
   findLinkBySourceTarget,
-  validateLinkGitLabMetadata,
+  validateLinkMetadata,
 } from '../../utils/LinkUtils';
 
 /**
@@ -117,7 +132,7 @@ function getChildrenForTask(taskId, allTasks) {
 
 /**
  * Sort task IDs by deletion order (children first, then parents)
- * GitLab requires children to be deleted before parents
+ * Provider requires children to be deleted before parents
  *
  * @param {Array} taskIds - Array of task IDs to sort
  * @param {Array} allTasks - Array of all tasks
@@ -150,7 +165,7 @@ function sortByDeletionOrder(taskIds, allTasks) {
 /**
  * GanttView Props
  * @param {boolean} hideSharedToolbar - Hide shared toolbar elements (project selector, sync button)
- *                                      when embedded in GitLabWorkspace which provides these.
+ *                                      when embedded in Workspace which provides these.
  *                                      FilterPanel is always shown regardless of this prop.
  * @param {boolean} showSettings - Control settings modal visibility from parent
  * @param {function} onSettingsClose - Callback when settings modal is closed
@@ -161,7 +176,7 @@ export function GanttView({
   onSettingsClose,
   externalShowViewOptions,
 }) {
-  // === Get data from GitLabDataContext ===
+  // === Get data from DataContext ===
   const {
     // Core Data
     tasks: allTasks,
@@ -223,7 +238,7 @@ export function GanttView({
     countWorkdays,
     calculateEndDateByWorkdays,
     highlightTime,
-  } = useGitLabData();
+  } = useData();
 
   // === GanttView-specific State (from useGanttState hook) ===
   const {
@@ -270,7 +285,7 @@ export function GanttView({
     effectiveCellWidth,
   } = useGanttState();
 
-  // Settings modal can be controlled externally (from GitLabWorkspace) or internally
+  // Settings modal can be controlled externally (from Workspace) or internally
   const showSettings =
     externalShowSettings !== undefined
       ? externalShowSettings
@@ -281,7 +296,7 @@ export function GanttView({
         else setInternalShowSettings(true);
       }
     : setInternalShowSettings;
-  // View Options can be controlled externally (from GitLabWorkspace) or internally
+  // View Options can be controlled externally (from Workspace) or internally
   const showViewOptions =
     externalShowViewOptions !== undefined
       ? externalShowViewOptions
@@ -316,13 +331,13 @@ export function GanttView({
 
   // Generate a unique key for localStorage based on project/group
   const getStorageKey = useCallback(() => {
-    if (!currentConfig) return 'gitlab-gantt-foldstate-default';
+    if (!currentConfig) return 'gantt-foldstate-default';
     if (currentConfig.type === 'project' && currentConfig.projectId) {
-      return `gitlab-gantt-foldstate-project-${currentConfig.projectId}`;
+      return `gantt-foldstate-project-${currentConfig.projectId}`;
     } else if (currentConfig.type === 'group' && currentConfig.groupId) {
-      return `gitlab-gantt-foldstate-group-${currentConfig.groupId}`;
+      return `gantt-foldstate-group-${currentConfig.groupId}`;
     }
-    return 'gitlab-gantt-foldstate-default';
+    return 'gantt-foldstate-default';
   }, [currentConfig]);
 
   // Load fold state from localStorage when config changes
@@ -582,23 +597,14 @@ export function GanttView({
     [],
   );
 
-  // Blueprint hook
+  // Blueprint hook (stubbed - no backend needed for demo)
   const {
     blueprints,
     loading: blueprintsLoading,
-    canUseSnippet: canUseBlueprintSnippet,
     addBlueprint,
     deleteBlueprint,
     renameBlueprint,
-    // NOTE: reloadBlueprints is available but not currently used
-    // eslint-disable-next-line no-unused-vars
-    reload: reloadBlueprints,
-  } = useBlueprint({
-    fullPath: projectPath,
-    proxyConfig,
-    configType: currentConfig?.type || 'project',
-    id: currentConfig?.projectId || currentConfig?.groupId,
-  });
+  } = useBlueprint();
 
   // Handler for adding a new milestone - opens CreateItemDialog
   const handleAddMilestone = useCallback(() => {
@@ -651,9 +657,9 @@ export function GanttView({
 
             // If creating under a milestone, add milestone info
             if (itemType === 'issue' && parentTask?.$isMilestone) {
-              newTask._gitlab = {
-                ...newTask._gitlab,
-                milestoneGlobalId: parentTask._gitlab.globalId,
+              newTask._source = {
+                ...newTask._source,
+                milestoneGlobalId: parentTask._source.globalId,
               };
             }
 
@@ -712,7 +718,7 @@ export function GanttView({
           taskIds = Array.from(allItems);
         }
 
-        // Sort by deletion order: children first, then parents (GitLab requirement)
+        // Sort by deletion order: children first, then parents (deletion order requirement)
         taskIds = sortByDeletionOrder(taskIds, allTasksRef.current);
 
         // Track already processed items to avoid duplicates
@@ -732,7 +738,7 @@ export function GanttView({
 
             // Skip milestones for close action (milestones cannot be closed)
             const task = allTasksRef.current.find((t) => t.id === taskId);
-            if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
+            if (task?.$isMilestone || task?._source?.type === 'milestone') {
               console.log(
                 `[GanttView] Skipping close for milestone: ${taskId}`,
               );
@@ -811,7 +817,7 @@ export function GanttView({
       text: 'Save as Blueprint...',
       icon: 'fas fa-copy',
       // Only show for Milestones
-      check: (task) => task?._gitlab?.type === 'milestone',
+      check: (task) => task?._source?.type === 'milestone',
     });
     options.push({
       id: 'create-from-blueprint',
@@ -835,7 +841,7 @@ export function GanttView({
         setShowMoveInModal(true);
       } else if (action?.id === 'save-as-blueprint') {
         // Save milestone as Blueprint
-        if (ctx?._gitlab?.type === 'milestone') {
+        if (ctx?._source?.type === 'milestone') {
           setSelectedMilestoneForBlueprint(ctx);
           setShowSaveBlueprintModal(true);
         }
@@ -895,7 +901,7 @@ export function GanttView({
         }
 
         // Trigger data refresh to reflect changes
-        // NOTE: This is a simple approach - trigger a sync to refresh data from GitLab
+        // NOTE: This is a simple approach - trigger a sync to refresh data from provider
         // In a more optimized implementation, we could update local state directly
         if (result.success.length > 0) {
           // Close modal first
@@ -1017,17 +1023,17 @@ export function GanttView({
 
           if (changes && Object.keys(changes).length > 0) {
             try {
-              // Get _gitlab info from current task for proper ID resolution
+              // Get _source info from current task for proper ID resolution
               // This is especially important for milestones which need internalId
               const currentTask = ganttApi.getTask(taskId);
-              if (currentTask?._gitlab) {
-                changes._gitlab = currentTask._gitlab;
+              if (currentTask?._source) {
+                changes._source = currentTask._source;
               }
 
               await syncTask(taskId, changes);
               pendingEditorChangesRef.current.clear();
 
-              // Refresh from GitLab to update local state
+              // Refresh from provider to update local state
               await sync();
 
               // Close editor after successful save
@@ -1073,16 +1079,16 @@ export function GanttView({
        * Event flow:
        * 1. intercept('update-task') - Captures original workdays BEFORE Gantt updates
        * 2. First on('update-task') - Calculates and applies end date correction
-       * 3. Second on('update-task') - Handles GitLab sync, skips stale events
+       * 3. Second on('update-task') - Handles provider sync, skips stale events
        *
        * State tracking:
        * - workdaysState.originalWorkdays: Captured before drag completes
-       * - workdaysState.correctionSynced: True after correction update is sent to GitLab
+       * - workdaysState.correctionSynced: True after correction update is sent to provider
        *
        * Why two handlers?
        * - The intercept runs before Gantt's internal update
        * - The on handlers run after, giving us access to the new start date
-       * - We need to skip syncing the intermediate (wrong) end date to GitLab
+       * - We need to skip syncing the intermediate (wrong) end date to provider
        */
       const workdaysState = new Map(); // taskId -> { originalWorkdays, correctionSynced }
 
@@ -1094,7 +1100,7 @@ export function GanttView({
         }
 
         // Only process move mode drags (not resize)
-        // GitLab milestones have start and end dates, so they also need workdays adjustment
+        // Source milestones have start and end dates, so they also need workdays adjustment
         if (ev.mode === 'move' && ev.diff) {
           const task = ganttApi.getTask(ev.id);
 
@@ -1158,13 +1164,13 @@ export function GanttView({
         }
       });
 
-      // Phase 3: GitLab sync handler - skip stale events, only sync correction
+      // Phase 3: provider sync handler - skip stale events, only sync correction
       ganttApi.on('update-task', (ev) => {
         const state = workdaysState.get(ev.id);
 
         if (state) {
           if (ev.skipWorkdaysAdjust) {
-            // This is the correction update - mark synced and allow GitLab sync
+            // This is the correction update - mark synced and allow provider sync
             state.correctionSynced = true;
             // Clean up state after sync completes (use setTimeout to ensure sync runs first)
             setTimeout(() => workdaysState.delete(ev.id), 0);
@@ -1191,9 +1197,9 @@ export function GanttView({
           return;
         }
 
-        // If this is an ID update for temp task, allow it but don't sync to GitLab
+        // If this is an ID update for temp task, allow it but don't sync to provider
         if (isTempId && isIdUpdate) {
-          // Don't sync this to GitLab, and don't process parent baseline updates
+          // Don't sync this to provider, and don't process parent baseline updates
           return;
         }
 
@@ -1240,7 +1246,7 @@ export function GanttView({
                     base_end: spanEnd,
                   },
                   skipBaselineDrag: true,
-                  skipSync: true, // Don't sync to GitLab
+                  skipSync: true, // Don't sync to provider
                 });
               }
             }
@@ -1273,9 +1279,9 @@ export function GanttView({
           const currentTask = ganttApi.getTask(ev.id);
           const taskChanges = {};
 
-          // Get _gitlab for global ID (cached, no extra query)
-          if (currentTask._gitlab) {
-            taskChanges._gitlab = currentTask._gitlab;
+          // Get _source for global ID (cached, no extra query)
+          if (currentTask._source) {
+            taskChanges._source = currentTask._source;
           }
 
           // Use values from ev.task if provided (NEW values from drag/edit)
@@ -1354,9 +1360,9 @@ export function GanttView({
             const normalizedStart = createStartDate(startValue);
             taskChanges.start = normalizedStart; // can be null
             ev.task.start = normalizedStart;
-            if (!taskChanges._gitlab)
-              taskChanges._gitlab = { ...currentTask._gitlab };
-            taskChanges._gitlab.startDate = formatDateToLocalString(startValue);
+            if (!taskChanges._source)
+              taskChanges._source = { ...currentTask._source };
+            taskChanges._source.startDate = formatDateToLocalString(startValue);
           }
 
           // Process end date - normalize to 23:59:59 local time
@@ -1364,18 +1370,18 @@ export function GanttView({
             const normalizedEnd = createEndDate(endValue);
             taskChanges.end = normalizedEnd; // can be null
             ev.task.end = normalizedEnd;
-            if (!taskChanges._gitlab)
-              taskChanges._gitlab = { ...currentTask._gitlab };
-            taskChanges._gitlab.dueDate = formatDateToLocalString(endValue);
+            if (!taskChanges._source)
+              taskChanges._source = { ...currentTask._source };
+            taskChanges._source.dueDate = formatDateToLocalString(endValue);
           }
 
           if (ev.task.duration !== undefined) {
             taskChanges.duration = ev.task.duration;
           }
 
-          // Update ev.task._gitlab so Grid cells (DateEditCell) show updated values
-          if (taskChanges._gitlab) {
-            ev.task._gitlab = taskChanges._gitlab;
+          // Update ev.task._source so Grid cells (DateEditCell) show updated values
+          if (taskChanges._source) {
+            ev.task._source = taskChanges._source;
           }
 
           // Check if any date was cleared (set to null)
@@ -1387,7 +1393,7 @@ export function GanttView({
             try {
               await syncTask(ev.id, taskChanges);
 
-              // If a date was cleared, refresh from GitLab because svar Gantt
+              // If a date was cleared, refresh from provider because svar Gantt
               // doesn't properly handle null dates (auto-fills via normalizeDates)
               if (hasDateCleared) {
                 sync();
@@ -1395,7 +1401,7 @@ export function GanttView({
             } catch (error) {
               console.error('Failed to sync task update:', error);
               showToast(`Failed to sync task: ${error.message}`, 'error');
-              // Revert by reloading from GitLab
+              // Revert by reloading from provider
               sync();
             }
           })();
@@ -1431,24 +1437,24 @@ export function GanttView({
             return false;
           }
 
-          // Check if parent is a GitLab Task (subtask)
-          // Only GitLab Tasks cannot have children (third level not allowed)
+          // Check if parent is a provider Task (subtask)
+          // Only provider Tasks cannot have children (third level not allowed)
           // Issues under milestones CAN have children (Tasks)
-          const isParentGitLabTask =
+          const isParentTask =
             parentTask && !parentTask.$isIssue && !parentTask.$isMilestone;
 
-          if (isParentGitLabTask) {
+          if (isParentTask) {
             showToast(
-              'Cannot create subtasks under a GitLab Task. Only Issues can have Tasks as children.',
+              'Cannot create subtasks under a provider Task. Only Issues can have Tasks as children.',
               'warning',
             );
             return false;
           }
 
-          // Check if parent is a GitLab Issue
-          const isParentGitLabIssue = parentTask && parentTask.$isIssue;
+          // Check if parent is an Issue
+          const isParentIssue = parentTask && parentTask.$isIssue;
 
-          if (isParentGitLabIssue) {
+          if (isParentIssue) {
             // Creating task under issue - show CreateItemDialog
             const defaultTitle =
               ev.task.text && ev.task.text !== 'New Task' ? ev.task.text : '';
@@ -1509,26 +1515,26 @@ export function GanttView({
                 }
               });
             } catch (error) {
-              console.error('[GitLab] Failed to save fold state:', error);
+              console.error('[GanttView] Failed to save fold state:', error);
             }
           }
 
           // Check if this is an issue being created under a milestone
           if (ev.task._assignToMilestone) {
             // Issues under milestones should not use hierarchy (parent=0)
-            // The milestone relationship is managed via GitLab's milestone widget
+            // The milestone relationship is managed via source milestone widget
             ev.task.parent = 0;
 
             // Add milestone info to task for provider to use
-            ev.task._gitlab = {
-              ...ev.task._gitlab,
+            ev.task._source = {
+              ...ev.task._source,
               milestoneGlobalId: ev.task._assignToMilestone,
             };
           }
 
           await createTask(ev.task);
 
-          // Sync with GitLab to ensure all data is up-to-date
+          // Sync with provider to ensure all data is up-to-date
           // This prevents stale data (e.g., edited titles) from being overwritten
           await sync();
 
@@ -1536,7 +1542,7 @@ export function GanttView({
           ganttApi.exec('delete-task', {
             id: ev.id,
             skipHandler: true, // Skip intercept
-            skipGitLabDelete: true, // Don't trigger GitLab delete
+            skipProviderDelete: true, // Don't trigger provider delete
           });
 
           // Restore fold state for parent tasks after adding new child
@@ -1566,7 +1572,7 @@ export function GanttView({
           ganttApi.exec('delete-task', {
             id: ev.id,
             skipHandler: true,
-            skipGitLabDelete: true,
+            skipProviderDelete: true,
           });
         }
       });
@@ -1584,9 +1590,9 @@ export function GanttView({
 
         // Determine the type of item
         let itemType = 'Issue';
-        if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
+        if (task?.$isMilestone || task?._source?.type === 'milestone') {
           itemType = 'Milestone';
-        } else if (task?._gitlab?.workItemType === 'Task') {
+        } else if (task?._source?.workItemType === 'Task') {
           itemType = 'Task';
         }
 
@@ -1611,7 +1617,7 @@ export function GanttView({
               title: child.text,
               type: child.$isMilestone
                 ? 'Milestone'
-                : child._gitlab?.workItemType === 'Task'
+                : child._source?.workItemType === 'Task'
                   ? 'Task'
                   : 'Issue',
             })),
@@ -1631,8 +1637,8 @@ export function GanttView({
       ganttApi.on('delete-task', async (ev) => {
         // Skip if this is an internal deletion (e.g., removing temp task after create)
         // Note: skipHandler=true from dialog confirmation should NOT skip this handler
-        // We use a separate flag (skipGitLabDelete) for internal deletions
-        if (ev.skipGitLabDelete) {
+        // We use a separate flag (skipProviderDelete) for internal deletions
+        if (ev.skipProviderDelete) {
           return;
         }
 
@@ -1641,17 +1647,17 @@ export function GanttView({
           // Try ganttApi first, then fall back to allTasksRef
           let task = ganttApi.getTask(ev.id);
 
-          // If task from ganttApi doesn't have _gitlab info, try to find it in allTasksRef
-          if (!task?._gitlab) {
+          // If task from ganttApi doesn't have _source info, try to find it in allTasksRef
+          if (!task?._source) {
             const taskFromRef = allTasksRef.current.find((t) => t.id === ev.id);
-            if (taskFromRef?._gitlab) {
+            if (taskFromRef?._source) {
               task = taskFromRef;
             }
           }
 
           // If this is a Milestone, wait for all its children to be deleted first
-          // This prevents GitLab 500 error when Milestone still has Issues
-          if (task?._gitlab?.type === 'milestone') {
+          // This prevents provider error when Milestone still has Issues
+          if (task?._source?.type === 'milestone') {
             // Find all pending deletes that are children of this milestone
             const childDeletePromises = [];
             for (const [childId, promise] of pendingDeletes.entries()) {
@@ -1669,7 +1675,7 @@ export function GanttView({
                 `[GanttView] Waiting for ${childDeletePromises.length} child items to be deleted before milestone...`,
               );
               await Promise.allSettled(childDeletePromises);
-              // Small delay to ensure GitLab has processed the deletions
+              // Small delay to ensure provider has processed the deletions
               await new Promise((resolve) => setTimeout(resolve, 500));
             }
           }
@@ -1703,18 +1709,18 @@ export function GanttView({
         const targetTask = ganttApi.getTask(ev.target);
 
         // Skip milestones - they can't be reordered (no way to save order)
-        if (movedTask._gitlab?.type === 'milestone') {
+        if (movedTask._source?.type === 'milestone') {
           return;
         }
 
         // Extract type information once
         const movedType =
-          movedTask._gitlab?.workItemType ||
-          movedTask._gitlab?.type ||
+          movedTask._source?.workItemType ||
+          movedTask._source?.type ||
           'unknown';
         const _targetType =
-          targetTask._gitlab?.workItemType ||
-          targetTask._gitlab?.type ||
+          targetTask._source?.workItemType ||
+          targetTask._source?.type ||
           'unknown';
 
         const parentId = movedTask.parent || 0;
@@ -1757,22 +1763,22 @@ export function GanttView({
               ? ganttApi.getTask(ev.target)
               : targetTask;
 
-          // Get GitLab IIDs from the task objects
-          const movedIid = movedTask._gitlab?.iid;
-          const targetIid = finalTargetTask._gitlab?.iid;
+          // Get source IIDs from the task objects
+          const movedIid = movedTask._source?.iid;
+          const targetIid = finalTargetTask._source?.iid;
 
-          // Check if both tasks have valid GitLab IIDs
+          // Check if both tasks have valid source IIDs
           if (!movedIid) {
             console.error(
-              `[GitLab] Cannot reorder: moved task ${ev.id} has no GitLab IID`,
+              `[GanttView] Cannot reorder: moved task ${ev.id} has no source IID`,
             );
             return;
           }
 
           // Use the type information we already extracted at the beginning
           const finalTargetType =
-            finalTargetTask._gitlab?.workItemType ||
-            finalTargetTask._gitlab?.type ||
+            finalTargetTask._source?.workItemType ||
+            finalTargetTask._source?.type ||
             'unknown';
 
           // Milestones are special - they can't be used for reordering at all
@@ -1796,20 +1802,20 @@ export function GanttView({
               const firstCompatibleIssue = siblings.find((s) => {
                 if (s.id === ev.id) return false; // Skip self
                 const siblingType =
-                  s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
+                  s._source?.workItemType || s._source?.type || 'unknown';
                 if (s.$isMilestone || siblingType === 'milestone') return false;
-                return movedType === siblingType && s._gitlab?.iid;
+                return movedType === siblingType && s._source?.iid;
               });
 
               if (firstCompatibleIssue) {
                 await provider.reorderWorkItem(
                   movedIid,
-                  firstCompatibleIssue._gitlab.iid,
+                  firstCompatibleIssue._source.iid,
                   'before',
                 );
               } else {
                 console.error(
-                  `[GitLab] No compatible ${movedType} found to reorder relative to`,
+                  `[GanttView] No compatible ${movedType} found to reorder relative to`,
                 );
               }
               return;
@@ -1827,9 +1833,9 @@ export function GanttView({
               const s = siblings[i];
               if (s.id === ev.id) continue; // Skip self
               const siblingType =
-                s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
+                s._source?.workItemType || s._source?.type || 'unknown';
               if (s.$isMilestone || siblingType === 'milestone') continue; // Skip milestones
-              if (movedType === siblingType && s._gitlab?.iid) {
+              if (movedType === siblingType && s._source?.iid) {
                 compatibleBefore = s;
                 break;
               }
@@ -1840,9 +1846,9 @@ export function GanttView({
               const s = siblings[i];
               if (s.id === ev.id) continue; // Skip self
               const siblingType =
-                s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
+                s._source?.workItemType || s._source?.type || 'unknown';
               if (s.$isMilestone || siblingType === 'milestone') continue; // Skip milestones
-              if (movedType === siblingType && s._gitlab?.iid) {
+              if (movedType === siblingType && s._source?.iid) {
                 compatibleAfter = s;
                 break;
               }
@@ -1881,12 +1887,12 @@ export function GanttView({
             if (useTarget) {
               await provider.reorderWorkItem(
                 movedIid,
-                useTarget._gitlab.iid,
+                useTarget._source.iid,
                 useMode,
               );
             } else {
               console.error(
-                `[GitLab] No compatible ${movedType} found to reorder relative to`,
+                `[GanttView] No compatible ${movedType} found to reorder relative to`,
               );
             }
             return;
@@ -1894,20 +1900,20 @@ export function GanttView({
 
           if (!targetIid) {
             console.error(
-              `[GitLab] Cannot reorder: target task ${ev.target} has no GitLab IID`,
+              `[GanttView] Cannot reorder: target task ${ev.target} has no source IID`,
             );
             return;
           }
 
-          // Use GitLab native reorder API with actual GitLab IIDs
+          // Use provider native reorder API with actual source IIDs
           await provider.reorderWorkItem(movedIid, targetIid, ev.mode);
 
           // Note: Automatic sync removed to prevent screen flickering
           // The Gantt chart maintains correct visual state after drag operation
-          // Order has been saved to GitLab via reorderWorkItem() API
+          // Order has been saved to provider via reorderWorkItem() API
         } catch (error) {
           console.error(
-            `[GitLab] Failed to reorder ${movedTask.text}: ${error.message}`,
+            `[GanttView] Failed to reorder ${movedTask.text}: ${error.message}`,
           );
         }
       });
@@ -1943,7 +1949,7 @@ export function GanttView({
             return;
           }
 
-          // Find matching link by source/target (prefers link with _gitlab metadata)
+          // Find matching link by source/target (prefers link with _source metadata)
           const link = findLinkBySourceTarget(currentLinks, sourceId, targetId);
 
           if (!link) {
@@ -1953,8 +1959,8 @@ export function GanttView({
             return;
           }
 
-          // Validate GitLab metadata for API call
-          const validation = validateLinkGitLabMetadata(link);
+          // Validate source metadata for API call
+          const validation = validateLinkMetadata(link);
 
           if (validation.valid) {
             // Pass appropriate options based on link type
@@ -1971,8 +1977,8 @@ export function GanttView({
               validation.linkedWorkItemGlobalId,
               options,
             );
-          } else if (link._gitlab === undefined) {
-            // Link exists but no _gitlab metadata - newly created and not yet synced
+          } else if (link._source === undefined) {
+            // Link exists but no _source metadata - newly created and not yet synced
             showToast('Link was just created. Syncing to update...', 'info');
             await sync();
           } else {
@@ -2082,7 +2088,7 @@ export function GanttView({
                 offsetDays,
                 workdays,
                 inboundLinks,
-                _gitlab: childTask._gitlab,
+                _source: childTask._source,
               };
             })
             .filter(Boolean);
@@ -2126,7 +2132,7 @@ export function GanttView({
               id: child.id,
               start: newStart,
               end: newEnd,
-              _gitlab: child._gitlab,
+              _source: child._source,
             });
           }
 
@@ -2147,18 +2153,18 @@ export function GanttView({
             });
           }
 
-          // 6. Batch sync to GitLab
+          // 6. Batch sync to provider
           await syncTask(parentId, {
             start: newParentStart,
             end: newParentEnd,
-            _gitlab: parentTask._gitlab,
+            _source: parentTask._source,
           });
 
           for (const u of updates) {
             await syncTask(u.id, {
               start: u.start,
               end: u.end,
-              _gitlab: u._gitlab,
+              _source: u._source,
             });
           }
 
@@ -2198,19 +2204,19 @@ export function GanttView({
   }, []);
 
   // Date cell component for custom formatting
-  // For regular tasks: Check _gitlab.startDate / _gitlab.dueDate to determine if GitLab actually has the date
-  // (row.start may be auto-filled with createdAt when GitLab has no startDate)
-  // For milestones: Always show the date (milestones always have dates in GitLab)
+  // For regular tasks: Check _source.startDate / _source.dueDate to determine if source actually has the date
+  // (row.start may be auto-filled with createdAt when source has no startDate)
+  // For milestones: Always show the date (milestones always have dates)
   const DateCell = useCallback(({ row, column }) => {
-    const isMilestone = row.$isMilestone || row._gitlab?.type === 'milestone';
+    const isMilestone = row.$isMilestone || row._source?.type === 'milestone';
 
-    // Milestones always have dates, so skip the _gitlab check for them
+    // Milestones always have dates, so skip the _source check for them
     if (!isMilestone) {
-      // For regular tasks, check if GitLab actually has the date
-      const gitlabFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
-      const hasGitLabDate = row._gitlab?.[gitlabFieldName];
+      // For regular tasks, check if source actually has the date
+      const sourceFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
+      const hasSourceDate = row._source?.[sourceFieldName];
 
-      if (!hasGitLabDate) {
+      if (!hasSourceDate) {
         return (
           <span style={{ color: 'var(--wx-color-secondary, #6e6e73)' }}>
             None
@@ -2251,17 +2257,17 @@ export function GanttView({
     let icon;
     let iconColor;
 
-    // Determine icon and color based on GitLab type
-    if (data.$isMilestone || data._gitlab?.type === 'milestone') {
+    // Determine icon and color based on source type
+    if (data.$isMilestone || data._source?.type === 'milestone') {
       // Milestone - purple
       icon = <i className="far fa-flag"></i>;
       iconColor = '#ad44ab';
-    } else if (data._gitlab?.workItemType === 'Task') {
-      // Task/Subtask (GitLab work item type is 'Task') - green
+    } else if (data._source?.workItemType === 'Task') {
+      // Task/Subtask (work item type is 'Task') - green
       icon = <i className="far fa-square-check"></i>;
       iconColor = '#00ba94';
     } else {
-      // Issue (GitLab work item type is 'Issue' or other) - blue
+      // Issue (work item type is 'Issue' or other) - blue
       icon = <i className="far fa-clipboard"></i>;
       iconColor = '#3983eb';
     }
@@ -2334,7 +2340,7 @@ export function GanttView({
     handleGridDateChange,
   ]);
 
-  // Editor items configuration - customized for GitLab
+  // Editor items configuration - customized for data source
   // Use 'nullable-date' comp type for date fields to support clearing dates to null
   // (svar's default 'date' type always requires a value and doesn't support null)
   const editorItems = useMemo(() => {
@@ -2351,9 +2357,9 @@ export function GanttView({
   // Show loading state
   if (syncState.isLoading && !currentConfig) {
     return (
-      <div className="gitlab-gantt-loading">
+      <div className="gantt-view-loading">
         <div className="loading-spinner"></div>
-        <p>Loading GitLab configuration...</p>
+        <p>Loading configuration...</p>
       </div>
     );
   }
@@ -2361,16 +2367,11 @@ export function GanttView({
   // Show config prompt if no config
   if (!currentConfig) {
     return (
-      <div className="gitlab-gantt-empty">
-        <ProjectSelector
-          onProjectChange={handleConfigChange}
-          currentConfigId={currentConfig?.id}
-          onConfigsChange={reloadConfigs}
-        />
+      <div className="gantt-view-empty">
         <div className="empty-message">
-          <h3>No GitLab project configured</h3>
+          <h3>No data source configured</h3>
           <p>
-            Please add a GitLab project or group configuration to get started.
+            Please provide a DataProvider with a data source to get started.
           </p>
         </div>
       </div>
@@ -2378,12 +2379,12 @@ export function GanttView({
   }
 
   return (
-    <div className="gitlab-gantt-container">
-      {/* Toast notifications are now handled by GitLabDataProvider */}
+    <div className="gantt-view-container">
+      {/* Toast notifications are now handled by DataProvider */}
 
       {/* Header section - hidden when hideSharedToolbar is true (e.g., embedded in unified toolbar) */}
       {!hideSharedToolbar && (
-        <div className="gitlab-gantt-header">
+        <div className="gantt-view-header">
           <div className="project-switcher">
             <select
               value={currentConfig?.id || ''}
@@ -2579,15 +2580,10 @@ export function GanttView({
 
             <div className="settings-modal-body">
               <div className="settings-section">
-                <h4>Project</h4>
-                <ProjectSelector
-                  onProjectChange={(config) => {
-                    handleConfigChange(config);
-                    setShowSettings(false);
-                  }}
-                  currentConfigId={currentConfig?.id}
-                  onConfigsChange={reloadConfigs}
-                />
+                <h4>Data Source</h4>
+                <p style={{ fontSize: '13px', color: '#666' }}>
+                  Data source is configured via the DataProvider wrapper.
+                </p>
               </div>
 
               <div className="settings-section">
@@ -2597,7 +2593,7 @@ export function GanttView({
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}
@@ -2645,7 +2641,7 @@ export function GanttView({
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}
@@ -2682,7 +2678,7 @@ export function GanttView({
                     <span className="permission-warning">
                       <i className="fas fa-lock"></i>
                       {currentConfig?.type === 'group'
-                        ? ' Not available for Groups (GitLab limitation)'
+                        ? ' Not available for Groups'
                         : ' Create Snippet permission required'}
                     </span>
                   )}
@@ -2708,7 +2704,7 @@ export function GanttView({
         </div>
       )}
 
-      {/* FilterPanel - only shown when not embedded in GitLabWorkspace */}
+      {/* FilterPanel - only shown when not embedded in Workspace */}
       {!hideSharedToolbar && (
         <FilterPanel
           key={currentConfig?.id || 'no-config'}
@@ -2763,7 +2759,7 @@ export function GanttView({
         <div className="gantt-chart-container">
           {syncState.isLoading ? (
             <div className="loading-message">
-              <p>Loading GitLab data...</p>
+              <p>Loading data...</p>
             </div>
           ) : (
             <ContextMenu
@@ -2800,20 +2796,20 @@ export function GanttView({
                   // Separate Issues with Epic parents from other orphaned tasks
                   const issuesWithEpicParent = orphanedTasks.filter((task) => {
                     // Check if this Issue has Epic parent stored in metadata
-                    return task._gitlab?.epicParentId;
+                    return task._source?.epicParentId;
                   });
 
                   const tasksWithMissingParent = orphanedTasks.filter(
                     (task) => {
                       // Everything else: Tasks with missing parents, or Issues with missing milestones
-                      return !task._gitlab?.epicParentId;
+                      return !task._source?.epicParentId;
                     },
                   );
 
                   if (issuesWithEpicParent.length > 0) {
                     // Get unique Epic IDs
                     const epicIds = new Set(
-                      issuesWithEpicParent.map((t) => t._gitlab?.epicParentId),
+                      issuesWithEpicParent.map((t) => t._source?.epicParentId),
                     );
 
                     // These are Issues with Epic parents - Epics are not supported yet
@@ -2842,7 +2838,7 @@ export function GanttView({
                           parent: t.parent,
                           text: t.text,
                           type: t.type,
-                          _gitlab: t._gitlab?.type,
+                          _source: t._source?.type,
                         })),
                         missingParentIds: Array.from(missingParentIds),
                       },

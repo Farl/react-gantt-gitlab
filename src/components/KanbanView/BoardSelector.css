@@ -112,8 +112,8 @@
 
 /* ========== Dark Theme ========== */
 .wx-willow-dark-theme .board-selector {
-  background: var(--wx-gitlab-control-background, #23262a);
-  border-bottom-color: var(--wx-gitlab-header-border, #384047);
+  background: var(--wx-gantt-control-background, #23262a);
+  border-bottom-color: var(--wx-gantt-header-border, #384047);
 }
 
 .wx-willow-dark-theme .board-selector-label {
@@ -121,13 +121,13 @@
 }
 
 .wx-willow-dark-theme .board-selector-select {
-  background: var(--wx-gitlab-button-background, #2c2f33);
-  border-color: var(--wx-gitlab-button-border, #384047);
-  color: var(--wx-gitlab-control-value, #e6e6e6);
+  background: var(--wx-gantt-button-background, #2c2f33);
+  border-color: var(--wx-gantt-button-border, #384047);
+  color: var(--wx-gantt-control-value, #e6e6e6);
 }
 
 .wx-willow-dark-theme .board-selector-select:hover {
-  border-color: var(--wx-gitlab-button-hover-text, #e6e6e6);
+  border-color: var(--wx-gantt-button-hover-text, #e6e6e6);
 }
 
 .wx-willow-dark-theme .board-selector-select:focus {
@@ -136,20 +136,20 @@
 }
 
 .wx-willow-dark-theme .board-selector-select:disabled {
-  background: var(--wx-gitlab-control-background, #23262a);
-  color: var(--wx-gitlab-control-text, #9fa1ae);
+  background: var(--wx-gantt-control-background, #23262a);
+  color: var(--wx-gantt-control-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .board-selector-btn {
-  background: var(--wx-gitlab-button-background, #2c2f33);
-  border-color: var(--wx-gitlab-button-border, #384047);
-  color: var(--wx-gitlab-button-text, #9fa1ae);
+  background: var(--wx-gantt-button-background, #2c2f33);
+  border-color: var(--wx-gantt-button-border, #384047);
+  color: var(--wx-gantt-button-text, #9fa1ae);
 }
 
 .wx-willow-dark-theme .board-selector-btn:hover:not(:disabled) {
-  background: var(--wx-gitlab-button-hover-background, #33373c);
-  border-color: var(--wx-gitlab-button-border, #384047);
-  color: var(--wx-gitlab-button-hover-text, #e6e6e6);
+  background: var(--wx-gantt-button-hover-background, #33373c);
+  border-color: var(--wx-gantt-button-border, #384047);
+  color: var(--wx-gantt-button-hover-text, #e6e6e6);
 }
 
 .wx-willow-dark-theme .board-selector-btn-new {

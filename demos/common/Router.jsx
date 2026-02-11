@@ -14,7 +14,7 @@ export default function Router({ onRouteChange }) {
 
   useEffect(() => {
     if (location.pathname === '/') {
-      navigate('/gitlab-integration/willow', { replace: true });
+      navigate('/azure-portfolio/willow', { replace: true });
     } else {
       onRouteChange(location.pathname);
     }
@@ -24,7 +24,7 @@ export default function Router({ onRouteChange }) {
     <Routes>
       <Route
         path="/"
-        element={<Navigate to="/gitlab-integration/willow" replace />}
+        element={<Navigate to="/azure-portfolio/willow" replace />}
       />
       {links
         .filter(([, , Component]) => Component !== null)

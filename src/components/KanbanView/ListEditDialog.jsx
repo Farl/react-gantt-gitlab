@@ -145,7 +145,7 @@ export function ListEditDialog({
 
       {/* Sort settings */}
       <div className="dialog-form-group">
-        <label>Display Sort (visual only, does not change GitLab order)</label>
+        <label>Display Sort (visual only, does not change server order)</label>
         <div className="list-edit-sort">
           <select
             className="dialog-input"

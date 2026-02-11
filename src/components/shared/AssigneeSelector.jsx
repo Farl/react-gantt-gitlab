@@ -13,7 +13,7 @@ import './AssigneeSelector.css';
  * @property {string} value - 值（通常是 display name）
  * @property {string} label - 顯示文字
  * @property {string} [subtitle] - 副標題（如 @username）
- * @property {string} [username] - GitLab username
+ * @property {string} [username] - Username
  */
 
 /**

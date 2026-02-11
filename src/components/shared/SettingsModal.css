@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--wx-gitlab-modal-overlay);
+  background: var(--wx-gantt-modal-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,7 +17,7 @@
 }
 
 .settings-modal-content {
-  background: var(--wx-gitlab-modal-background);
+  background: var(--wx-gantt-modal-background);
   border-radius: 8px;
   width: 90%;
   max-width: 800px;
@@ -31,20 +31,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--wx-gitlab-modal-border);
-  background: var(--wx-gitlab-modal-header-background);
+  border-bottom: 1px solid var(--wx-gantt-modal-border);
+  background: var(--wx-gantt-modal-header-background);
 }
 
 .settings-modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text);
+  color: var(--wx-gantt-modal-text);
 }
 
 .settings-section {
   padding: 20px;
-  border-bottom: 1px solid var(--wx-gitlab-modal-section-border);
+  border-bottom: 1px solid var(--wx-gantt-modal-section-border);
 }
 
 .settings-section:last-child {
@@ -55,22 +55,22 @@
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text);
+  color: var(--wx-gantt-modal-text);
 }
 
 .settings-hint {
   margin: 0 0 8px 0;
   font-size: 13px;
-  color: var(--wx-gitlab-modal-hint-text);
+  color: var(--wx-gantt-modal-hint-text);
 }
 
 .holidays-textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border);
+  border: 1px solid var(--wx-gantt-filter-input-border);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-input-background);
-  color: var(--wx-gitlab-modal-text);
+  background: var(--wx-gantt-filter-input-background);
+  color: var(--wx-gantt-modal-text);
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: 13px;
   resize: vertical;
@@ -83,8 +83,8 @@
 }
 
 .holidays-textarea.disabled {
-  background: var(--wx-gitlab-disabled-background, #f5f5f5);
-  color: var(--wx-gitlab-disabled-text, #999);
+  background: var(--wx-gantt-disabled-background, #f5f5f5);
+  color: var(--wx-gantt-disabled-text, #999);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -139,18 +139,18 @@
 
 .preset-btn {
   padding: 6px 12px;
-  border: 1px solid var(--wx-gitlab-button-border);
+  border: 1px solid var(--wx-gantt-button-border);
   border-radius: 4px;
-  background: var(--wx-gitlab-button-background);
-  color: var(--wx-gitlab-button-text);
+  background: var(--wx-gantt-button-background);
+  color: var(--wx-gantt-button-text);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
 }
 
 .preset-btn:hover {
-  background: var(--wx-gitlab-button-hover-background);
-  border-color: var(--wx-gitlab-button-hover-text);
+  background: var(--wx-gantt-button-hover-background);
+  border-color: var(--wx-gantt-button-hover-text);
 }
 
 .preset-btn-clear {

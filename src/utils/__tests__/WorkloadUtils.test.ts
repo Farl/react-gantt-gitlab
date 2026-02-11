@@ -52,12 +52,12 @@ describe('generateWorkloadTasks', () => {
       expect(workTasks[0].$originalId).toBe(2);
     });
 
-    it('should filter out tasks with _gitlab.type milestone', () => {
+    it('should filter out tasks with type milestone', () => {
       const tasks: ITask[] = [
         makeTask({
           id: 1,
           assigned: 'Alice',
-          _gitlab: { type: 'milestone' },
+          type: 'milestone',
         }),
         makeTask({ id: 2, assigned: 'Alice' }),
       ];

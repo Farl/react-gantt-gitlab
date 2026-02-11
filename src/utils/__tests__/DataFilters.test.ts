@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataFilters, toGitLabServerFilters } from '../DataFilters';
+import { DataFilters, toServerFilters } from '../DataFilters';
 import type { FilterOptions, ServerFilterOptions } from '../DataFilters';
 import type { ITask } from '@svar-ui/gantt-store';
 
@@ -24,7 +24,7 @@ function makeTask(overrides: Partial<ITask> & { id: number }): ITask {
 
 /**
  * Standard mock tasks used across many test suites.
- * Each task has different combinations of labels, assignees, state, and _gitlab metadata.
+ * Each task has different combinations of labels, assignees, state, and metadata.
  */
 function createStandardTasks(): ITask[] {
   return [
@@ -36,7 +36,8 @@ function createStandardTasks(): ITask[] {
       state: 'OPEN',
       progress: 0,
       end: new Date('2024-01-10'),
-      _gitlab: { milestoneIid: 1, workItemType: 'Issue' },
+      milestoneIid: 1,
+      workItemType: 'Issue',
       $isIssue: true,
       parent: 'm-1',
     }),
@@ -48,7 +49,9 @@ function createStandardTasks(): ITask[] {
       state: 'OPEN',
       progress: 50,
       end: new Date('2025-12-31'),
-      _gitlab: { milestoneIid: 2, epicParentId: 100, workItemType: 'Issue' },
+      milestoneIid: 2,
+      epicParentId: 100,
+      workItemType: 'Issue',
       $isIssue: true,
       parent: 'm-2',
     }),
@@ -60,7 +63,7 @@ function createStandardTasks(): ITask[] {
       state: 'CLOSED',
       progress: 100,
       end: new Date('2024-02-01'),
-      _gitlab: { workItemType: 'Issue' },
+      workItemType: 'Issue',
       $isIssue: true,
     }),
     makeTask({
@@ -71,7 +74,7 @@ function createStandardTasks(): ITask[] {
       state: 'OPEN',
       progress: 25,
       end: new Date('2024-01-08'),
-      _gitlab: { workItemType: 'Task' },
+      workItemType: 'Task',
       parent: 1,
     }),
     makeTask({
@@ -82,7 +85,9 @@ function createStandardTasks(): ITask[] {
       state: 'OPEN',
       progress: 0,
       end: new Date('2025-06-01'),
-      _gitlab: { milestoneIid: 1, epicParentId: 200, workItemType: 'Issue' },
+      milestoneIid: 1,
+      epicParentId: 200,
+      workItemType: 'Issue',
       $isIssue: true,
       parent: 'm-1',
     }),
@@ -95,13 +100,17 @@ function createMilestoneTasks(): ITask[] {
     makeTask({
       id: 'm-1' as any,
       text: 'Sprint 1',
-      _gitlab: { type: 'milestone', iid: 1 },
+      $isMilestone: true,
+      type: 'milestone',
+      issueId: 1,
       parent: 0,
     }),
     makeTask({
       id: 'm-2' as any,
       text: 'Sprint 2',
-      _gitlab: { type: 'milestone', iid: 2 },
+      $isMilestone: true,
+      type: 'milestone',
+      issueId: 2,
       parent: 0,
     }),
   ];
@@ -682,10 +691,10 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 1,
         parent: 0,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
         $isIssue: true,
       }),
-      makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
+      makeTask({ id: 2, parent: 1, workItemType: 'Task' }),
     ];
     // Only child in filtered set
     const filtered = [allTasks[1]];
@@ -696,9 +705,7 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
   });
 
   it('should move Task to root level when parent Issue does not exist in allTasks', () => {
-    const allTasks = [
-      makeTask({ id: 2, parent: 999, _gitlab: { workItemType: 'Task' } }),
-    ];
+    const allTasks = [makeTask({ id: 2, parent: 999, workItemType: 'Task' })];
     const result = DataFilters.ensureParentChildIntegrity(allTasks, allTasks);
     expect(result).toHaveLength(1);
     expect(result[0].parent).toBe(0);
@@ -709,7 +716,7 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 1,
         parent: 'm-99' as any,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
         $isIssue: true,
       }),
     ];
@@ -723,12 +730,14 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 'm-1' as any,
         parent: 0,
-        _gitlab: { type: 'milestone', iid: 1 },
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
       }),
       makeTask({
         id: 1,
         parent: 'm-1' as any,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
         $isIssue: true,
       }),
     ];
@@ -746,11 +755,11 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 1,
         parent: 0,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
         $isIssue: true,
       }),
-      makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
-      makeTask({ id: 3, parent: 2, _gitlab: { workItemType: 'Task' } }),
+      makeTask({ id: 2, parent: 1, workItemType: 'Task' }),
+      makeTask({ id: 3, parent: 2, workItemType: 'Task' }),
     ];
     // Only grandchild in filtered
     const filtered = [allTasks[2]];
@@ -766,7 +775,9 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 'm-1' as any,
         parent: 0,
-        _gitlab: { type: 'milestone', iid: 1 },
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
       }),
       makeTask({ id: 1, parent: 'm-1' as any, $isIssue: true }),
     ];
@@ -781,12 +792,14 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 'm-1' as any,
         parent: 0,
-        _gitlab: { type: 'milestone', iid: 1 },
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
       }),
       makeTask({
         id: 1,
         parent: 'm-1' as any,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
       }),
     ];
     const filtered = [allTasks[1]];
@@ -795,13 +808,15 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
     expect(ids).toContain('m-1');
   });
 
-  it('should treat tasks with no _gitlab metadata and no $isIssue as Issue (fallback)', () => {
-    // When workItemType is not 'Task' and _gitlab.type is not set, it defaults to Issue
+  it('should treat tasks with no metadata and no $isIssue as Issue (fallback)', () => {
+    // When workItemType is not 'Task' and type is not set, it defaults to Issue
     const allTasks = [
       makeTask({
         id: 'm-1' as any,
         parent: 0,
-        _gitlab: { type: 'milestone', iid: 1 },
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
       }),
       makeTask({ id: 1, parent: 'm-1' as any }),
     ];
@@ -816,10 +831,10 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
       makeTask({
         id: 1,
         parent: 0,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
         $isIssue: true,
       }),
-      makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
+      makeTask({ id: 2, parent: 1, workItemType: 'Task' }),
     ];
     // Both parent and child in filtered set
     const result = DataFilters.ensureParentChildIntegrity(allTasks, allTasks);
@@ -884,12 +899,12 @@ describe('DataFilters.groupByMilestone', () => {
       makeTask({
         id: 1,
         parent: 10 as any,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
       }),
       makeTask({
         id: 2,
         parent: 20 as any,
-        _gitlab: { workItemType: 'Issue' },
+        workItemType: 'Issue',
       }),
     ];
     const groups = DataFilters.groupByMilestone(tasks, milestones);
@@ -905,7 +920,12 @@ describe('DataFilters.groupByMilestone', () => {
 
   it('should skip milestone summary tasks', () => {
     const tasks = [
-      makeTask({ id: 'm-1' as any, _gitlab: { type: 'milestone', iid: 1 } }),
+      makeTask({
+        id: 'm-1' as any,
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
+      }),
       makeTask({ id: 1, parent: 10 as any }),
     ];
     const groups = DataFilters.groupByMilestone(tasks, milestones);
@@ -964,10 +984,10 @@ describe('DataFilters.groupByEpic', () => {
     expect(groups.has(0)).toBe(true);
   });
 
-  it('should assign tasks to the correct epic group via _gitlab.epic.id', () => {
+  it('should assign tasks to the correct epic group via epicId', () => {
     const tasks = [
-      makeTask({ id: 1, _gitlab: { epic: { id: 100 } } }),
-      makeTask({ id: 2, _gitlab: { epic: { id: 200 } } }),
+      makeTask({ id: 1, epicId: 100 }),
+      makeTask({ id: 2, epicId: 200 }),
     ];
     const groups = DataFilters.groupByEpic(tasks, epics);
     expect(groups.get(100)).toHaveLength(1);
@@ -980,8 +1000,8 @@ describe('DataFilters.groupByEpic', () => {
     expect(groups.get(0)).toHaveLength(1);
   });
 
-  it('should handle tasks with _gitlab but no epic', () => {
-    const tasks = [makeTask({ id: 1, _gitlab: { workItemType: 'Issue' } })];
+  it('should handle tasks with metadata but no epic', () => {
+    const tasks = [makeTask({ id: 1, workItemType: 'Issue' })];
     const groups = DataFilters.groupByEpic(tasks, epics);
     expect(groups.get(0)).toHaveLength(1);
   });
@@ -1227,7 +1247,12 @@ describe('DataFilters.calculateStats', () => {
   it('should calculate total count excluding milestone summary tasks', () => {
     const tasks = [
       makeTask({ id: 1, state: 'OPEN', progress: 0 }),
-      makeTask({ id: 'm-1' as any, _gitlab: { type: 'milestone', iid: 1 } }),
+      makeTask({
+        id: 'm-1' as any,
+        $isMilestone: true,
+        type: 'milestone',
+        issueId: 1,
+      }),
     ];
     const stats = DataFilters.calculateStats(tasks);
     expect(stats.total).toBe(1);
@@ -1357,30 +1382,30 @@ describe('DataFilters.calculateStats', () => {
 });
 
 // ===========================================================================
-// toGitLabServerFilters
+// toServerFilters
 // ===========================================================================
-describe('toGitLabServerFilters', () => {
+describe('toServerFilters', () => {
   it('should return undefined when options is undefined', () => {
-    expect(toGitLabServerFilters(undefined)).toBeUndefined();
+    expect(toServerFilters(undefined)).toBeUndefined();
   });
 
   it('should convert labelNames', () => {
-    const result = toGitLabServerFilters({ labelNames: ['bug', 'feature'] });
+    const result = toServerFilters({ labelNames: ['bug', 'feature'] });
     expect(result?.labelNames).toEqual(['bug', 'feature']);
   });
 
   it('should convert milestoneTitles', () => {
-    const result = toGitLabServerFilters({ milestoneTitles: ['Sprint 1'] });
+    const result = toServerFilters({ milestoneTitles: ['Sprint 1'] });
     expect(result?.milestoneTitles).toEqual(['Sprint 1']);
   });
 
   it('should convert assigneeUsernames', () => {
-    const result = toGitLabServerFilters({ assigneeUsernames: ['alice'] });
+    const result = toServerFilters({ assigneeUsernames: ['alice'] });
     expect(result?.assigneeUsernames).toEqual(['alice']);
   });
 
   it('should convert dateRange to createdAfter/createdBefore', () => {
-    const result = toGitLabServerFilters({
+    const result = toServerFilters({
       dateRange: {
         createdAfter: '2024-01-01T00:00:00Z',
         createdBefore: '2024-12-31T23:59:59Z',
@@ -1391,7 +1416,7 @@ describe('toGitLabServerFilters', () => {
   });
 
   it('should handle partial dateRange (only createdAfter)', () => {
-    const result = toGitLabServerFilters({
+    const result = toServerFilters({
       dateRange: { createdAfter: '2024-06-01T00:00:00Z' },
     });
     expect(result?.createdAfter).toBe('2024-06-01T00:00:00Z');
@@ -1399,7 +1424,7 @@ describe('toGitLabServerFilters', () => {
   });
 
   it('should handle partial dateRange (only createdBefore)', () => {
-    const result = toGitLabServerFilters({
+    const result = toServerFilters({
       dateRange: { createdBefore: '2024-06-01T00:00:00Z' },
     });
     expect(result?.createdAfter).toBeUndefined();
@@ -1407,7 +1432,7 @@ describe('toGitLabServerFilters', () => {
   });
 
   it('should handle empty options object', () => {
-    const result = toGitLabServerFilters({});
+    const result = toServerFilters({});
     expect(result).toBeDefined();
     expect(result?.labelNames).toBeUndefined();
     expect(result?.milestoneTitles).toBeUndefined();
@@ -1426,7 +1451,7 @@ describe('toGitLabServerFilters', () => {
         createdBefore: '2024-12-31T23:59:59Z',
       },
     };
-    const result = toGitLabServerFilters(options);
+    const result = toServerFilters(options);
     expect(result?.labelNames).toEqual(['bug']);
     expect(result?.milestoneTitles).toEqual(['Sprint 1']);
     expect(result?.assigneeUsernames).toEqual(['alice']);
@@ -1435,7 +1460,7 @@ describe('toGitLabServerFilters', () => {
   });
 
   it('should handle options without dateRange', () => {
-    const result = toGitLabServerFilters({ labelNames: ['bug'] });
+    const result = toServerFilters({ labelNames: ['bug'] });
     expect(result?.createdAfter).toBeUndefined();
     expect(result?.createdBefore).toBeUndefined();
   });

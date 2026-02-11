@@ -50,7 +50,7 @@ describe('DataContext', () => {
         assignees: ['alice', 'bob'],
       }),
       checkCanEdit: vi.fn().mockResolvedValue(true),
-      getConfig: vi.fn().mockReturnValue({ type: 'gitlab' }),
+      getConfig: vi.fn().mockReturnValue({ type: 'static' }),
     } as any;
   });
 
@@ -167,7 +167,7 @@ describe('DataContext', () => {
       const config = mockProvider.getConfig();
 
       expect(config).toBeDefined();
-      expect(config.type).toBe('gitlab');
+      expect(config.type).toBe('static');
     });
   });
 
@@ -239,9 +239,9 @@ describe('DataContext', () => {
   });
 
   describe('Configuration types', () => {
-    it('should support gitlab configuration', () => {
+    it('should support static configuration', () => {
       const config = mockProvider.getConfig();
-      expect(config.type).toBe('gitlab');
+      expect(config.type).toBe('static');
     });
 
     it('should maintain configuration across operations', () => {
@@ -253,8 +253,8 @@ describe('DataContext', () => {
 
     it('should include optional metadata in config', () => {
       const configWithMetadata = {
-        type: 'gitlab',
-        sourceUrl: 'https://gitlab.com',
+        type: 'static',
+        sourceUrl: 'https://example.com',
         projectId: 'my-project',
         metadata: { fullPath: 'group/project' },
       };

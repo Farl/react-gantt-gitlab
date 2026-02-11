@@ -192,7 +192,7 @@ export function FilterPanel({
   }, [tasks, filterOptions?.members]);
 
   // Build milestone options - merge from milestones prop and filterOptions
-  // Use iid as value for client-side filtering (matches _gitlab.milestoneIid)
+  // Use iid as value for client-side filtering (matches milestoneIid)
   const milestoneOptions = useMemo(() => {
     // Milestones from prop (has iid)
     const propMilestones = milestones || [];
@@ -204,7 +204,7 @@ export function FilterPanel({
 
     propMilestones.forEach((m) => {
       merged.set(m.title, {
-        value: m.iid, // Use iid for filtering (matches _gitlab.milestoneIid)
+        value: m.iid, // Use iid for filtering (matches _source.milestoneIid)
         title: m.title,
         label: m.title,
       });
@@ -236,7 +236,7 @@ export function FilterPanel({
   }, [epics]);
 
   // Apply initial preset when presets are loaded
-  // NOTE: This only sets the UI state. GitLabGantt handles the initial sync with filters.
+  // NOTE: This only sets the UI state. GanttView handles the initial sync with filters.
   // We don't call onServerFilterApply here to avoid double sync.
   useEffect(() => {
     if (
@@ -482,7 +482,7 @@ export function FilterPanel({
   };
 
   return (
-    <div className="gitlab-filter-panel">
+    <div className="filter-panel">
       <div className="filter-header">
         <div className="filter-actions-group">
           <button
@@ -639,7 +639,7 @@ export function FilterPanel({
             <div className="filter-tab-info">
               {activeTab === 'client'
                 ? 'Filters applied locally to fetched data. Changes take effect immediately.'
-                : 'Filters applied when fetching from GitLab. Changes require re-sync.'}
+                : 'Filters applied when fetching from data source. Changes require re-sync.'}
             </div>
           </div>
 
@@ -737,8 +737,8 @@ export function FilterPanel({
                   </div>
                 ) : (
                   <div className="filter-grid">
-                    {/* Labels - GitLab API uses AND logic for multiple labels */}
-                    {/* Note: GitLab GraphQL API does not support filtering for "no labels" */}
+                    {/* Labels - API uses AND logic for multiple labels */}
+                    {/* Note: Data source may not support filtering for "no labels" */}
                     <FilterMultiSelect
                       title="Labels (AND)"
                       options={(filterOptions?.labels || []).map((l) => ({
@@ -754,7 +754,7 @@ export function FilterPanel({
                       emptyMessage="No labels available"
                     />
 
-                    {/* Milestones - GitLab API uses OR logic for multiple milestones */}
+                    {/* Milestones - API uses OR logic for multiple milestones */}
                     <FilterMultiSelect
                       title="Milestones (OR)"
                       options={[
@@ -774,7 +774,7 @@ export function FilterPanel({
                       emptyMessage="No milestones available"
                     />
 
-                    {/* Assignees - GitLab API uses AND logic for multiple assignees */}
+                    {/* Assignees - API uses AND logic for multiple assignees */}
                     <FilterMultiSelect
                       title="Assignees (AND)"
                       options={[
@@ -855,9 +855,9 @@ export function FilterPanel({
       )}
 
       <style>{`
-        .gitlab-filter-panel {
-          background: var(--wx-gitlab-filter-background);
-          border-bottom: 1px solid var(--wx-gitlab-filter-border);
+        .filter-panel {
+          background: var(--wx-gantt-filter-background);
+          border-bottom: 1px solid var(--wx-gantt-filter-border);
         }
 
         .filter-header {
@@ -887,7 +887,7 @@ export function FilterPanel({
           border: none;
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           cursor: pointer;
           padding: 2px 6px;
           border-radius: 4px;
@@ -895,12 +895,12 @@ export function FilterPanel({
         }
 
         .filter-toggle:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .toggle-icon {
           font-size: 10px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .btn-clear {
@@ -947,8 +947,8 @@ export function FilterPanel({
         .btn-revert {
           padding: 2px 8px;
           background: transparent;
-          color: var(--wx-gitlab-filter-text);
-          border: 1px solid var(--wx-gitlab-filter-border, #ddd);
+          color: var(--wx-gantt-filter-text);
+          border: 1px solid var(--wx-gantt-filter-border, #ddd);
           border-radius: 4px;
           font-size: 11px;
           cursor: pointer;
@@ -956,13 +956,13 @@ export function FilterPanel({
         }
 
         .btn-revert:hover {
-          background: var(--wx-gitlab-filter-hover-background);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         /* Save button */
         .btn-save {
           padding: 2px 8px;
-          background: var(--wx-gitlab-accent-color, #fc6d26);
+          background: var(--wx-gantt-accent-color, #fc6d26);
           color: white;
           border: none;
           border-radius: 4px;
@@ -990,10 +990,10 @@ export function FilterPanel({
           width: 100%;
           max-width: 400px;
           padding: 6px 12px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 4px;
-          background: var(--wx-gitlab-filter-input-background);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-input-background);
+          color: var(--wx-gantt-filter-text);
           font-size: 13px;
         }
 
@@ -1026,7 +1026,7 @@ export function FilterPanel({
           display: flex;
           align-items: center;
           gap: 16px;
-          border-bottom: 1px solid var(--wx-gitlab-filter-input-border);
+          border-bottom: 1px solid var(--wx-gantt-filter-input-border);
           margin-bottom: 12px;
         }
 
@@ -1047,15 +1047,15 @@ export function FilterPanel({
           border-bottom: 2px solid transparent;
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           cursor: pointer;
           transition: all 0.2s;
           margin-bottom: -1px;
         }
 
         .filter-tab:hover {
-          color: var(--wx-gitlab-filter-text);
-          background: var(--wx-gitlab-filter-hover-background);
+          color: var(--wx-gantt-filter-text);
+          background: var(--wx-gantt-filter-hover-background);
         }
 
         .filter-tab.active {
@@ -1066,7 +1066,7 @@ export function FilterPanel({
 
         .filter-tab-info {
           font-size: 12px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
           flex: 1;
         }
 
@@ -1075,8 +1075,8 @@ export function FilterPanel({
         }
 
         .tab-badge {
-          background: var(--wx-gitlab-filter-input-border);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-input-border);
+          color: var(--wx-gantt-filter-text);
           padding: 1px 6px;
           border-radius: 10px;
           font-size: 11px;
@@ -1106,7 +1106,7 @@ export function FilterPanel({
         .filter-loading {
           padding: 20px;
           text-align: center;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .date-range-section {
@@ -1118,7 +1118,7 @@ export function FilterPanel({
         .date-range-header {
           font-size: 12px;
           font-weight: 600;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           margin-bottom: 2px;
         }
 
@@ -1136,17 +1136,17 @@ export function FilterPanel({
 
         .date-input-group label {
           font-size: 11px;
-          color: var(--wx-gitlab-filter-text);
+          color: var(--wx-gantt-filter-text);
           min-width: 35px;
         }
 
         .filter-date-input {
           flex: 1;
           padding: 4px 6px;
-          border: 1px solid var(--wx-gitlab-filter-input-border);
+          border: 1px solid var(--wx-gantt-filter-input-border);
           border-radius: 3px;
-          background: var(--wx-gitlab-filter-input-background);
-          color: var(--wx-gitlab-filter-text);
+          background: var(--wx-gantt-filter-input-background);
+          color: var(--wx-gantt-filter-text);
           font-size: 12px;
         }
 
@@ -1154,7 +1154,7 @@ export function FilterPanel({
           display: flex;
           gap: 8px;
           padding-top: 8px;
-          border-top: 1px solid var(--wx-gitlab-filter-border);
+          border-top: 1px solid var(--wx-gantt-filter-border);
         }
 
         .btn-apply-server {

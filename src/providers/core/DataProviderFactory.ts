@@ -9,7 +9,6 @@ import type {
   DataProviderInterface,
   DataProviderConfig,
 } from './DataProviderInterface';
-import { GitLabAdapter } from '../adapters/GitLabAdapter';
 
 export class DataProviderFactory {
   /**
@@ -21,17 +20,9 @@ export class DataProviderFactory {
    */
   static create(config: DataProviderConfig): DataProviderInterface {
     switch (config.type) {
-      case 'gitlab':
-        return new GitLabAdapter(config);
-
-      case 'azure-devops':
-        throw new Error(
-          'Azure DevOps provider not yet implemented. Planned for Phase 2.',
-        );
-
       case 'custom':
         throw new Error(
-          'Custom data provider not yet implemented. Planned for Phase 2.',
+          'Custom data providers should be instantiated directly (e.g., new StaticDataProvider(...))',
         );
 
       default:

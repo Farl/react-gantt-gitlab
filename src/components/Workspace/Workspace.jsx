@@ -1,24 +1,21 @@
-// src/components/GitLabWorkspace/GitLabWorkspace.jsx
+// src/components/Workspace/Workspace.jsx
 
 /**
- * GitLabWorkspace
+ * Workspace
  *
  * Main container component that wraps Gantt and Kanban views.
  * Provides shared data context, toolbar, and view switching.
- *
- * NOTE: SharedToolbar contains view switcher, project selector, sync button,
- * settings button, and filter toggle. These are shared between Gantt and Kanban.
  */
 
-import { useState, useCallback } from 'react';
-import { GitLabDataProvider } from '../../contexts/GitLabDataContext';
+import { useState, useCallback, useMemo } from 'react';
+import { DataProvider } from '../../contexts/DataContext';
 import { GanttView } from '../GanttView/GanttView';
 import { KanbanView } from '../KanbanView/KanbanView';
 import { SharedToolbar } from './SharedToolbar';
 import { SharedFilterPanel } from './SharedFilterPanel';
 import './Workspace.css';
 
-const VIEW_MODE_KEY = 'gitlab-gantt-view-mode';
+const VIEW_MODE_KEY = 'gantt-view-mode';
 
 function getStoredViewMode() {
   try {
@@ -40,7 +37,7 @@ function storeViewMode(mode) {
   }
 }
 
-export function Workspace({ initialConfigId, autoSync = false }) {
+export function Workspace({ provider, autoSync = true }) {
   const [activeView, setActiveView] = useState(getStoredViewMode); // 'gantt' | 'kanban'
   const [showSettings, setShowSettings] = useState(false);
   const [showViewOptions, setShowViewOptions] = useState(false);
@@ -52,9 +49,8 @@ export function Workspace({ initialConfigId, autoSync = false }) {
   }, []);
 
   return (
-    <GitLabDataProvider initialConfigId={initialConfigId} autoSync={autoSync}>
-      {/* Note: CSS class "gitlab-workspace" is kept for backward compatibility with consumers' custom styles */}
-      <div className="gitlab-workspace">
+    <DataProvider provider={provider} autoSync={autoSync}>
+      <div className="gantt-workspace">
         {/* Shared Toolbar */}
         <SharedToolbar
           activeView={activeView}
@@ -71,7 +67,7 @@ export function Workspace({ initialConfigId, autoSync = false }) {
         <SharedFilterPanel />
 
         {/* View Content */}
-        <div className="gitlab-workspace-content">
+        <div className="gantt-workspace-content">
           {activeView === 'gantt' && (
             <GanttView
               hideSharedToolbar={true}
@@ -88,6 +84,6 @@ export function Workspace({ initialConfigId, autoSync = false }) {
           )}
         </div>
       </div>
-    </GitLabDataProvider>
+    </DataProvider>
   );
 }

@@ -78,18 +78,18 @@ function generatePathPoints(points) {
 }
 
 /**
- * 檢查任務是否有可見的 bar
+ * Check if a task has a visible bar
  *
- * 判斷邏輯（與 OffscreenArrows.jsx 一致）：
- * 1. 必須有座標資訊 ($x, $y, $w, $h)
- * 2. GitLab milestone：檢查 $isMilestone 或 _gitlab.type === 'milestone'
- * 3. 普通任務：需要有 _gitlab.dueDate
- *    - 沒有 dueDate 的任務可能有 fallback bar（用 created_at），但不應該顯示 link
+ * Logic (consistent with OffscreenArrows.jsx):
+ * 1. Must have coordinate info ($x, $y, $w, $h)
+ * 2. Milestones: check $isMilestone or type === 'milestone'
+ * 3. Regular tasks: need dueDate
+ *    - Tasks without dueDate may have a fallback bar (using createdAt), but should not show link
  */
 function hasVisibleBar(task) {
   if (!task) return false;
 
-  // 基本座標檢查（$x, $y 可能為 0，所以用 != null）
+  // Basic coordinate check ($x, $y can be 0, so use != null)
   if (
     task.$x == null ||
     task.$y == null ||
@@ -102,21 +102,21 @@ function hasVisibleBar(task) {
     return false;
   }
 
-  // GitLab milestone 特殊處理：日期存在 task.start/end，不在 _gitlab
-  const isGitLabMilestone =
-    task.$isMilestone || task._gitlab?.type === 'milestone';
-  if (isGitLabMilestone) {
+  // Milestone special handling: dates exist on task.start/end
+  const isMilestone =
+    task.$isMilestone || task.type === 'milestone';
+  if (isMilestone) {
     return true;
   }
 
-  // Gantt summary 類型：如果有座標就算有 bar
+  // Gantt summary type: if coordinates exist, it has a bar
   if (task.type === 'summary') {
     return true;
   }
 
-  // 普通任務：必須有 _gitlab.dueDate 才算有真正的 bar
-  // 沒有 dueDate 的任務 bar 是 fallback（用 created_at），不應該顯示 link
-  return !!task._gitlab?.dueDate;
+  // Regular tasks: must have dueDate to have a real bar
+  // Tasks without dueDate have a fallback bar (using createdAt), should not show link
+  return !!task.dueDate;
 }
 
 /**

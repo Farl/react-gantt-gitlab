@@ -300,7 +300,6 @@ npm run test:run
 This runs tests once with coverage reporting, ideal for:
 
 - GitHub Actions
-- GitLab CI
 - Jenkins
 - Other CI systems
 

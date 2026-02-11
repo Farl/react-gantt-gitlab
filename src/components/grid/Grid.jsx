@@ -590,7 +590,7 @@ export default function Grid(props) {
           rowStyle={(row) => {
             let className = 'wx-rHj6070p';
             if (row.$reorder) className += ' wx-reorder-task';
-            if (row.$isMilestone || row._gitlab?.type === 'milestone')
+            if (row.$isMilestone || row.type === 'milestone')
               className += ' wx-milestone-row';
             return className;
           }}

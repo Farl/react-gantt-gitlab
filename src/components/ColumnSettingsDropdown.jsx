@@ -277,14 +277,14 @@ export function ColumnSettingsDropdown({
  * - Numbers: use (a??0)-(b??0), 0 sorts first
  * - Dates: use getTime() comparison
  *
- * Default values for sorting (set in GitLabGraphQLProvider):
+ * Default values for sorting (set in data provider):
  * - displayOrder: 0 for milestones, relativePosition for issues (sort by this to restore original order)
  * - assigned: '' (empty string)
  * - weight: 0
  * - issueId: 0 for milestones, actual IID for issues
  * - iteration: '' (empty string)
  * - epic: '' (empty string, title of parent Epic if exists)
- * - workdays: calculated in GitLabGantt tasksWithWorkdays
+ * - workdays: calculated in GanttView tasksWithWorkdays
  */
 export const AssigneeCell = ({ row }) => {
   if (!row.assigned) return null;
@@ -393,7 +393,7 @@ const calculateVisibleCount = (widths, availableWidth) => {
 };
 
 /**
- * LabelCell - Renders labels with GitLab colors
+ * LabelCell - Renders labels with colors
  * Supports dynamic collapsing based on available width and priority-based sorting.
  * @param {Object} row - Task row data with labels as comma-separated string
  * @param {Map} labelColorMap - Map of label title to color

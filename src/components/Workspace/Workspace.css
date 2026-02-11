@@ -1,13 +1,13 @@
-/* src/components/GitLabWorkspace/GitLabWorkspace.css */
+/* src/components/Workspace/Workspace.css */
 
-.gitlab-workspace {
+.gantt-workspace {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
 }
 
-.gitlab-workspace-header {
+.gantt-workspace-header {
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -17,7 +17,7 @@
   flex-shrink: 0; /* Prevent header from shrinking to zero */
 }
 
-.gitlab-workspace-content {
+.gantt-workspace-content {
   flex: 1;
   overflow: hidden;
 }

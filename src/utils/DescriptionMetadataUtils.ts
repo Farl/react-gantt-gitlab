@@ -2,17 +2,17 @@
  * Description Metadata Utilities
  *
  * Utility functions for storing and retrieving metadata (particularly link relationships)
- * within GitLab issue descriptions using HTML comments.
+ * within issue descriptions using HTML comments.
  *
  * Format:
  * <!-- GANTT_METADATA_START
  * { "version": 1, "gantt": { "links": { ... } } }
  * GANTT_METADATA_END -->
  *
- * The HTML comment format ensures metadata is invisible in GitLab's UI rendering.
+ * The HTML comment format ensures metadata is invisible in the UI rendering.
  *
- * NOTE: This is a fallback mechanism for GitLab Free tier users who cannot use
- * the native blocked work items feature (requires Premium/Ultimate subscription).
+ * NOTE: This is a fallback mechanism for users who cannot use
+ * native blocked work items features (may require a premium subscription).
  */
 
 // ============================================================================
@@ -65,7 +65,7 @@ export interface ExtractLinksResult {
 // ============================================================================
 
 /**
- * Extract link metadata from a GitLab issue description
+ * Extract link metadata from an issue description
  *
  * Handles edge cases:
  * - null/undefined/empty description
@@ -176,7 +176,7 @@ export function extractLinksFromDescription(
 }
 
 /**
- * Update a GitLab issue description with link metadata
+ * Update an issue description with link metadata
  *
  * Behavior:
  * - Preserves original description content
@@ -247,7 +247,7 @@ export function updateDescriptionWithLinks(
  *
  * This is useful when:
  * - User wants to clear all link metadata
- * - Migrating to native GitLab links
+ * - Migrating to native links
  * - Cleaning up orphaned metadata
  *
  * @param description - The issue description (can be null/undefined)

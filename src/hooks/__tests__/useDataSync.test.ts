@@ -43,7 +43,7 @@ function createMockProvider(
       milestones: [],
     }),
     checkCanEdit: vi.fn().mockResolvedValue(true),
-    getConfig: vi.fn().mockReturnValue({ type: 'gitlab' }),
+    getConfig: vi.fn().mockReturnValue({ type: 'static' }),
     ...overrides,
   } as any;
 }

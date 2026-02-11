@@ -22,7 +22,7 @@ export interface UseDragOperationsParams {
   /** Current tasks array */
   tasks: ITask[];
   /**
-   * Function to sync task updates to GitLab
+   * Function to sync task updates to the data source
    * @param taskId - The task ID to update
    * @param updates - The updates to apply (labels, state, etc.)
    */
@@ -44,7 +44,7 @@ export interface UseDragOperationsParams {
    * @param type - Toast type (success, error, info)
    */
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
-  /** Function to refresh tasks from GitLab after error */
+  /** Function to refresh tasks from the data source after error */
   refreshTasks: () => void;
 }
 
@@ -97,7 +97,7 @@ export interface UseDragOperationsReturn {
  * Provides error handling with toast notifications and automatic refresh on failure.
  *
  * NOTE: syncTask handles optimistic updates (updates local state immediately,
- * then syncs to GitLab, rolls back on failure). This hook triggers the operations
+ * then syncs to the data source, rolls back on failure). This hook triggers the operations
  * and handles error display.
  */
 export function useDragOperations({

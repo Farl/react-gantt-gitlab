@@ -73,14 +73,14 @@ function Editor({
         { comp: 'spacer' },
       ];
 
-      // Add GitLab link button with Font Awesome icon
+      // Add source link button with Font Awesome icon
       if (getSourceUrl(activeTask)) {
         buttons.push({
           comp: 'button',
-          id: 'gitlab-link',
-          title: 'Open in GitLab',
+          id: 'source-link',
+          title: 'Open in source',
           circle: true,
-          css: 'gitlab-link-btn',
+          css: 'source-link-btn',
         });
       }
 
@@ -140,17 +140,17 @@ function Editor({
     setLinksActionsMap({});
   }, [taskId]);
 
-  // Check if this is a GitLab milestone (has start AND end dates)
+  // Check if this is a data-source milestone (has start AND end dates)
   // vs traditional Gantt milestone (single point in time, type === 'milestone')
-  const isGitLabMilestone = useMemo(
-    () => activeTask?.$isMilestone || activeTask?._gitlab?.type === 'milestone',
+  const isSourceMilestone = useMemo(
+    () => activeTask?.$isMilestone || activeTask?.type === 'milestone',
     [activeTask],
   );
 
-  // Traditional Gantt milestone type OR GitLab milestone
+  // Traditional Gantt milestone type OR data-source milestone
   const milestone = useMemo(
-    () => taskType === 'milestone' || isGitLabMilestone,
-    [taskType, isGitLabMilestone],
+    () => taskType === 'milestone' || isSourceMilestone,
+    [taskType, isSourceMilestone],
   );
   const summary = useMemo(() => taskType === 'summary', [taskType]);
 
@@ -193,10 +193,10 @@ function Editor({
     return localItems.filter(({ comp, key, options }) => {
       switch (comp) {
         case 'date': {
-          // GitLab milestones have both start and end dates - show all date fields
+          // Data-source milestones have both start and end dates - show all date fields
           // Traditional Gantt milestones (single point) - hide end date
-          if (isGitLabMilestone) {
-            return true; // Show all date fields for GitLab milestones
+          if (isSourceMilestone) {
+            return true; // Show all date fields for data-source milestones
           }
           // For traditional milestone type, hide end date
           return !milestone || (key !== 'end' && key !== 'base_end');
@@ -208,17 +208,17 @@ function Editor({
           return unscheduledTasks && !summary;
         }
         case 'counter': {
-          // Hide duration counter (GitLab uses workdays display in grid instead)
+          // Hide duration counter (workdays display in grid is used instead)
           return false;
         }
         case 'slider': {
-          // Hide progress slider (not supported for GitLab)
+          // Hide progress slider (not supported)
           return false;
         }
         case 'workdays': {
-          // Show workdays for GitLab milestones (they have start and end dates)
+          // Show workdays for data-source milestones (they have start and end dates)
           // Hide for traditional Gantt milestones (single point in time)
-          return !milestone || isGitLabMilestone;
+          return !milestone || isSourceMilestone;
         }
         default:
           return true;
@@ -233,7 +233,7 @@ function Editor({
     items,
     taskUnscheduled,
     milestone,
-    isGitLabMilestone,
+    isSourceMilestone,
     summary,
     unscheduledTasks,
     taskTypes,
@@ -262,26 +262,26 @@ function Editor({
     // Create task object with workdays calculation
     const taskWithWorkdays = { ...activeTask };
 
-    // GitLab milestones always have dates (stored directly on task.start/end, not in _gitlab)
-    // For regular tasks: check _gitlab fields to determine if GitLab actually has the dates
-    // (task.start may be auto-filled with createdAt when GitLab has no startDate)
-    const hasGitLabStartDate =
-      isGitLabMilestone || activeTask._gitlab?.startDate;
-    const hasGitLabDueDate = isGitLabMilestone || activeTask._gitlab?.dueDate;
+    // Data-source milestones always have dates (stored directly on task.start/end)
+    // For regular tasks: check date fields to determine if the source actually has the dates
+    // (task.start may be auto-filled with createdAt when source has no startDate)
+    const hasSourceStartDate =
+      isSourceMilestone || activeTask.startDate;
+    const hasSourceDueDate = isSourceMilestone || activeTask.dueDate;
 
-    // If GitLab doesn't have the date, set it to null so Editor shows empty
-    if (!hasGitLabStartDate) {
+    // If source doesn't have the date, set it to null so Editor shows empty
+    if (!hasSourceStartDate) {
       taskWithWorkdays.start = null;
     }
-    if (!hasGitLabDueDate) {
+    if (!hasSourceDueDate) {
       taskWithWorkdays.end = null;
     }
 
     // Calculate workdays if helpers are available and both dates exist
     if (
       workdaysHelpers?.countWorkdays &&
-      hasGitLabStartDate &&
-      hasGitLabDueDate
+      hasSourceStartDate &&
+      hasSourceDueDate
     ) {
       taskWithWorkdays.workdays = workdaysHelpers.countWorkdays(
         activeTask.start,
@@ -323,7 +323,7 @@ function Editor({
         if (!changes.length) saveLinks();
         else hide();
       }
-      if (item.id === 'gitlab-link') {
+      if (item.id === 'source-link') {
         openSourceLink(activeTask);
         return; // Don't hide editor
       }
@@ -408,7 +408,7 @@ function Editor({
       let { values } = ev;
 
       // Build originalDateValues based on what the user actually changed
-      // This tells GitLabGantt which fields to sync to GitLab
+      // This tells GanttView which fields to sync to the data source
       const originalDateValues = {};
       if (changedDateFieldsRef.current.has('start')) {
         originalDateValues.start = values.start; // can be null or Date

@@ -233,7 +233,7 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
             <div className="option-content">
               <span className="option-title">Delete</span>
               <span className="option-desc">
-                Permanently remove from GitLab
+                Permanently remove
               </span>
             </div>
           </label>
@@ -271,8 +271,8 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
         />
         <span>
           {action === 'delete'
-            ? 'This action cannot be undone. The item(s) will be permanently deleted from GitLab.'
-            : 'Closed items can be found in GitLab and reopened if needed.'}
+            ? 'This action cannot be undone. The item(s) will be permanently deleted.'
+            : 'Closed items can be reopened if needed.'}
         </span>
       </div>
 
@@ -293,13 +293,13 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
           align-items: center;
           gap: 8px;
           padding: 8px 10px;
-          background: var(--wx-gitlab-filter-background, #f5f5f5);
+          background: var(--wx-gantt-filter-background, #f5f5f5);
           border-radius: 4px;
           font-size: 13px;
         }
 
         .delete-item i {
-          color: var(--wx-gitlab-modal-hint-text, #666);
+          color: var(--wx-gantt-modal-hint-text, #666);
           font-size: 12px;
           width: 16px;
           text-align: center;
@@ -307,7 +307,7 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
 
         .delete-item-title {
           flex: 1;
-          color: var(--wx-gitlab-modal-text, #333);
+          color: var(--wx-gantt-modal-text, #333);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -315,15 +315,15 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
 
         .delete-item-type {
           font-size: 11px;
-          color: var(--wx-gitlab-modal-hint-text, #666);
+          color: var(--wx-gantt-modal-hint-text, #666);
           padding: 2px 6px;
-          background: var(--wx-gitlab-modal-background, #fff);
+          background: var(--wx-gantt-modal-background, #fff);
           border-radius: 3px;
         }
 
         .delete-items-more {
           font-size: 12px;
-          color: var(--wx-gitlab-modal-hint-text, #666);
+          color: var(--wx-gantt-modal-hint-text, #666);
           text-align: center;
           padding: 6px;
         }
@@ -341,7 +341,7 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
           align-items: flex-start;
           gap: 10px;
           padding: 10px 12px;
-          border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+          border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
           border-radius: 6px;
           cursor: pointer;
           transition: all 0.2s;
@@ -381,18 +381,18 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, items = [] }) {
         .delete-recursive-option .option-title {
           font-size: 13px;
           font-weight: 500;
-          color: var(--wx-gitlab-modal-text, #333);
+          color: var(--wx-gantt-modal-text, #333);
         }
 
         .delete-action-option .option-desc,
         .delete-recursive-option .option-desc {
           font-size: 12px;
-          color: var(--wx-gitlab-modal-hint-text, #666);
+          color: var(--wx-gantt-modal-hint-text, #666);
         }
 
         /* Recursive option specific: checkbox size and background */
         .delete-recursive-option {
-          background: var(--wx-gitlab-filter-background, #f9f9f9);
+          background: var(--wx-gantt-filter-background, #f9f9f9);
         }
 
         .delete-recursive-option input[type='checkbox'] {

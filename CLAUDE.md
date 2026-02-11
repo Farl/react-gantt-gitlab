@@ -4,24 +4,24 @@ You are a senior full-stack software engineer. Focus on evidence-based reasoning
 
 # Goal
 
-Build a well-maintained, data-source-agnostic Gantt chart library supporting multiple backends (GitLab, Azure DevOps, custom). All UI text in English.
+Build a well-maintained, data-source-agnostic Gantt chart library supporting multiple backends (Azure DevOps, custom providers). All UI text in English.
 
-# Current Status (Phase 8 - Complete ✅)
+# Current Status (Phase 8 - Complete)
 
 **Data-Agnostic Refactoring:** 8 phases completed
 
-- ✅ Phase 1-3: Created generic DataProviderInterface, removed GitLab branding from components
-- ✅ Phase 4-7: Generic configuration system, component refactoring (useGanttState hook extracted)
-- ✅ Phase 8: Full Vitest testing infrastructure with 114 passing tests
+- Phase 1-3: Created generic DataProviderInterface, removed legacy branding from components
+- Phase 4-7: Generic configuration system, component refactoring (useGanttState hook extracted)
+- Phase 8: Full Vitest testing infrastructure with 114 passing tests
 
-**Key Architecture Changes:**
+**Key Architecture:**
 
 - `/src/providers/core/DataProviderInterface.ts` - Generic provider contract for any data source
-- `/src/providers/adapters/GitLabAdapter.ts` - GitLab implementation (wraps existing GitLabGraphQLProvider)
-- `/src/contexts/DataContext.tsx` - Generic data context (replaces GitLabDataContext)
-- `/src/hooks/useDataSync.ts` - Generic sync hook (replaces useGitLabSync)
-- Component renames: GitLabGantt → GanttChart, GitLabWorkspace → Workspace, etc.
-- Utility renames: GitLabFilters → DataFilters, GitLabLinkUtils → LinkUtils
+- `/src/providers/adapters/` - Provider implementations (one per data source)
+- `/src/contexts/DataContext.tsx` - Generic data context
+- `/src/hooks/useDataSync.ts` - Generic sync hook
+- Components: GanttChart, Workspace, GanttView, KanbanView
+- Utilities: DataFilters, LinkUtils, MilestoneIdUtils
 
 **Testing Infrastructure:**
 
@@ -44,10 +44,10 @@ Build a well-maintained, data-source-agnostic Gantt chart library supporting mul
 # Project Notes
 
 - **Data Layer:** All data operations go through DataProviderInterface. Use DataProviderFactory to instantiate providers.
-- **Configuration:** Data source configs stored in `/src/config/` directory. Supports GitLab, Azure DevOps (future), and custom sources.
+- **Configuration:** Data source configs stored in `/src/config/` directory. Supports Azure DevOps and custom sources.
 - **Sync Flow:** Config is read during sync initialization, so always consider init flow when adding/modifying features
 - **Component Size:** GanttView.jsx has useGanttState hook extracted. Continue gradual component splitting - don't let it grow again.
-- **Milestone Definition:** References to "milestone" mean the data source's milestone (e.g., GitLab milestone), not gantt-store API milestone
+- **Milestone Definition:** References to "milestone" mean the data source's milestone concept, not gantt-store API milestone
 - **Reusable Components:** UI components are heavily shared. Prefer existing components over creating new ones.
 - **Helper Functions:** Use DataFilters, LinkUtils, and other helpers to minimize code duplication.
 

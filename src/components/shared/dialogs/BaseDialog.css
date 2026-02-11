@@ -1,7 +1,7 @@
 /**
  * BaseDialog Styles
  * 共用對話框樣式，其他對話框可以共用這些樣式或覆蓋
- * 使用 --wx-gitlab-modal-* CSS 變數以保持與現有 modal 一致
+ * 使用 --wx-gantt-modal-* CSS 變數以保持與現有 modal 一致
  */
 
 /* ===== Overlay ===== */
@@ -11,7 +11,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--wx-gitlab-modal-overlay, rgba(0, 0, 0, 0.5));
+  background: var(--wx-gantt-modal-overlay, rgba(0, 0, 0, 0.5));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,7 +30,7 @@
 
 /* ===== Dialog Container ===== */
 .base-dialog {
-  background: var(--wx-gitlab-modal-background, #fff);
+  background: var(--wx-gantt-modal-background, #fff);
   border-radius: 8px;
   max-width: 90vw;
   max-height: 85vh;
@@ -58,8 +58,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
-  border-bottom: 1px solid var(--wx-gitlab-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gantt-modal-border, #ddd);
   border-radius: 8px 8px 0 0;
   flex-shrink: 0;
 }
@@ -68,7 +68,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 /* ===== Body ===== */
@@ -88,8 +88,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--wx-gitlab-modal-border, #ddd);
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
+  border-top: 1px solid var(--wx-gantt-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
   border-radius: 0 0 8px 8px;
   flex-shrink: 0;
 }
@@ -111,13 +111,13 @@
 }
 
 .base-dialog .dialog-btn-secondary {
-  background: var(--wx-gitlab-button-background, #fff);
-  color: var(--wx-gitlab-button-text, #666);
-  border: 1px solid var(--wx-gitlab-button-border, #ddd);
+  background: var(--wx-gantt-button-background, #fff);
+  color: var(--wx-gantt-button-text, #666);
+  border: 1px solid var(--wx-gantt-button-border, #ddd);
 }
 
 .base-dialog .dialog-btn-secondary:hover:not(:disabled) {
-  background: var(--wx-gitlab-button-hover-background, #f5f5f5);
+  background: var(--wx-gantt-button-hover-background, #f5f5f5);
 }
 
 .base-dialog .dialog-btn-primary {
@@ -148,16 +148,16 @@
 .base-dialog .dialog-form-group > label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .base-dialog .dialog-input {
   padding: 8px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
   font-size: 14px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  color: var(--wx-gitlab-modal-text, #333);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 .base-dialog .dialog-input:focus {
@@ -171,16 +171,16 @@
 }
 
 .base-dialog .dialog-input::placeholder {
-  color: var(--wx-gitlab-modal-hint-text, #999);
+  color: var(--wx-gantt-modal-hint-text, #999);
 }
 
 .base-dialog .dialog-textarea {
   padding: 8px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
   font-size: 14px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  color: var(--wx-gitlab-modal-text, #333);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  color: var(--wx-gantt-modal-text, #333);
   resize: vertical;
   min-height: 80px;
   font-family: inherit;
@@ -193,13 +193,13 @@
 }
 
 .base-dialog .dialog-textarea::placeholder {
-  color: var(--wx-gitlab-modal-hint-text, #999);
+  color: var(--wx-gantt-modal-hint-text, #999);
 }
 
 /* ===== Message Content ===== */
 .base-dialog .dialog-message {
   font-size: 14px;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
   line-height: 1.5;
 }
 
@@ -216,5 +216,5 @@
 /* ===== Hint Text ===== */
 .base-dialog .dialog-hint {
   font-size: 12px;
-  color: var(--wx-gitlab-modal-hint-text, #666);
+  color: var(--wx-gantt-modal-hint-text, #666);
 }

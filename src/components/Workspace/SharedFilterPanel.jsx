@@ -1,14 +1,14 @@
-// src/components/GitLabWorkspace/SharedFilterPanel.jsx
+// src/components/Workspace/SharedFilterPanel.jsx
 
 /**
  * SharedFilterPanel
  *
- * Wrapper component that renders FilterPanel using data from GitLabDataContext.
- * This allows FilterPanel to be used at the GitLabWorkspace level,
+ * Wrapper component that renders FilterPanel using data from DataContext.
+ * This allows FilterPanel to be used at the Workspace level,
  * shared between Gantt and Kanban views.
  */
 
-import { useGitLabData } from '../../contexts/GitLabDataContext';
+import { useData } from '../../contexts/DataContext';
 import { FilterPanel } from '../FilterPanel';
 
 export function SharedFilterPanel() {
@@ -39,7 +39,7 @@ export function SharedFilterPanel() {
     handleServerFilterApply,
     // Permissions
     canEditHolidays,
-  } = useGitLabData();
+  } = useData();
 
   return (
     <FilterPanel

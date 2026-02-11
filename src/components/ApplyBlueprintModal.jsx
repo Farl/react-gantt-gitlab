@@ -5,10 +5,18 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import {
-  getNewMilestoneTitle,
-  getNewItemTitle,
-} from '../providers/BlueprintService';
+// Stub functions for blueprint naming (provider-specific implementations removed)
+function getNewMilestoneTitle(blueprint, options) {
+  const { mode, prefix, custom_title } = options.milestone_naming || {};
+  if (mode === 'custom' && custom_title) return custom_title;
+  const base = blueprint?.name || 'Untitled';
+  return prefix ? `${prefix}${base}` : base;
+}
+function getNewItemTitle(title, options, type) {
+  const { add_issue_prefix, add_task_prefix, prefix } = options.item_naming || {};
+  const shouldPrefix = (type === 'Issue' && add_issue_prefix) || (type === 'Task' && add_task_prefix);
+  return shouldPrefix && prefix ? `${prefix}${title}` : title;
+}
 import './ApplyBlueprintModal.css';
 import './shared/modal-close-button.css';
 

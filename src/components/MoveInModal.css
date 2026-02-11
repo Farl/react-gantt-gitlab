@@ -10,7 +10,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--wx-gitlab-modal-overlay, rgba(0, 0, 0, 0.5));
+  background: var(--wx-gantt-modal-overlay, rgba(0, 0, 0, 0.5));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +19,7 @@
 
 /* Modal Container */
 .move-in-modal {
-  background: var(--wx-gitlab-modal-background, #fff);
+  background: var(--wx-gantt-modal-background, #fff);
   border-radius: 8px;
   width: 500px;
   max-width: 90vw;
@@ -35,8 +35,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
-  border-bottom: 1px solid var(--wx-gitlab-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gantt-modal-border, #ddd);
   flex-shrink: 0;
 }
 
@@ -44,7 +44,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--wx-gitlab-modal-text, #333);
+  color: var(--wx-gantt-modal-text, #333);
 }
 
 /* Modal Body */
@@ -61,7 +61,7 @@
 .move-in-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border-bottom: 1px solid var(--wx-gantt-filter-input-border, #ddd);
 }
 
 .move-in-tab {
@@ -74,15 +74,15 @@
   border-bottom: 2px solid transparent;
   font-size: 13px;
   font-weight: 500;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: -1px;
 }
 
 .move-in-tab:hover:not(:disabled) {
-  color: var(--wx-gitlab-filter-text, #333);
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  color: var(--wx-gantt-filter-text, #333);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .move-in-tab.active {
@@ -97,8 +97,8 @@
 }
 
 .move-in-tab .tab-badge {
-  background: var(--wx-gitlab-filter-input-border, #ddd);
-  color: var(--wx-gitlab-filter-text, #333);
+  background: var(--wx-gantt-filter-input-border, #ddd);
+  color: var(--wx-gantt-filter-text, #333);
   padding: 1px 6px;
   border-radius: 10px;
   font-size: 11px;
@@ -125,7 +125,7 @@
 
 .section-description {
   font-size: 12px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   padding: 4px 0;
 }
 
@@ -137,10 +137,10 @@
 .target-search-input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  color: var(--wx-gitlab-filter-text, #333);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  color: var(--wx-gantt-filter-text, #333);
   font-size: 13px;
 }
 
@@ -153,9 +153,9 @@
 .target-options {
   max-height: 180px;
   overflow-y: auto;
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-input-background, #fff);
+  background: var(--wx-gantt-filter-input-background, #fff);
 }
 
 .target-options::-webkit-scrollbar {
@@ -163,11 +163,11 @@
 }
 
 .target-options::-webkit-scrollbar-track {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .target-options::-webkit-scrollbar-thumb {
-  background: var(--wx-gitlab-control-text, #999);
+  background: var(--wx-gantt-control-text, #999);
   border-radius: 3px;
 }
 
@@ -177,7 +177,7 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  border-bottom: 1px solid var(--wx-gitlab-filter-input-border, #eee);
+  border-bottom: 1px solid var(--wx-gantt-filter-input-border, #eee);
   transition: background 0.1s;
 }
 
@@ -186,7 +186,7 @@
 }
 
 .target-option:hover {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .target-option.selected {
@@ -209,13 +209,13 @@
 
 .target-id {
   font-size: 12px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   flex-shrink: 0;
 }
 
 .target-title {
   font-size: 13px;
-  color: var(--wx-gitlab-filter-text, #333);
+  color: var(--wx-gantt-filter-text, #333);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -223,32 +223,32 @@
 
 .target-none {
   font-size: 13px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   font-style: italic;
 }
 
 .target-empty {
   padding: 16px;
   text-align: center;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   font-size: 12px;
   font-style: italic;
 }
 
 /* Items Preview */
 .items-preview {
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
   border-radius: 4px;
-  background: var(--wx-gitlab-filter-hover-background, #f9f9f9);
+  background: var(--wx-gantt-filter-hover-background, #f9f9f9);
 }
 
 .items-preview-header {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--wx-gitlab-filter-text, #333);
-  border-bottom: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
-  background: var(--wx-gitlab-modal-header-background, #f5f5f5);
+  color: var(--wx-gantt-filter-text, #333);
+  border-bottom: 1px solid var(--wx-gantt-filter-input-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f5f5f5);
 }
 
 .items-preview-list {
@@ -265,7 +265,7 @@
 }
 
 .items-preview-list::-webkit-scrollbar-thumb {
-  background: var(--wx-gitlab-control-text, #999);
+  background: var(--wx-gantt-control-text, #999);
   border-radius: 3px;
 }
 
@@ -275,7 +275,7 @@
   gap: 8px;
   padding: 6px 12px;
   font-size: 12px;
-  border-bottom: 1px solid var(--wx-gitlab-filter-input-border, #eee);
+  border-bottom: 1px solid var(--wx-gantt-filter-input-border, #eee);
 }
 
 .preview-item:last-child {
@@ -283,12 +283,12 @@
 }
 
 .preview-item-id {
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   flex-shrink: 0;
 }
 
 .preview-item-title {
-  color: var(--wx-gitlab-filter-text, #333);
+  color: var(--wx-gantt-filter-text, #333);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -301,14 +301,14 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  border-top: 1px solid var(--wx-gitlab-modal-border, #ddd);
-  background: var(--wx-gitlab-modal-header-background, #f8f9fa);
+  border-top: 1px solid var(--wx-gantt-modal-border, #ddd);
+  background: var(--wx-gantt-modal-header-background, #f8f9fa);
   flex-shrink: 0;
 }
 
 .selected-summary {
   font-size: 12px;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -338,13 +338,13 @@
 }
 
 .move-in-modal .btn-secondary {
-  background: var(--wx-gitlab-filter-input-background, #fff);
-  border: 1px solid var(--wx-gitlab-filter-input-border, #ddd);
-  color: var(--wx-gitlab-filter-text, #333);
+  background: var(--wx-gantt-filter-input-background, #fff);
+  border: 1px solid var(--wx-gantt-filter-input-border, #ddd);
+  color: var(--wx-gantt-filter-text, #333);
 }
 
 .move-in-modal .btn-secondary:hover:not(:disabled) {
-  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  background: var(--wx-gantt-filter-hover-background, #f5f5f5);
 }
 
 .move-in-modal .btn-primary {
@@ -366,22 +366,22 @@
   justify-content: center;
   padding: 32px 16px;
   text-align: center;
-  color: var(--wx-gitlab-control-text, #666);
+  color: var(--wx-gantt-control-text, #666);
 }
 
 .move-in-empty-state i {
   font-size: 32px;
   margin-bottom: 12px;
-  color: var(--wx-gitlab-control-text, #999);
+  color: var(--wx-gantt-control-text, #999);
 }
 
 .move-in-empty-state p {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: var(--wx-gitlab-filter-text, #333);
+  color: var(--wx-gantt-filter-text, #333);
 }
 
 .move-in-empty-hint {
   font-size: 12px !important;
-  color: var(--wx-gitlab-control-text, #666) !important;
+  color: var(--wx-gantt-control-text, #666) !important;
 }

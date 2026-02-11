@@ -106,7 +106,7 @@ export function KanbanCard({
   const assignees = parseAssignees(task.assigned);
   const dueInfo = formatDueDate(task.end);
 
-  // Child tasks (GitLab Tasks with workItemType='Task')
+  // Child tasks (work items with workItemType='Task')
   const hasChildTasks = childTasks && childTasks.length > 0;
 
   // Calculate visible labels and overflow
@@ -117,7 +117,7 @@ export function KanbanCard({
   const visibleAssignees = assignees.slice(0, maxAssignees);
   const overflowAssignees = assignees.length - maxAssignees;
 
-  // Handle click on ID to open GitLab link
+  // Handle click on ID to open source link
   // Also handle mouseDown to prevent drag from starting
   const handleIdClick = (e) => {
     e.preventDefault();
@@ -147,9 +147,9 @@ export function KanbanCard({
             onClick={handleIdClick}
             onMouseDown={handleIdMouseDown}
             onTouchStart={handleIdMouseDown}
-            title="Open in GitLab"
+            title="Open in source"
           >
-            #{task._gitlab?.iid || task.id}
+            #{task.issueId || task.id}
           </span>
           {dueInfo.text && (
             <span
@@ -199,16 +199,16 @@ export function KanbanCard({
         </div>
       )}
 
-      {/* Child Tasks (GitLab Tasks) */}
+      {/* Child Tasks */}
       {hasChildTasks && (
         <div className="kanban-card-tasks">
           {childTasks.map((childTask) => (
             <div
               key={childTask.id}
-              className={`kanban-card-task-item ${childTask._gitlab?.state === 'closed' ? 'kanban-card-task-done' : ''}`}
+              className={`kanban-card-task-item ${childTask.state === 'closed' ? 'kanban-card-task-done' : ''}`}
             >
               <i
-                className={`fas ${childTask._gitlab?.state === 'closed' ? 'fa-check-square' : 'fa-square'} kanban-card-icon`}
+                className={`fas ${childTask.state === 'closed' ? 'fa-check-square' : 'fa-square'} kanban-card-icon`}
               />
               <span className="kanban-card-task-title">{childTask.text}</span>
             </div>

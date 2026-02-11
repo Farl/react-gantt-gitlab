@@ -40,7 +40,7 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
   };
 
   return (
-    <div className="gitlab-sync-button">
+    <div className="sync-button">
       <button
         onClick={handleSync}
         disabled={syncState.isSyncing || syncState.isLoading}
@@ -78,7 +78,7 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
       </div>
 
       <style>{`
-        .gitlab-sync-button {
+        .sync-button {
           display: flex;
           align-items: center;
           gap: 6px;
@@ -129,11 +129,11 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
 
         .sync-info {
           font-size: 11px;
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .sync-time {
-          color: var(--wx-gitlab-control-text);
+          color: var(--wx-gantt-control-text);
         }
 
         .sync-error {

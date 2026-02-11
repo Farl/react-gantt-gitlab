@@ -35,7 +35,7 @@ function isOthersIssue(task, lists) {
  * Check if an issue is closed
  */
 function isClosedIssue(task) {
-  return task.state === 'closed' || task._gitlab?.state === 'closed';
+  return task.state === 'closed';
 }
 
 export function KanbanBoard({

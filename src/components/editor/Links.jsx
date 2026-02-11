@@ -68,9 +68,8 @@ export default function Links({ api, autoSave, onLinksChange }) {
   function handleChange(ev, id) {
     const value = ev.value;
     if (autoSave) {
-      // NOTE: GitLab API doesn't support updating link types.
-      // GitLab only supports one link type (blocks/is_blocked_by which maps to e2s).
-      // This event will update the Gantt store locally but won't sync to GitLab.
+      // NOTE: Some data source APIs don't support updating link types.
+      // This event will update the Gantt store locally but may not sync to the data source.
       api.exec('update-link', {
         id,
         link: { type: value },

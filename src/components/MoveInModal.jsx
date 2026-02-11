@@ -44,23 +44,21 @@ export function MoveInModal({
   const [milestoneSearch, setMilestoneSearch] = useState('');
   const [epicSearch, setEpicSearch] = useState('');
 
-  // Extract milestones from allTasks (milestones are tasks with _gitlab.type === 'milestone')
+  // Extract milestones from allTasks
   const milestones = useMemo(() => {
     return allTasks
-      .filter((task) => task._gitlab?.type === 'milestone')
+      .filter((task) => task.$isMilestone || task.type === 'milestone')
       .map((task) => ({
-        // Convert task to milestone-like object for display
-        // Note: Milestone task's _gitlab.id is the milestone iid (not milestoneIid which is for Issue/Task)
-        iid: task._gitlab?.id,
+        iid: task.issueId || task.id,
         title: task.text,
-        globalId: task._gitlab?.globalId,
+        globalId: task.globalId,
       }));
   }, [allTasks]);
 
   // Filter tasks that can be moved to a parent Issue (only Tasks can have Issue parents)
   const tasksMovableToParent = useMemo(() => {
     return selectedTasks.filter(
-      (task) => task._gitlab?.workItemType === 'Task',
+      (task) => task.workItemType === 'Task',
     );
   }, [selectedTasks]);
 
@@ -73,19 +71,18 @@ export function MoveInModal({
   // Filter tasks that can be moved to an Epic (only Issues, not Tasks)
   const tasksMovableToEpic = useMemo(() => {
     return selectedTasks.filter(
-      (task) => task._gitlab?.workItemType !== 'Task',
+      (task) => task.workItemType !== 'Task',
     );
   }, [selectedTasks]);
 
   // Get available parent Issues (exclude selected tasks, milestones, and Tasks)
-  // Note: Only Issues can be parents for Tasks (GitLab hierarchy rule)
+  // Note: Only Issues can be parents for Tasks
   const availableParentIssues = useMemo(() => {
     const selectedIds = new Set(selectedTasks.map((t) => t.id));
     return allTasks.filter((task) => {
       // Must be an Issue (not a Task, not a Milestone)
-      // Use _gitlab metadata to determine type - NEVER use ID ranges
-      if (task._gitlab?.workItemType === 'Task') return false;
-      if (task._gitlab?.type === 'milestone') return false;
+      if (task.workItemType === 'Task') return false;
+      if (task.$isMilestone || task.type === 'milestone') return false;
       // Must not be in the selection
       if (selectedIds.has(task.id)) return false;
       return true;
@@ -229,7 +226,7 @@ export function MoveInModal({
       setSelectedEpic(null);
       onClose();
     } catch {
-      // Error handling is done in parent component (GitLabGantt)
+      // Error handling is done in parent component (GanttView)
     }
   }, [
     activeTab,

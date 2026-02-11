@@ -9,44 +9,19 @@ import {
   isMilestoneTask,
   getLinkInfo,
   openSourceLink,
-  // Deprecated re-exports (backward compatibility)
-  getGitLabUrl,
-  getGitLabLinkInfo,
-  openGitLabLink,
 } from '../LinkUtils';
 import type { ITask } from '@svar-ui/gantt-store';
 
 describe('LinkUtils', () => {
   describe('getSourceUrl', () => {
-    it('should return web_url from _gitlab metadata', () => {
+    it('should return web_url from task', () => {
       const task = {
         id: 1,
-        _gitlab: { web_url: 'https://gitlab.com/project/issues/1' },
+        web_url: 'https://example.com/project/issues/1',
       } as ITask;
 
       const url = getSourceUrl(task);
-      expect(url).toBe('https://gitlab.com/project/issues/1');
-    });
-
-    it('should return web_url from direct property', () => {
-      const task = {
-        id: 1,
-        web_url: 'https://gitlab.com/project/issues/2',
-      } as ITask;
-
-      const url = getSourceUrl(task);
-      expect(url).toBe('https://gitlab.com/project/issues/2');
-    });
-
-    it('should prioritize _gitlab.web_url over direct web_url', () => {
-      const task = {
-        id: 1,
-        _gitlab: { web_url: 'https://gitlab.com/project/issues/1' },
-        web_url: 'https://gitlab.com/project/issues/2',
-      } as ITask;
-
-      const url = getSourceUrl(task);
-      expect(url).toBe('https://gitlab.com/project/issues/1');
+      expect(url).toBe('https://example.com/project/issues/1');
     });
 
     it('should return null for task without URL', () => {
@@ -69,8 +44,8 @@ describe('LinkUtils', () => {
       expect(isMilestoneTask(task)).toBe(true);
     });
 
-    it('should detect milestone from _gitlab.type', () => {
-      const task = { id: 1, _gitlab: { type: 'milestone' } } as ITask;
+    it('should detect milestone from type', () => {
+      const task = { id: 1, type: 'milestone' } as ITask;
       expect(isMilestoneTask(task)).toBe(true);
     });
 
@@ -92,17 +67,15 @@ describe('LinkUtils', () => {
     it('should return milestone link info', () => {
       const task = {
         id: 'm-1',
-        _gitlab: {
-          id: 1,
-          type: 'milestone',
-          web_url: 'https://gitlab.com/project/-/milestones/1',
-        },
+        $isMilestone: true,
+        type: 'milestone',
+        web_url: 'https://example.com/project/-/milestones/1',
       } as ITask;
 
       const linkInfo = getLinkInfo(task);
 
-      expect(linkInfo.url).toBe('https://gitlab.com/project/-/milestones/1');
-      expect(linkInfo.displayId).toBe('M#1');
+      expect(linkInfo.url).toBe('https://example.com/project/-/milestones/1');
+      expect(linkInfo.displayId).toBe('M#m-1');
       expect(linkInfo.isMilestone).toBe(true);
       expect(linkInfo.title).toBe('Open milestone');
     });
@@ -111,12 +84,12 @@ describe('LinkUtils', () => {
       const task = {
         id: 1,
         issueId: 42,
-        _gitlab: { web_url: 'https://gitlab.com/project/issues/42' },
+        web_url: 'https://example.com/project/issues/42',
       } as ITask;
 
       const linkInfo = getLinkInfo(task);
 
-      expect(linkInfo.url).toBe('https://gitlab.com/project/issues/42');
+      expect(linkInfo.url).toBe('https://example.com/project/issues/42');
       expect(linkInfo.displayId).toBe('#42');
       expect(linkInfo.isMilestone).toBe(false);
       expect(linkInfo.title).toBe('Open in source');
@@ -144,12 +117,13 @@ describe('LinkUtils', () => {
     it('should handle milestone without ID', () => {
       const task = {
         id: 'm-unknown',
-        _gitlab: { type: 'milestone' },
+        $isMilestone: true,
+        type: 'milestone',
       } as ITask;
 
       const linkInfo = getLinkInfo(task);
 
-      expect(linkInfo.displayId).toBeNull();
+      expect(linkInfo.displayId).toBe('M#m-unknown');
       expect(linkInfo.isMilestone).toBe(true);
     });
   });
@@ -161,14 +135,14 @@ describe('LinkUtils', () => {
 
       const task = {
         id: 1,
-        _gitlab: { web_url: 'https://gitlab.com/project/issues/1' },
+        web_url: 'https://example.com/project/issues/1',
       } as ITask;
 
       const result = openSourceLink(task);
 
       expect(result).toBe(true);
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://gitlab.com/project/issues/1',
+        'https://example.com/project/issues/1',
         '_blank',
       );
     });
@@ -193,20 +167,6 @@ describe('LinkUtils', () => {
 
       expect(result).toBe(false);
       expect(mockOpen).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('deprecated re-exports', () => {
-    it('getGitLabUrl should be an alias for getSourceUrl', () => {
-      expect(getGitLabUrl).toBe(getSourceUrl);
-    });
-
-    it('getGitLabLinkInfo should be an alias for getLinkInfo', () => {
-      expect(getGitLabLinkInfo).toBe(getLinkInfo);
-    });
-
-    it('openGitLabLink should be an alias for openSourceLink', () => {
-      expect(openGitLabLink).toBe(openSourceLink);
     });
   });
 });

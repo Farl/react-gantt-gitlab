@@ -17,8 +17,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: var(--wx-gitlab-header-background, #f8f9fa);
-  border-bottom: 1px solid var(--wx-gitlab-header-border, #e1e4e8);
+  background: var(--wx-gantt-header-background, #f8f9fa);
+  border-bottom: 1px solid var(--wx-gantt-header-border, #e1e4e8);
   flex-wrap: wrap;
 }
 
@@ -32,11 +32,11 @@
   height: 24px;
   padding: 0 6px;
   border-radius: 4px;
-  border: 1px solid var(--wx-gitlab-button-border, #d1d5da);
-  background: var(--wx-gitlab-button-background, #fff);
+  border: 1px solid var(--wx-gantt-button-border, #d1d5da);
+  background: var(--wx-gantt-button-background, #fff);
   font-size: 12px;
   min-width: 160px;
-  color: var(--wx-gitlab-button-text, #586069);
+  color: var(--wx-gantt-button-text, #586069);
   box-sizing: border-box;
 }
 
@@ -45,10 +45,10 @@
   width: 24px;
   padding: 0;
   border-radius: 4px;
-  border: 1px solid var(--wx-gitlab-button-border, #d1d5da);
-  background: var(--wx-gitlab-button-background, #fff);
+  border: 1px solid var(--wx-gantt-button-border, #d1d5da);
+  background: var(--wx-gantt-button-background, #fff);
   cursor: pointer;
-  color: var(--wx-gitlab-button-text, #586069);
+  color: var(--wx-gantt-button-text, #586069);
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -58,8 +58,8 @@
 }
 
 .workload-view-header .btn-settings:hover {
-  background: var(--wx-gitlab-button-hover-background, #f6f8fa);
-  color: var(--wx-gitlab-button-hover-text, #24292e);
+  background: var(--wx-gantt-button-hover-background, #f6f8fa);
+  color: var(--wx-gantt-button-hover-text, #24292e);
 }
 
 .workload-view-header .btn-view-options {
@@ -69,18 +69,18 @@
   gap: 4px;
   padding: 0 6px;
   border-radius: 4px;
-  border: 1px solid var(--wx-gitlab-button-border, #d1d5da);
-  background: var(--wx-gitlab-button-background, #fff);
+  border: 1px solid var(--wx-gantt-button-border, #d1d5da);
+  background: var(--wx-gantt-button-background, #fff);
   cursor: pointer;
-  color: var(--wx-gitlab-button-text, #586069);
+  color: var(--wx-gantt-button-text, #586069);
   font-size: 12px;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .workload-view-header .btn-view-options:hover {
-  background: var(--wx-gitlab-button-hover-background, #f6f8fa);
-  color: var(--wx-gitlab-button-hover-text, #24292e);
+  background: var(--wx-gantt-button-hover-background, #f6f8fa);
+  color: var(--wx-gantt-button-hover-text, #24292e);
 }
 
 .workload-view-header .btn-view-options .chevron-icon {
@@ -94,8 +94,8 @@
   gap: 12px;
   align-items: center;
   padding: 4px 12px;
-  background: var(--wx-gitlab-control-background, #fff);
-  border-bottom: 1px solid var(--wx-gitlab-control-border, #e1e4e8);
+  background: var(--wx-gantt-control-background, #fff);
+  border-bottom: 1px solid var(--wx-gantt-control-border, #e1e4e8);
 }
 
 .workload-view-container .control-label {
@@ -103,7 +103,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--wx-gitlab-control-text, #586069);
+  color: var(--wx-gantt-control-text, #586069);
   white-space: nowrap;
 }
 
@@ -218,8 +218,8 @@
 .settings-section h4 {
   margin: 0 0 12px;
   font-size: 14px;
-  /* NOTE: --wx-color-secondary is 'transparent' in willow theme, use --wx-gitlab-modal-text instead */
-  color: var(--wx-gitlab-modal-text, #586069);
+  /* NOTE: --wx-color-secondary is 'transparent' in willow theme, use --wx-gantt-modal-text instead */
+  color: var(--wx-gantt-modal-text, #586069);
 }
 
 /* Dark theme for modal - moved to main dark theme section below */
@@ -433,32 +433,32 @@
   color: var(--wx-color-font);
 }
 
-/* Header controls - use gitlab button variables which are defined in theme */
-/* No dark theme override needed - the base styles use --wx-gitlab-button-* variables */
+/* Header controls - use button variables which are defined in theme */
+/* No dark theme override needed - the base styles use --wx-gantt-button-* variables */
 
 .wx-dark-theme .workload-view-container .view-controls {
-  background: var(--wx-gitlab-control-background);
-  border-bottom: 1px solid var(--wx-gitlab-control-border);
+  background: var(--wx-gantt-control-background);
+  border-bottom: 1px solid var(--wx-gantt-control-border);
 }
 
 .wx-dark-theme .workload-view-container .control-label {
-  color: var(--wx-gitlab-control-text);
+  color: var(--wx-gantt-control-text);
 }
 
 .wx-dark-theme .workload-view-container .control-value {
-  color: var(--wx-gitlab-control-value);
+  color: var(--wx-gantt-control-value);
 }
 
 .wx-dark-theme .workload-view-container .unit-select {
-  background: var(--wx-gitlab-button-background);
-  border: 1px solid var(--wx-gitlab-button-border);
-  color: var(--wx-gitlab-button-text);
+  background: var(--wx-gantt-button-background);
+  border: 1px solid var(--wx-gantt-button-border);
+  color: var(--wx-gantt-button-text);
 }
 
 .wx-dark-theme .workload-view-container .date-input {
-  background: var(--wx-gitlab-filter-input-background);
-  border: 1px solid var(--wx-gitlab-filter-input-border);
-  color: var(--wx-gitlab-filter-text);
+  background: var(--wx-gantt-filter-input-background);
+  border: 1px solid var(--wx-gantt-filter-input-border);
+  color: var(--wx-gantt-filter-text);
 }
 
 /* Modal dark theme */

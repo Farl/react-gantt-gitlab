@@ -2,8 +2,7 @@
  * useDataSync Hook
  * React hook for managing data synchronization with Gantt
  *
- * This is a data-source agnostic version of useGitLabSync.
- * It works with any provider implementing DataProviderInterface.
+ * Works with any provider implementing DataProviderInterface.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';

@@ -1,8 +1,8 @@
 # Milestone Implementation - Complete Documentation
 
-## 目標
+## Goal
 
-支援 GitLab Milestones 作為 Gantt Chart 的 top-level tasks，實現階層結構：
+Support milestones as top-level tasks in the Gantt Chart, implementing a hierarchical structure:
 
 ```
 Milestone (Top-level)
@@ -10,50 +10,50 @@ Milestone (Top-level)
       └─ Task/Subtask (Child of Issue)
 ```
 
-## 實作狀態
+## Implementation Status
 
-### ✅ 已完成功能
+### Completed Features
 
-1. **Milestone 資料獲取與轉換**
-   - GraphQL 查詢 milestones（project/group level）
-   - 轉換 milestone 為 Gantt task 格式
-   - 設定 milestone 的時區處理（T00:00:00 和 T23:59:59）
-   - 處理沒有日期的 milestone（預設 +30 天）
+1. **Milestone Data Fetching and Conversion**
+   - Query milestones from the data source (project/group level)
+   - Convert milestones to Gantt task format
+   - Timezone handling for milestones (T00:00:00 and T23:59:59)
+   - Handle milestones without dates (default +30 days)
 
-2. **Milestone CRUD 操作**
-   - ✅ 創建：使用 REST API `POST /projects/:id/milestones`
-   - ✅ 更新：使用 REST API `PUT /projects/:id/milestones/:milestone_id`
-   - ✅ 刪除：暫不支援（GitLab API 限制，只能 close）
-   - ✅ 時區處理：統一使用 `formatDateForGitLab()` 方法
+2. **Milestone CRUD Operations**
+   - Create: via data source REST API
+   - Update: via data source REST API
+   - Delete: Not supported (API limitation, can only close)
+   - Timezone handling: unified via `formatDateForProvider()` method
 
-3. **階層結構**
-   - Milestone 作為 root level tasks（parent = 0）
-   - Issue 可以屬於 milestone（透過 milestoneWidget）
-   - Subtask 可以屬於 issue（透過 hierarchyWidget）
-   - 正確處理 3 層結構
+3. **Hierarchical Structure**
+   - Milestones as root level tasks (parent = 0)
+   - Issues belong to milestones (via milestoneWidget)
+   - Subtasks belong to issues (via hierarchyWidget)
+   - Correct 3-level structure handling
 
-4. **排序邏輯**
-   - Root level：Milestone 優先（依 dueDate > startDate > title）
-   - Root level：Standalone issues 其次（依 displayOrder > id）
-   - Milestone 內的 issues：依 displayOrder > id
-   - Issue 內的 subtasks：依 displayOrder > id
+4. **Sorting Logic**
+   - Root level: Milestones first (by dueDate > startDate > title)
+   - Root level: Standalone issues second (by displayOrder > id)
+   - Issues within milestones: by displayOrder > id
+   - Subtasks within issues: by displayOrder > id
 
-5. **UI 整合**
-   - 透過 Toolbar 的 "Add Task" 建立 milestone
-   - 透過 Editor 編輯 milestone 屬性
-   - 支援拖曳調整 milestone 日期
-   - Milestone 更新事件正確同步到 GitLab
+5. **UI Integration**
+   - Create milestones via the Toolbar "Add Task" button
+   - Edit milestone properties via the Editor
+   - Drag to adjust milestone dates on the timeline
+   - Milestone updates sync correctly to the data source
 
-6. **防護邏輯**
-   - 防止在 milestone 下直接建立 subtask
-   - 防止建立 3 層以上的階層
-   - Milestone 的更新會正確路由到 `updateMilestone` 方法
+6. **Guard Logic**
+   - Prevent creating subtasks directly under milestones
+   - Prevent creating hierarchies deeper than 3 levels
+   - Milestone updates correctly route to `updateMilestone` method
 
-## 技術實作細節
+## Technical Implementation Details
 
-### 1. 資料獲取與轉換
+### 1. Data Fetching and Conversion
 
-#### 查詢 Milestones（GitLabGraphQLProvider.ts:197-213）
+#### Querying Milestones (GraphQL)
 
 ```typescript
 const milestonesQuery = `
@@ -78,90 +78,86 @@ const milestonesQuery = `
 `;
 ```
 
-#### 轉換 Milestone 為 Task（GitLabGraphQLProvider.ts）
+#### Converting Milestones to Tasks
 
 ```typescript
 import { createMilestoneTaskId } from '../utils/MilestoneIdUtils';
 
 private convertMilestoneToTask(milestone: any): ITask {
-  // 使用字串 ID 格式避免與 work item IID 衝突
-  // 格式："m-{iid}"（例如 "m-1", "m-8"）
+  // Use string ID format to avoid collision with work item IIDs
+  // Format: "m-{iid}" (e.g., "m-1", "m-8")
   const milestoneTaskId = createMilestoneTaskId(milestone.iid);
 
-  // 時區處理：確保使用本地時區
+  // Timezone handling: ensure local timezone is used
   const startDate = milestone.startDate
     ? new Date(milestone.startDate + 'T00:00:00')
     : milestone.createdAt
       ? new Date(milestone.createdAt)
       : new Date();
 
-  // 沒有 due date 時預設 +30 天
+  // Default to +30 days if no due date
   const endDate = milestone.dueDate
     ? new Date(milestone.dueDate + 'T23:59:59')
     : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   return {
-    id: milestoneTaskId,  // 字串格式："m-1"
+    id: milestoneTaskId,  // String format: "m-1"
     text: milestone.title,
     start: startDate,
     end: endDate,
     duration: Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))),
-    type: 'task', // 使用 'task' 而非 'summary' 以支援 baseline
+    type: 'task', // Use 'task' not 'summary' to support baseline
     parent: 0,
     details: milestone.description || '',
-    $isMilestone: true, // 自訂標記供 CSS 使用
-    _gitlab: {
+    $isMilestone: true, // Custom flag for CSS styling
+    _provider: {
       type: 'milestone',
-      id: milestone.iid,        // 用於 UI 識別
-      globalId: milestone.id,   // 用於 REST API
+      id: milestone.iid,        // For UI identification
+      globalId: milestone.id,   // For REST API calls
       web_url: webUrl,
     },
   };
 }
 ```
 
-**關鍵決策**：
+**Key Decisions:**
 
-- **ID 格式**：Milestone task ID = `"m-{iid}"`（字串格式），避免與 work item IID 衝突
-  - 舊格式 `10000 + iid` 已棄用，因為當專案有超過 10000 個 issue 時會產生衝突
-  - 工具函數在 `src/utils/MilestoneIdUtils.ts`
-- **Type**：使用 `'task'` 而非 `'summary'`，因為需要支援 baseline 功能
-- **時區**：加上 `T00:00:00` 和 `T23:59:59` 確保本地時區解析
-- **Global ID**：儲存完整的 `gid://gitlab/Milestone/1130` 供 REST API 使用
+- **ID Format**: Milestone task ID = `"m-{iid}"` (string format) to avoid collision with work item IIDs
+  - Old format `10000 + iid` is deprecated because projects with 10000+ issues would cause collisions
+  - Utility functions in `src/utils/MilestoneIdUtils.ts`
+- **Type**: Use `'task'` instead of `'summary'` to support baseline functionality
+- **Timezone**: Append `T00:00:00` and `T23:59:59` to ensure local timezone parsing
+- **Global ID**: Store the full global ID (e.g., `gid://gitlab/Milestone/1130`) for REST API use
 
-### 2. Milestone 更新邏輯
+### 2. Milestone Update Logic
 
-#### 關鍵發現：REST API 使用內部 ID
+#### Key Finding: REST API Uses Internal IDs
 
-GitLab REST API 的 `milestone_id` 參數需要使用**內部 ID**（從 globalId 提取），而不是 iid：
+The data source REST API `milestone_id` parameter requires the **internal ID** (extracted from globalId), not the iid:
 
-- ❌ **錯誤**：使用 iid（例如：1）→ 404 Not Found
-- ✅ **正確**：使用內部 ID（例如：1130，從 `gid://gitlab/Milestone/1130` 提取）
+- Wrong: Using iid (e.g., 1) results in 404 Not Found
+- Correct: Using internal ID (e.g., 1130, extracted from global ID)
 
-#### 更新 Milestone（GitLabGraphQLProvider.ts）
+#### Updating Milestones
 
 ```typescript
 import { extractMilestoneIid } from '../utils/MilestoneIdUtils';
 
 async updateMilestone(id: TID, milestone: Partial<ITask>): Promise<void> {
-  // 從 globalId 或 task ID 提取內部 ID
-  // globalId 格式: "gid://gitlab/Milestone/1130"
-  // task ID 格式: "m-{iid}"（例如 "m-1"）
+  // Extract internal ID from globalId or task ID
   let milestoneId: string;
 
-  if (milestone._gitlab?.globalId) {
-    const match = milestone._gitlab.globalId.match(/\/Milestone\/(\d+)$/);
+  if (milestone._provider?.globalId) {
+    const match = milestone._provider.globalId.match(/\/Milestone\/(\d+)$/);
     if (match) {
-      milestoneId = match[1]; // 提取 "1130"
+      milestoneId = match[1]; // Extract "1130"
     } else {
-      // Fallback: 從 task ID 提取 iid
       const extractedIid = extractMilestoneIid(id);
-      milestoneId = String(milestone._gitlab.id || extractedIid);
+      milestoneId = String(milestone._provider.id || extractedIid);
     }
-  } else if (milestone._gitlab?.id) {
-    milestoneId = String(milestone._gitlab.id);
+  } else if (milestone._provider?.id) {
+    milestoneId = String(milestone._provider.id);
   } else {
-    // 從 task ID 提取 iid（格式："m-{iid}"）
     const extractedIid = extractMilestoneIid(id);
     if (extractedIid !== null) {
       milestoneId = String(extractedIid);
@@ -170,22 +166,22 @@ async updateMilestone(id: TID, milestone: Partial<ITask>): Promise<void> {
     }
   }
 
-  // 建立 payload
+  // Build payload
   const payload: any = {};
   if (milestone.text !== undefined) payload.title = milestone.text;
   if (milestone.details !== undefined) payload.description = milestone.details;
   if (milestone.start !== undefined) {
-    payload.start_date = milestone.start ? this.formatDateForGitLab(milestone.start) : null;
+    payload.start_date = milestone.start ? this.formatDateForProvider(milestone.start) : null;
   }
   if (milestone.end !== undefined) {
-    payload.due_date = milestone.end ? this.formatDateForGitLab(milestone.end) : null;
+    payload.due_date = milestone.end ? this.formatDateForProvider(milestone.end) : null;
   }
 
-  // 使用 REST API
-  const updatedMilestone = await gitlabRestRequest(
+  // Use REST API
+  const updatedMilestone = await restRequest(
     `/projects/${encodedProjectId}/milestones/${milestoneId}`,
     {
-      gitlabUrl: this.config.gitlabUrl,
+      url: this.config.url,
       token: this.config.token,
       isDev: this.isDev,
     },
@@ -197,27 +193,26 @@ async updateMilestone(id: TID, milestone: Partial<ITask>): Promise<void> {
 }
 ```
 
-#### 路由邏輯（GitLabGraphQLProvider.ts）
+#### Routing Logic
 
 ```typescript
 async updateWorkItem(id: TID, task: Partial<ITask>): Promise<void> {
-  // 使用 _gitlab.type 檢查是否為 milestone
-  // 不再使用 ID >= 10000 的方式（已棄用）
-  if (task._gitlab?.type === 'milestone') {
-    console.log('[GitLabGraphQL] Detected milestone update, routing to updateMilestone');
+  // Check if this is a milestone using _provider.type
+  if (task._provider?.type === 'milestone') {
+    console.log('[Provider] Detected milestone update, routing to updateMilestone');
     return this.updateMilestone(id, task);
   }
 
-  // 一般 work item 的更新邏輯...
+  // Normal work item update logic...
 }
 ```
 
-### 3. 時區處理策略
+### 3. Timezone Handling Strategy
 
-所有日期操作統一使用 `formatDateForGitLab()` 方法，確保本地時區一致性：
+All date operations use the `formatDateForProvider()` method to ensure local timezone consistency:
 
 ```typescript
-private formatDateForGitLab(date: Date): string {
+private formatDateForProvider(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -225,68 +220,37 @@ private formatDateForGitLab(date: Date): string {
 }
 ```
 
-**應用位置**：
+**Where it's used:**
 
-1. 創建 work item（GitLabGraphQLProvider.ts:1069, 1072）
-2. 創建 milestone（GitLabGraphQLProvider.ts:1295, 1299, 1304）
-3. 更新 milestone（GitLabGraphQLProvider.ts:1378, 1382）
+1. Creating work items
+2. Creating milestones
+3. Updating milestones
 
-**錯誤案例**（已修正）：
+**Bug fix (already resolved):**
 
-- ❌ `toISOString().split('T')[0]` → 會轉換為 UTC，造成日期偏移
-- ✅ `formatDateForGitLab(date)` → 使用本地時區
+- Wrong: `toISOString().split('T')[0]` converts to UTC, causing date offset
+- Correct: `formatDateForProvider(date)` uses local timezone
 
-### 4. UI 互動處理
+### 4. UI Interaction Handling
 
-#### 移除 Milestone 更新跳過邏輯（GitLabGantt.jsx:653）
+#### Removed Milestone Update Skip Logic
 
-原本的程式碼會跳過 milestone 的更新：
+Original code would skip milestone updates:
 
 ```typescript
-// ❌ 已移除
-if (ev.task._gitlab?.type === 'milestone') {
-  return; // 這會導致 milestone 更新無法同步
+// Removed
+if (ev.task._provider?.type === 'milestone') {
+  return; // This prevented milestone updates from syncing
 }
 ```
 
-移除這個檢查後，milestone 的拖曳和編輯才能正確同步到 GitLab。
+Removing this check allows milestone drag-and-edit operations to sync correctly.
 
-#### Milestone 創建 UI（GitLabGantt.jsx:413-432）
-
-```typescript
-const handleAddMilestone = async () => {
-  if (!api) return;
-
-  const title = prompt('Enter Milestone title:', 'New Milestone');
-  if (!title) return;
-
-  const description = prompt('Enter description (optional):');
-  const startDateStr = prompt('Enter start date (YYYY-MM-DD, optional):');
-  const dueDateStr = prompt('Enter due date (YYYY-MM-DD, optional):');
-
-  try {
-    const milestone = {
-      text: title,
-      details: description || '',
-      parent: 0,
-      ...(startDateStr && { start: new Date(startDateStr) }),
-      ...(dueDateStr && { end: new Date(dueDateStr) }),
-    };
-
-    const newMilestone = await createMilestone(milestone);
-    // Gantt API 會自動更新顯示
-  } catch (error) {
-    console.error('Failed to create milestone:', error);
-    alert(`Failed to create milestone: ${error.message}`);
-  }
-};
-```
-
-### 5. 排序邏輯（GitLabGraphQLProvider.ts:287-365）
+### 5. Sorting Logic
 
 ```typescript
 private sortTasksByOrder(tasks: ITask[]): ITask[] {
-  // 依照 parent 分組
+  // Group by parent
   const tasksByParent = new Map<number | string, ITask[]>();
   tasks.forEach((task) => {
     const parentId = task.parent || 0;
@@ -299,11 +263,11 @@ private sortTasksByOrder(tasks: ITask[]): ITask[] {
   const sortedTasks: ITask[] = [];
   tasksByParent.forEach((parentTasks, parentId) => {
     if (parentId === 0) {
-      // Root level: 分離 milestones 和 issues
-      const milestones = parentTasks.filter((t) => t._gitlab?.type === 'milestone');
-      const issues = parentTasks.filter((t) => t._gitlab?.type !== 'milestone');
+      // Root level: separate milestones and issues
+      const milestones = parentTasks.filter((t) => t._provider?.type === 'milestone');
+      const issues = parentTasks.filter((t) => t._provider?.type !== 'milestone');
 
-      // Milestones: 依 due date > start date > title
+      // Milestones: sort by due date > start date > title
       milestones.sort((a, b) => {
         if (a.end && b.end) return a.end.getTime() - b.end.getTime();
         if (a.end) return -1;
@@ -314,7 +278,7 @@ private sortTasksByOrder(tasks: ITask[]): ITask[] {
         return (a.text || '').localeCompare(b.text || '');
       });
 
-      // Issues: 依 displayOrder > id
+      // Issues: sort by displayOrder > id
       issues.sort((a, b) => {
         const orderA = a.$custom?.displayOrder;
         const orderB = b.$custom?.displayOrder;
@@ -324,10 +288,10 @@ private sortTasksByOrder(tasks: ITask[]): ITask[] {
         return (a.id as number) - (b.id as number);
       });
 
-      // 合併: Milestones 在前，Issues 在後
+      // Merge: milestones first, then issues
       sortedTasks.push(...milestones, ...issues);
     } else {
-      // Non-root level: 依 displayOrder > id
+      // Non-root level: sort by displayOrder > id
       parentTasks.sort((a, b) => {
         const orderA = a.$custom?.displayOrder;
         const orderB = b.$custom?.displayOrder;
@@ -344,19 +308,19 @@ private sortTasksByOrder(tasks: ITask[]): ITask[] {
 }
 ```
 
-## API 使用總結
+## API Usage Summary
 
 ### GraphQL API
 
-**使用時機**：查詢資料
+**Used for:** Querying data
 
 ```graphql
 query getMilestones($fullPath: ID!) {
   project(fullPath: $fullPath) {
     milestones(state: active, first: 100) {
       nodes {
-        id # gid://gitlab/Milestone/1130
-        iid # 1
+        id # global ID (e.g., gid://gitlab/Milestone/1130)
+        iid # incremental ID (e.g., 1)
         title
         description
         dueDate # "2025-11-25"
@@ -369,77 +333,76 @@ query getMilestones($fullPath: ID!) {
 
 ### REST API
 
-**使用時機**：創建和更新 milestone（GraphQL 不支援）
+**Used for:** Creating and updating milestones (GraphQL does not support mutations for milestones)
 
 ```
 POST /api/v4/projects/:id/milestones
 PUT /api/v4/projects/:id/milestones/:milestone_id
 ```
 
-**重要**：`milestone_id` 參數使用內部 ID（從 globalId 提取），不是 iid！
+**Important:** The `milestone_id` parameter uses the internal ID (extracted from globalId), not the iid!
 
-## 測試檢查清單
+## Test Checklist
 
-### ✅ Milestone CRUD
+### Milestone CRUD
 
-- [x] 建立 milestone（透過 UI 對話框）
-- [x] 編輯 milestone 標題（透過 editor）
-- [x] 編輯 milestone 日期（拖曳 bar）
-- [x] 日期正確同步到 GitLab（無時區偏移）
+- [x] Create milestone (via UI dialog)
+- [x] Edit milestone title (via editor)
+- [x] Edit milestone dates (drag bar)
+- [x] Dates sync correctly to data source (no timezone offset)
 
-### ✅ 階層結構
+### Hierarchical Structure
 
-- [x] Milestone 顯示在 root level
-- [x] Issue 可以屬於 milestone（透過 milestoneWidget）
-- [x] Subtask 可以屬於 issue（透過 hierarchyWidget）
-- [x] 3 層結構正確顯示
+- [x] Milestones display at root level
+- [x] Issues can belong to milestones (via milestoneWidget)
+- [x] Subtasks can belong to issues (via hierarchyWidget)
+- [x] 3-level structure displays correctly
 
-### ✅ 排序
+### Sorting
 
-- [x] Milestone 依 due date 排序
-- [x] Milestone 在 root level issues 之前
-- [x] 排序在 sync 後保持
+- [x] Milestones sorted by due date
+- [x] Milestones appear before root-level issues
+- [x] Sorting maintained after sync
 
-### ✅ 時區處理
+### Timezone Handling
 
-- [x] 創建時使用本地時區
-- [x] 更新時使用本地時區
-- [x] 同一天的 milestone 可以顯示（00:00:00 到 23:59:59）
+- [x] Creation uses local timezone
+- [x] Updates use local timezone
+- [x] Same-day milestones display correctly (00:00:00 to 23:59:59)
 
-## 已知限制
+## Known Limitations
 
-1. **刪除 Milestone**：GitLab API 不支援刪除 milestone，只能關閉（close）
-2. **Group Milestone**：目前只測試了 project-level milestone
-3. **Milestone Assignment**：尚未實作透過拖曳將 issue 指派給 milestone
-4. **Milestone 進度**：Milestone 沒有進度條（progress bar）
+1. **Delete Milestone**: The API does not support deleting milestones, only closing them
+2. **Group Milestone**: Only project-level milestones have been tested
+3. **Milestone Assignment**: Drag-to-assign issues to milestones is not yet implemented
+4. **Milestone Progress**: Milestones do not have a progress bar
 
-## 未來改進方向
+## Future Improvements
 
-1. **拖曳指派**：實作將 issue 拖曳到 milestone 的功能
-2. **批次操作**：支援批次更新 milestone
-3. **Milestone 進度計算**：自動計算 milestone 內 issues 的完成率
-4. **Group Milestone**：完整測試 group-level milestone 支援
-5. **Milestone 過濾**：UI 上提供 milestone 過濾選項
+1. **Drag-to-Assign**: Implement dragging issues to milestones
+2. **Batch Operations**: Support batch milestone updates
+3. **Milestone Progress**: Auto-calculate completion rate of issues within a milestone
+4. **Group Milestones**: Full testing of group-level milestone support
+5. **Milestone Filtering**: Provide milestone filter options in the UI
 
-## 參考文件
+## References
 
-- [GitLab Milestones API](https://docs.gitlab.com/api/milestones/)
-- [GitLab GraphQL API](https://docs.gitlab.com/api/graphql/)
-- GitLab Work Items Widget: MilestoneWidget
+- [Milestones API Documentation](https://docs.gitlab.com/api/milestones/)
+- [GraphQL API Documentation](https://docs.gitlab.com/api/graphql/)
 
-## 變更歷史
+## Change History
 
 ### 2025-11-21
 
-- ✅ 修正 milestone 創建時的時區問題
-- ✅ 實作 milestone 更新功能（使用 REST API）
-- ✅ 發現並修正 REST API 需要使用內部 ID 而非 iid
-- ✅ 移除 update-task 事件中對 milestone 的跳過邏輯
-- ✅ 完成所有時區處理的統一（使用 formatDateForGitLab）
+- Fixed timezone issue when creating milestones
+- Implemented milestone update functionality (using REST API)
+- Discovered and fixed: REST API requires internal ID, not iid
+- Removed milestone skip logic in update-task event handler
+- Unified all timezone handling (using formatDateForProvider)
 
-### 之前
+### Earlier
 
-- ✅ 實作 milestone 資料獲取與轉換
-- ✅ 實作 milestone 創建功能（使用 REST API）
-- ✅ 實作排序邏輯（milestone 優先）
-- ✅ 實作 3 層階層結構
+- Implemented milestone data fetching and conversion
+- Implemented milestone creation (using REST API)
+- Implemented sorting logic (milestones first)
+- Implemented 3-level hierarchical structure

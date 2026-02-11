@@ -19,7 +19,7 @@ export function formatDateDisplay(d) {
 
 /**
  * Format date to YYYY-MM-DD string using LOCAL timezone
- * This is important for GitLab API which expects local dates, not UTC.
+ * This is important for APIs which expect local dates, not UTC.
  * Using toISOString() would convert to UTC and cause off-by-one errors
  * for users in positive UTC offset timezones (e.g., GMT+8).
  *

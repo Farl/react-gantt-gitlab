@@ -5,7 +5,7 @@
 
 import type { ITask } from '@svar-ui/gantt-store';
 
-export interface GitLabLinkInfo {
+export interface LinkInfo {
   url: string | null;
   displayId: string | null;
   title: string;
@@ -19,7 +19,7 @@ export interface GitLabLinkInfo {
  */
 export function getSourceUrl(task: ITask | null | undefined): string | null {
   if (!task) return null;
-  return task._gitlab?.web_url || task.web_url || null;
+  return task.web_url || null;
 }
 
 /**
@@ -29,7 +29,7 @@ export function getSourceUrl(task: ITask | null | undefined): string | null {
  */
 export function isMilestoneTask(task: ITask | null | undefined): boolean {
   if (!task) return false;
-  return task.$isMilestone || task._gitlab?.type === 'milestone';
+  return task.$isMilestone || task.type === 'milestone';
 }
 
 /**
@@ -37,7 +37,7 @@ export function isMilestoneTask(task: ITask | null | undefined): boolean {
  * @param task - Gantt task with source metadata (can be null)
  * @returns Link info including URL, display ID, and type
  */
-export function getLinkInfo(task: ITask | null | undefined): GitLabLinkInfo {
+export function getLinkInfo(task: ITask | null | undefined): LinkInfo {
   if (!task) {
     return { url: null, displayId: null, title: '', isMilestone: false };
   }
@@ -46,7 +46,7 @@ export function getLinkInfo(task: ITask | null | undefined): GitLabLinkInfo {
   const url = getSourceUrl(task);
 
   if (isMilestone) {
-    const milestoneId = task._gitlab?.id;
+    const milestoneId = task.id;
     return {
       url,
       displayId: milestoneId ? `M#${milestoneId}` : null,
@@ -86,10 +86,10 @@ export interface ILink {
   source: number | string;
   target: number | string;
   type?: string;
-  _gitlab?: {
+  metadata?: {
     apiSourceIid: number;
     linkedWorkItemGlobalId: string | undefined;
-    /** Whether this is a native GitLab link (true) or description metadata link (false) */
+    /** Whether this is a native link (true) or description metadata link (false) */
     isNativeLink?: boolean;
     /** For metadata links: the relationship type */
     metadataRelation?: 'blocks' | 'blocked_by';
@@ -114,7 +114,7 @@ export interface LinkValidationResult {
 /**
  * Find a link by source and target IDs from a links array.
  * Handles bidirectional matching (source/target can be swapped).
- * Prefers links with GitLab metadata (_gitlab) over local-only links.
+ * Prefers links with metadata over local-only links.
  *
  * @param links - Array of link objects
  * @param sourceId - Source task ID
@@ -134,32 +134,31 @@ export function findLinkBySourceTarget(
       (l.source === targetId && l.target === sourceId),
   );
 
-  // Prefer link with _gitlab metadata (synced from API), fall back to any match
-  return matchingLinks.find((l) => l._gitlab) || matchingLinks[0] || null;
+  // Prefer link with metadata (synced from API), fall back to any match
+  return matchingLinks.find((l) => l.metadata) || matchingLinks[0] || null;
 }
 
 /**
- * Validate that a link has the required GitLab metadata for API operations.
+ * Validate that a link has the required metadata for API operations.
  *
- * Supports both native GitLab links and description metadata links:
+ * Supports both native links and description metadata links:
  * - Native links: require apiSourceIid and linkedWorkItemGlobalId
  * - Metadata links: require apiSourceIid, metadataRelation, and metadataTargetIid
  *
  * @param link - Link object to validate
  * @returns Validation result with metadata if valid, error message if not
  */
-export function validateLinkGitLabMetadata(
+export function validateLinkMetadata(
   link: ILink | null | undefined,
 ): LinkValidationResult {
   if (!link) {
     return { valid: false, error: 'Link is null or undefined' };
   }
 
-  if (!link._gitlab) {
+  if (!link.metadata) {
     return {
       valid: false,
-      error:
-        'Link missing _gitlab metadata - may be newly created and not yet synced',
+      error: 'Link missing metadata - may be newly created and not yet synced',
     };
   }
 
@@ -169,7 +168,7 @@ export function validateLinkGitLabMetadata(
     isNativeLink,
     metadataRelation,
     metadataTargetIid,
-  } = link._gitlab;
+  } = link.metadata;
 
   // Check if we have apiSourceIid (required for both link types)
   if (!apiSourceIid) {
@@ -219,14 +218,3 @@ export function validateLinkGitLabMetadata(
     };
   }
 }
-
-// ============================================================================
-// Deprecated re-exports for backward compatibility
-// ============================================================================
-
-/** @deprecated Use getSourceUrl instead */
-export const getGitLabUrl = getSourceUrl;
-/** @deprecated Use getLinkInfo instead */
-export const getGitLabLinkInfo = getLinkInfo;
-/** @deprecated Use openSourceLink instead */
-export const openGitLabLink = openSourceLink;

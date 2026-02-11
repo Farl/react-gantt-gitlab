@@ -1,7 +1,7 @@
 /**
  * useCellDimensions Hook
  * Manages cell width, height, and length unit settings with localStorage persistence
- * Extracted from GitLabGantt for reuse in WorkloadView
+ * Extracted from GanttChart for reuse in WorkloadView
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
