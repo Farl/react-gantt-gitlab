@@ -45,7 +45,7 @@ export function SyncButton({ onSync, syncState, filterOptions }) {
         onClick={handleSync}
         disabled={syncState.isSyncing || syncState.isLoading}
         className={`sync-btn ${isAnimating ? 'animating' : ''}`}
-        title="Sync with GitLab"
+        title="Sync data"
       >
         <svg
           className="sync-icon"

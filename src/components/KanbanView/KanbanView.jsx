@@ -386,7 +386,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
 
             <div className="settings-modal-body">
               <div className="settings-section">
-                <h4>GitLab Project</h4>
+                <h4>Project</h4>
                 <ProjectSelector
                   onProjectChange={(config) => {
                     handleConfigChange(config);

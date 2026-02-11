@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { getGitLabLinkInfo } from '../utils/LinkUtils';
+import { getLinkInfo } from '../utils/LinkUtils';
 
 const STORAGE_KEY = 'gantt-column-settings';
 
@@ -277,7 +277,7 @@ export const AssigneeCell = ({ row }) => {
 };
 
 export const IssueIdCell = ({ row }) => {
-  const linkInfo = getGitLabLinkInfo(row);
+  const linkInfo = getLinkInfo(row);
 
   if (!linkInfo.displayId) return null;
 

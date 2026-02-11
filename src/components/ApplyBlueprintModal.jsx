@@ -243,7 +243,7 @@ export function ApplyBlueprintModal({
     >
       <div
         className="blueprint-modal apply-blueprint-modal"
-        onMouseDown={(e) => { mouseDownOnOverlay.current = false; }}
+        onMouseDown={() => { mouseDownOnOverlay.current = false; }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

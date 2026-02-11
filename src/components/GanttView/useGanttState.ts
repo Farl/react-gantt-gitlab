@@ -4,7 +4,7 @@
  * Handles: UI state (modals, settings), grid configuration, and view settings
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 
 export function useGanttState() {
   // === UI State ===
@@ -29,6 +29,7 @@ export function useGanttState() {
   const [discardChangesDialogOpen, setDiscardChangesDialogOpen] = useState(false);
 
   // === Edit State ===
+  // NOTE: setDateEditable is not used yet but kept for future feature to toggle date editing
   const [dateEditable, setDateEditable] = useState(true);
 
   // === Grid Configuration ===
@@ -37,23 +38,39 @@ export function useGanttState() {
     return saved ? Number(saved) : 40;
   });
 
+  // Display value for slider (updates immediately for smooth UX)
   const [cellWidthDisplay, setCellWidthDisplay] = useState(cellWidth);
+  const cellWidthTimerRef = useRef(null);
 
   const [cellHeight, setCellHeight] = useState(() => {
     const saved = localStorage.getItem('gantt-cell-height');
     return saved ? Number(saved) : 38;
   });
 
+  // Display value for slider (updates immediately for smooth UX)
   const [cellHeightDisplay, setCellHeightDisplay] = useState(cellHeight);
+  const cellHeightTimerRef = useRef(null);
 
+  // Debounced cell width update to reduce re-renders
   const handleCellWidthChange = useCallback((value) => {
-    setCellWidth(value);
-    localStorage.setItem('gantt-cell-width', String(value));
+    setCellWidthDisplay(value);
+    if (cellWidthTimerRef.current) {
+      clearTimeout(cellWidthTimerRef.current);
+    }
+    cellWidthTimerRef.current = setTimeout(() => {
+      setCellWidth(value);
+    }, 100);
   }, []);
 
+  // Debounced cell height update to reduce re-renders
   const handleCellHeightChange = useCallback((value) => {
-    setCellHeight(value);
-    localStorage.setItem('gantt-cell-height', String(value));
+    setCellHeightDisplay(value);
+    if (cellHeightTimerRef.current) {
+      clearTimeout(cellHeightTimerRef.current);
+    }
+    cellHeightTimerRef.current = setTimeout(() => {
+      setCellHeight(value);
+    }, 100);
   }, []);
 
   // === Unit & View Settings ===
@@ -62,32 +79,46 @@ export function useGanttState() {
     return saved || 'day';
   });
 
+  // Show/hide column settings panel
   const [showColumnSettings, setShowColumnSettings] = useState(false);
 
   // === Effective Cell Width (based on unit) ===
+  // Calculate effective cellWidth based on lengthUnit
   const effectiveCellWidth = useMemo(() => {
-    if (lengthUnit === 'custom' || lengthUnit === 'week') {
+    if (lengthUnit === 'day') {
+      // Only in 'day' mode, use user-controlled cellWidth
       return cellWidth;
     }
-
-    if (lengthUnit === 'hour') {
-      return 80; // Wider cells for hour view
+    // For other units, use fixed defaults
+    switch (lengthUnit) {
+      case 'hour':
+        return 80; // Wider cells for hour view to reduce total count
+      case 'week':
+        return 100;
+      case 'month':
+        return 120;
+      case 'quarter':
+        return 150;
+      default:
+        return cellWidth;
     }
+  }, [lengthUnit, cellWidth]);
 
-    if (lengthUnit === '3-hour') {
-      return 100;
-    }
+  // === Persist to localStorage ===
+  // Save cell width to localStorage
+  useEffect(() => {
+    localStorage.setItem('gantt-cell-width', cellWidth.toString());
+  }, [cellWidth]);
 
-    if (lengthUnit === '6-hour') {
-      return 120;
-    }
+  // Save cell height to localStorage
+  useEffect(() => {
+    localStorage.setItem('gantt-cell-height', cellHeight.toString());
+  }, [cellHeight]);
 
-    if (lengthUnit === '12-hour') {
-      return 150;
-    }
-
-    return cellWidth;
-  }, [cellWidth, lengthUnit]);
+  // Save length unit to localStorage
+  useEffect(() => {
+    localStorage.setItem('gantt-length-unit', lengthUnit);
+  }, [lengthUnit]);
 
   return {
     // UI State

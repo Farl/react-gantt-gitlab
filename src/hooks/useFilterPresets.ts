@@ -88,9 +88,6 @@ export function useFilterPresets(
     // Group mode: GitLab does not support Group Snippets
     // Skip loading and return empty presets
     if (configTypeRef.current === 'group') {
-      console.log(
-        '[useFilterPresets] Group mode: Filter Presets not supported (GitLab limitation)',
-      );
       setPresets([]);
       setLoading(false);
       return;

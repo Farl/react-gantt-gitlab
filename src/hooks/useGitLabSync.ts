@@ -135,16 +135,6 @@ export function useGitLabSync(
           onProgress,
         });
 
-        console.log(
-          '[useGitLabSync] Sync completed, received links:',
-          data.links.map((l) => ({
-            id: l.id,
-            source: l.source,
-            target: l.target,
-            _gitlab: l._gitlab,
-          })),
-        );
-
         // Only update state if not aborted and still mounted
         if (isMountedRef.current && !abortController.signal.aborted) {
           setTasks(data.tasks);
@@ -163,7 +153,6 @@ export function useGitLabSync(
       } catch (error) {
         // Handle abort specifically - don't set error state for aborts
         if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log('[useGitLabSync] Sync aborted');
           return;
         }
 

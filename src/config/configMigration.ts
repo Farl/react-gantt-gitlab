@@ -152,10 +152,6 @@ export function migrateConfigs(): MigrationResult {
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
 
     result.migrated = true;
-    console.log(
-      `Migration complete: ${result.credentialsCreated} credentials created, ${result.configsUpdated} configs updated`,
-    );
-
     return result;
   } catch (error) {
     console.error('Migration failed:', error);

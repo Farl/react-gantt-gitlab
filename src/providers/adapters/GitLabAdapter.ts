@@ -105,15 +105,8 @@ export class GitLabAdapter implements DataProviderInterface {
   async syncTask(id: string | number, updates: Partial<ITask>): Promise<ITask> {
     await this.gitlabProvider.updateWorkItem(id, updates);
 
-    // Fetch updated task data
-    // For now, we'll need to do a full sync or partial sync to get the updated task
-    // This is a limitation of the GitLab API that we accept
-    // A better approach would be to cache task data and return the merged result
-    // But since GitLabGraphQLProvider doesn't provide a way to fetch a single task,
-    // we return the updated task as is
-
-    // Return a minimal task object with the ID
-    // The actual updated task will be fetched in the next sync
+    // Note: Returns partial task data. The full task will be fetched on next sync.
+    // Consumers should treat this as an optimistic update.
     return {
       ...updates,
       id: id as number,
@@ -139,9 +132,7 @@ export class GitLabAdapter implements DataProviderInterface {
    */
   async createLink(link: Partial<ILink>): Promise<ILink> {
     const result = await this.gitlabProvider.createIssueLink(link);
-
-    // Return the link as is - the ILink interface is compatible
-    return link as ILink;
+    return { ...link, ...result } as ILink;
   }
 
   /**

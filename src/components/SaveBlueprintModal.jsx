@@ -141,7 +141,7 @@ export function SaveBlueprintModal({
     >
       <div
         className="blueprint-modal"
-        onMouseDown={(e) => { mouseDownOnOverlay.current = false; }}
+        onMouseDown={() => { mouseDownOnOverlay.current = false; }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >

@@ -12,6 +12,7 @@ import './GanttView.css';
 import '../shared/modal-close-button.css';
 import '../shared/SettingsModal.css';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useGanttState } from './useGanttState.ts';
 import { createPortal } from 'react-dom';
 import Gantt from '../Gantt.jsx';
 import Editor from '../Editor.jsx';
@@ -215,41 +216,42 @@ export function GanttView({
     highlightTime,
   } = useGitLabData();
 
-  // === GanttView-specific State ===
-  const [api, setApi] = useState(null);
+  // === GanttView-specific State (from useGanttState hook) ===
+  const {
+    api, setApi,
+    internalShowSettings, setInternalShowSettings,
+    internalShowViewOptions, setInternalShowViewOptions,
+    showMoveInModal, setShowMoveInModal,
+    moveInProcessing, setMoveInProcessing,
+    showSaveBlueprintModal, setShowSaveBlueprintModal,
+    showApplyBlueprintModal, setShowApplyBlueprintModal,
+    showBlueprintManager, setShowBlueprintManager,
+    selectedMilestoneForBlueprint, setSelectedMilestoneForBlueprint,
+    createItemDialogOpen, setCreateItemDialogOpen,
+    createItemDialogType, setCreateItemDialogType,
+    createItemDialogContext, setCreateItemDialogContext,
+    deleteDialogOpen, setDeleteDialogOpen,
+    deleteDialogItems, setDeleteDialogItems,
+    discardChangesDialogOpen, setDiscardChangesDialogOpen,
+    dateEditable,
+    cellWidthDisplay,
+    cellHeight,
+    cellHeightDisplay,
+    handleCellWidthChange,
+    handleCellHeightChange,
+    lengthUnit, setLengthUnit,
+    showColumnSettings, setShowColumnSettings,
+    effectiveCellWidth,
+  } = useGanttState();
+
   // Settings modal can be controlled externally (from GitLabWorkspace) or internally
-  const [internalShowSettings, setInternalShowSettings] = useState(false);
   const showSettings = externalShowSettings !== undefined ? externalShowSettings : internalShowSettings;
   const setShowSettings = onSettingsClose
     ? (value) => { if (!value) onSettingsClose(); else setInternalShowSettings(true); }
     : setInternalShowSettings;
   // View Options can be controlled externally (from GitLabWorkspace) or internally
-  const [internalShowViewOptions, setInternalShowViewOptions] = useState(false);
   const showViewOptions = externalShowViewOptions !== undefined ? externalShowViewOptions : internalShowViewOptions;
   const setShowViewOptions = setInternalShowViewOptions;
-
-  // MoveInModal state
-  const [showMoveInModal, setShowMoveInModal] = useState(false);
-  const [moveInProcessing, setMoveInProcessing] = useState(false);
-
-  // Blueprint state
-  const [showSaveBlueprintModal, setShowSaveBlueprintModal] = useState(false);
-  const [showApplyBlueprintModal, setShowApplyBlueprintModal] = useState(false);
-  const [showBlueprintManager, setShowBlueprintManager] = useState(false);
-  const [selectedMilestoneForBlueprint, setSelectedMilestoneForBlueprint] = useState(null);
-
-  // Dialog states for replacing native browser dialogs
-  const [createItemDialogOpen, setCreateItemDialogOpen] = useState(false);
-  const [createItemDialogType, setCreateItemDialogType] = useState('milestone');
-  const [createItemDialogContext, setCreateItemDialogContext] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteDialogItems, setDeleteDialogItems] = useState([]);
-  const [discardChangesDialogOpen, setDiscardChangesDialogOpen] = useState(false);
-
-  // Date editing mode state (true = dates can be edited in grid cells)
-  // NOTE: setDateEditable is not used yet but kept for future feature to toggle date editing
-  // eslint-disable-next-line no-unused-vars
-  const [dateEditable, setDateEditable] = useState(true);
 
   // Store reference to all tasks for event handlers
   const allTasksRef = useRef([]);
@@ -260,55 +262,8 @@ export function GanttView({
   // Store pending add-task context for create dialog confirmation
   const pendingAddTaskContextRef = useRef(null);
 
-  // Load settings from localStorage with defaults
-  const [cellWidth, setCellWidth] = useState(() => {
-    const saved = localStorage.getItem('gantt-cell-width');
-    return saved ? Number(saved) : 40;
-  });
-  // Display value for slider (updates immediately for smooth UX)
-  const [cellWidthDisplay, setCellWidthDisplay] = useState(cellWidth);
-  const cellWidthTimerRef = useRef(null);
-
-  const [cellHeight, setCellHeight] = useState(() => {
-    const saved = localStorage.getItem('gantt-cell-height');
-    return saved ? Number(saved) : 38;
-  });
-  // Display value for slider (updates immediately for smooth UX)
-  const [cellHeightDisplay, setCellHeightDisplay] = useState(cellHeight);
-  const cellHeightTimerRef = useRef(null);
-
-  // Debounced cell width update to reduce re-renders
-  const handleCellWidthChange = useCallback((value) => {
-    setCellWidthDisplay(value);
-    if (cellWidthTimerRef.current) {
-      clearTimeout(cellWidthTimerRef.current);
-    }
-    cellWidthTimerRef.current = setTimeout(() => {
-      setCellWidth(value);
-    }, 100);
-  }, []);
-
-  // Debounced cell height update to reduce re-renders
-  const handleCellHeightChange = useCallback((value) => {
-    setCellHeightDisplay(value);
-    if (cellHeightTimerRef.current) {
-      clearTimeout(cellHeightTimerRef.current);
-    }
-    cellHeightTimerRef.current = setTimeout(() => {
-      setCellHeight(value);
-    }, 100);
-  }, []);
-
-  const [lengthUnit, setLengthUnit] = useState(() => {
-    const saved = localStorage.getItem('gantt-length-unit');
-    return saved || 'day';
-  });
-
   // Column settings (visibility + order) from extracted hook
   const { columnSettings, toggleColumn, reorderColumns } = useColumnSettings();
-
-  // Show/hide column settings panel
-  const [showColumnSettings, setShowColumnSettings] = useState(false);
 
   // Use shared date range preset hook
   const {
@@ -320,42 +275,6 @@ export function GanttView({
     setCustomEndDate,
     dateRange,
   } = useDateRangePreset({ storagePrefix: 'gantt' });
-
-  // Calculate effective cellWidth based on lengthUnit
-  const effectiveCellWidth = useMemo(() => {
-    if (lengthUnit === 'day') {
-      // Only in 'day' mode, use user-controlled cellWidth
-      return cellWidth;
-    }
-    // For other units, use fixed defaults
-    switch (lengthUnit) {
-      case 'hour':
-        return 80; // Wider cells for hour view to reduce total count
-      case 'week':
-        return 100;
-      case 'month':
-        return 120;
-      case 'quarter':
-        return 150;
-      default:
-        return cellWidth;
-    }
-  }, [lengthUnit, cellWidth]);
-
-  // Save cell width to localStorage
-  useEffect(() => {
-    localStorage.setItem('gantt-cell-width', cellWidth.toString());
-  }, [cellWidth]);
-
-  // Save cell height to localStorage
-  useEffect(() => {
-    localStorage.setItem('gantt-cell-height', cellHeight.toString());
-  }, [cellHeight]);
-
-  // Save length unit to localStorage
-  useEffect(() => {
-    localStorage.setItem('gantt-length-unit', lengthUnit);
-  }, [lengthUnit]);
 
   // Ref to store fold state before data updates
   const openStateRef = useRef(new Map());
@@ -957,12 +876,10 @@ export function GanttView({
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       // Try multiple times with increasing delays to ensure chart is loaded
-      // eslint-disable-next-line no-unused-vars
       const attemptScroll = (_attempt = 1) => {
         try {
           const state = ganttApi.getState();
           const cellWidth = state.cellWidth || 40;
-          // eslint-disable-next-line no-unused-vars
           const _scales = state._scales || [];
           const start = state.start;
 
@@ -1675,8 +1592,6 @@ export function GanttView({
 
         // Extract type information once
         const movedType = movedTask._gitlab?.workItemType || movedTask._gitlab?.type || 'unknown';
-        // NOTE: targetType is used for debugging purposes
-        // eslint-disable-next-line no-unused-vars
         const _targetType = targetTask._gitlab?.workItemType || targetTask._gitlab?.type || 'unknown';
 
         const parentId = movedTask.parent || 0;
@@ -2406,7 +2321,7 @@ export function GanttView({
 
             <div className="settings-modal-body">
             <div className="settings-section">
-              <h4>GitLab Project</h4>
+              <h4>Project</h4>
               <ProjectSelector
                 onProjectChange={(config) => {
                   handleConfigChange(config);

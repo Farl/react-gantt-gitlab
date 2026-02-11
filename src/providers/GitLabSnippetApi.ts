@@ -201,12 +201,6 @@ export async function findGanttConfigSnippet(
   configType: 'project' | 'group' = 'project',
 ): Promise<GitLabSnippet | null> {
   const prefix = getEndpointPrefix(fullPath, configType);
-  console.log('[GitLabSnippetApi] findGanttConfigSnippet:', {
-    fullPath,
-    configType,
-    prefix,
-  });
-
   try {
     // Use paginated request to handle projects with many snippets (>20 default)
     const snippets = await gitlabRestRequestPaginated<GitLabSnippet>(

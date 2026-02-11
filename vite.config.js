@@ -45,7 +45,7 @@ export default defineConfig(({ command, mode }) => {
     ...rollupOptions,
     external: [
       ...rollupOptions.external,
-      /^@wx\//, // matches all modules starting with "@svar-ui/"
+      /^@wx\//, // matches all modules starting with "@wx/"
       /^@svar-ui\//, // matches all modules starting with "@svar-ui/"
     ],
   };

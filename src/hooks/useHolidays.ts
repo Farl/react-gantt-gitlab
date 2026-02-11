@@ -1,5 +1,5 @@
 /**
- * React Hook for managing GitLab-stored holidays
+ * React Hook for managing data-source-stored holidays
  * Handles loading, saving, and permission checking for project holidays
  *
  * NOTE: Group configurations do NOT support this feature because GitLab
@@ -78,7 +78,7 @@ function textToEntries(text: string): HolidayEntry[] {
 }
 
 /**
- * Hook for managing GitLab-stored holidays, workdays, and color rules
+ * Hook for managing holidays, workdays, and color rules
  *
  * IMPORTANT: Group configurations do NOT support Snippets (GitLab limitation).
  * See: https://gitlab.com/gitlab-org/gitlab/-/issues/15958
@@ -93,7 +93,7 @@ export function useHolidays(
   proxyConfig: GitLabProxyConfig | null,
   canEdit: boolean,
   configType: 'project' | 'group' = 'project',
-): UseGitLabHolidaysResult {
+): UseHolidaysResult {
   const [holidays, setHolidays] = useState<HolidayEntry[]>([]);
   const [workdays, setWorkdays] = useState<HolidayEntry[]>([]);
   const [colorRules, setColorRulesState] = useState<ColorRule[]>([]);
@@ -132,9 +132,6 @@ export function useHolidays(
     // Group mode: GitLab does not support Group Snippets
     // Skip loading and return empty data
     if (configTypeRef.current === 'group') {
-      console.log(
-        '[useGitLabHolidays] Group mode: Holidays/ColorRules not supported (GitLab limitation)',
-      );
       setHolidays([]);
       setWorkdays([]);
       setColorRulesState([]);
@@ -168,7 +165,7 @@ export function useHolidays(
         setWorkdaysTextState('');
       }
     } catch (err) {
-      console.error('[useGitLabHolidays] Failed to load config:', err);
+      console.error('[useHolidays] Failed to load config:', err);
       setError(err instanceof Error ? err.message : 'Failed to load holidays');
     } finally {
       setLoading(false);
@@ -193,9 +190,8 @@ export function useHolidays(
           currentProxyConfig,
           configTypeRef.current,
         );
-        console.log('[useGitLabHolidays] Config saved to GitLab');
       } catch (err) {
-        console.error('[useGitLabHolidays] Failed to save config:', err);
+        console.error('[useHolidays] Failed to save config:', err);
         setError(
           err instanceof Error ? err.message : 'Failed to save holidays',
         );

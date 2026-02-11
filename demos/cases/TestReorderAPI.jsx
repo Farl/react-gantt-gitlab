@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { gitlabConfigManager } from '../../src/config/GitLabConfigManager';
 import { gitlabCredentialManager } from '../../src/config/GitLabCredentialManager';
 import { GitLabGraphQLProvider } from '../../src/providers/GitLabGraphQLProvider';
@@ -55,14 +55,6 @@ export default function TestReorderAPI() {
     addLog('🚀 Creating test data...', 'info');
 
     try {
-      const provider = new GitLabGraphQLProvider({
-        gitlabUrl: config.gitlabUrl,
-        token: config.token,
-        projectId: config.projectId,
-        groupId: config.groupId,
-        type: config.type,
-      });
-
       // Note: Using REST API for issue creation (more reliable than GraphQL createIssue)
       addLog('Creating test issues via REST API...', 'info');
 
@@ -775,8 +767,8 @@ export default function TestReorderAPI() {
     }
   };
 
-  // Verify Issue order by fetching current order
-  const verifyIssueOrder = async () => {
+  // Verify Issue order by fetching current order (reserved for future manual verification UI)
+  const _verifyIssueOrder = async () => {
     if (!testData.issue1Iid || !testData.issue2Iid) {
       addLog('⚠️  No test issues to verify', 'error');
       return;
@@ -845,8 +837,8 @@ export default function TestReorderAPI() {
     }
   };
 
-  // Verify Task order by fetching parent's children
-  const verifyTaskOrder = async () => {
+  // Verify Task order by fetching parent's children (reserved for future manual verification UI)
+  const _verifyTaskOrder = async () => {
     if (!testData.task1GlobalId || !testData.task2GlobalId || !testData.parentIssueIid) {
       addLog('⚠️  No test tasks to verify', 'error');
       return;

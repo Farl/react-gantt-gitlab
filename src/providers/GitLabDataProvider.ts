@@ -155,32 +155,20 @@ export class GitLabDataProvider {
       // Apply proxy in dev mode
       url = this.getProxyUrl(url);
 
-      console.log(`[GitLab] fetchAllPages: Fetching page ${page} from:`, url);
-
       const response = await fetch(url, {
         headers: this.getHeaders(),
       });
 
-      console.log(`[GitLab] fetchAllPages: Response status:`, response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[GitLab] fetchAllPages: Error response:`, errorText);
         throw new Error(`GitLab API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log(`[GitLab] fetchAllPages: Received ${data.length} items`);
       results.push(...data);
 
       // Check if there are more pages
       const totalPages = response.headers.get('x-total-pages');
-      console.log(
-        `[GitLab] fetchAllPages: Total pages:`,
-        totalPages,
-        `Current page:`,
-        page,
-      );
       if (!totalPages || page >= parseInt(totalPages, 10)) {
         break;
       }
@@ -188,10 +176,6 @@ export class GitLabDataProvider {
       page++;
     }
 
-    console.log(
-      `[GitLab] fetchAllPages: Complete, total items:`,
-      results.length,
-    );
     return results;
   }
 
@@ -268,19 +252,16 @@ export class GitLabDataProvider {
    * Fetch milestones
    */
   private async fetchMilestones(): Promise<GitLabMilestone[]> {
-    console.log('[GitLab] fetchMilestones: Starting...');
     let endpoint: string;
     if (this.config.type === 'group' && this.config.groupId) {
       endpoint = `${this.apiBase}/groups/${this.config.groupId}/milestones`;
     } else {
       endpoint = `${this.apiBase}/projects/${this.getEncodedProjectId()}/milestones`;
     }
-    console.log('[GitLab] fetchMilestones: Endpoint:', endpoint);
 
     const milestones = await this.fetchAllPages<GitLabMilestone>(endpoint, {
       state: 'active',
     });
-    console.log('[GitLab] fetchMilestones: Done, count:', milestones.length);
 
     milestones.forEach((milestone) => {
       this.milestones.set(milestone.id, milestone);
@@ -337,14 +318,6 @@ export class GitLabDataProvider {
    * Convert GitLab issue to Gantt task
    */
   private convertIssueToTask(issue: GitLabIssue): ITask {
-    console.log('[GitLabDataProvider] Converting issue to task:', {
-      iid: issue.iid,
-      title: issue.title,
-      start_date: issue.start_date,
-      due_date: issue.due_date,
-      created_at: issue.created_at,
-    });
-
     const startDate = issue.start_date
       ? new Date(issue.start_date)
       : new Date(issue.created_at);
@@ -428,29 +401,19 @@ export class GitLabDataProvider {
    */
   async getData(options: GitLabSyncOptions = {}): Promise<GitLabDataResponse> {
     try {
-      console.log('[GitLab] Starting data fetch...');
-
       // Fetch milestones and epics for grouping
-      console.log('[GitLab] Fetching milestones and epics...');
       const [milestones, epics] = await Promise.all([
         this.fetchMilestones(),
         this.fetchEpics(),
       ]);
-      console.log(
-        `[GitLab] Fetched ${milestones.length} milestones, ${epics.length} epics`,
-      );
 
       // Fetch issues
-      console.log('[GitLab] Fetching issues...');
       const issues = await this.fetchIssues(options);
-      console.log(`[GitLab] Fetched ${issues.length} issues`);
 
       // Fetch start dates from GraphQL
-      console.log('[GitLab] Fetching start dates via GraphQL...');
       const startDates = await this.fetchIssueDateGraphQL(
         issues.map((i) => i.iid),
       );
-      console.log('[GitLab] Fetched start dates:', startDates);
 
       // Merge start dates into issues
       issues.forEach((issue) => {
@@ -490,23 +453,12 @@ export class GitLabDataProvider {
       });
 
       // Add issue tasks
-      console.log('[GitLab] Converting issues to tasks...');
       issues.forEach((issue) => {
         const task = this.convertIssueToTask(issue);
-        console.log(
-          '[GitLab] Converted issue:',
-          issue.iid,
-          issue.title,
-          '-> task:',
-          task,
-        );
         tasks.push(task);
       });
 
-      console.log('[GitLab] Total tasks after conversion:', tasks.length);
-
       // Fetch and convert links
-      console.log('[GitLab] Fetching issue links...');
       const links: ILink[] = [];
       await Promise.all(
         issues.map(async (issue) => {
@@ -520,13 +472,6 @@ export class GitLabDataProvider {
           }
         }),
       );
-
-      console.log('[GitLab] getData complete, returning:', {
-        tasks: tasks.length,
-        links: links.length,
-        milestones: milestones.length,
-        epics: epics.length,
-      });
 
       return {
         tasks,
@@ -632,8 +577,6 @@ export class GitLabDataProvider {
     id: TID,
     task: Partial<ITask>,
   ): Promise<GitLabIssue | null> {
-    console.log('[GitLabDataProvider] updateIssue called with:', { id, task });
-
     // Use GraphQL for start_date and due_date updates
     const hasDateChanges = task.start !== undefined || task.end !== undefined;
 
@@ -679,11 +622,6 @@ export class GitLabDataProvider {
         payload.state_event = task.state === 'closed' ? 'close' : 'reopen';
       }
 
-      console.log(
-        '[GitLabDataProvider] Updating other fields via REST API:',
-        payload,
-      );
-
       return this.request<GitLabIssue>(endpoint, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -691,7 +629,6 @@ export class GitLabDataProvider {
     }
 
     // If only dates changed, return null (don't fetch via REST API to avoid losing start_date)
-    console.log('[GitLabDataProvider] Only dates changed, returning null');
     return null;
   }
 
@@ -742,8 +679,6 @@ export class GitLabDataProvider {
       },
     };
 
-    console.log('[GitLabDataProvider] Updating dates via GraphQL:', variables);
-
     const result = await this.graphqlClient.mutate<{
       workItemUpdate: {
         workItem: any;
@@ -760,7 +695,6 @@ export class GitLabDataProvider {
       );
     }
 
-    console.log('[GitLabDataProvider] Dates updated successfully via GraphQL');
   }
 
   /**

@@ -104,7 +104,6 @@ export async function findBlueprintSnippet(
 ): Promise<GitLabSnippet | null> {
   // Group 模式不支援 Snippets
   if (configType === 'group') {
-    console.log('[GitLabBlueprintApi] Group mode: Snippets not supported');
     return null;
   }
 

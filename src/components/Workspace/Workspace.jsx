@@ -53,6 +53,7 @@ export function Workspace({ initialConfigId, autoSync = false }) {
 
   return (
     <GitLabDataProvider initialConfigId={initialConfigId} autoSync={autoSync}>
+      {/* Note: CSS class "gitlab-workspace" is kept for backward compatibility with consumers' custom styles */}
       <div className="gitlab-workspace">
         {/* Shared Toolbar */}
         <SharedToolbar

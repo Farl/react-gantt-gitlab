@@ -128,15 +128,6 @@ export function useDataSync(
           onProgress,
         });
 
-        console.log(
-          '[useDataSync] Sync completed, received links:',
-          data.links.map((l) => ({
-            id: l.id,
-            source: l.source,
-            target: l.target,
-          })),
-        );
-
         // Only update state if not aborted and still mounted
         if (isMountedRef.current && !abortController.signal.aborted) {
           setTasks(data.tasks);
@@ -154,7 +145,6 @@ export function useDataSync(
       } catch (error) {
         // Handle abort specifically - don't set error state for aborts
         if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log('[useDataSync] Sync aborted');
           return;
         }
 

@@ -14,7 +14,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { openGitLabLink } from '../../utils/LinkUtils';
+import { openSourceLink } from '../../utils/LinkUtils';
 import './KanbanCard.css';
 
 /**
@@ -122,7 +122,7 @@ export function KanbanCard({
   const handleIdClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openGitLabLink(task);
+    openSourceLink(task);
   };
 
   const handleIdMouseDown = (e) => {

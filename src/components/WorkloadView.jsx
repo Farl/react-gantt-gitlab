@@ -215,7 +215,7 @@ export function WorkloadView({ initialConfigId }) {
         // Only restore if arrays exist
         if (Array.isArray(assignees)) setSelectedAssignees(assignees);
         if (Array.isArray(labels)) setSelectedLabels(labels);
-      } catch (e) {
+      } catch (_e) {
         // Ignore parse errors
       }
     } else {
@@ -631,7 +631,7 @@ export function WorkloadView({ initialConfigId }) {
 
             <div className="settings-modal-body">
               <div className="settings-section">
-                <h4>GitLab Project</h4>
+                <h4>Project</h4>
                 <ProjectSelector
                   onProjectChange={(config) => {
                     handleConfigChange(config);

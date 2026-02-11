@@ -173,7 +173,7 @@ function PresetFolder({ name, node, level, matchingPresetId, canEdit, onSelectPr
 
   // Check if any child matches search (for folders)
   const hasMatchingChildren = searchQuery
-    ? filteredPresets.length > 0 || Object.entries(node.folders).some(([_, childNode]) =>
+    ? filteredPresets.length > 0 || Object.entries(node.folders).some(([_key, childNode]) =>
         childNode.presets.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : true;
@@ -265,14 +265,14 @@ function PresetItem({ preset, level, isActive, canEdit, onSelect, onMenuToggle, 
 export function FilterPresetSelector({
   presets,
   currentFilters,
-  currentServerFilters,
-  activeTab = 'client',
+  currentServerFilters: _currentServerFilters,
+  activeTab: _activeTab = 'client',
   loading,
   saving,
   canEdit,
   onSelectPreset,
   onCreatePreset,
-  onUpdatePreset,
+  onUpdatePreset: _onUpdatePreset,
   onRenamePreset,
   onDeletePreset,
   selectedPresetId, // Explicit selected preset ID (preferred over filter matching)

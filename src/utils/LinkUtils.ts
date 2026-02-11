@@ -1,6 +1,6 @@
 /**
- * GitLab Link Utilities
- * Helper functions for GitLab URL handling and link display
+ * Link Utilities
+ * Helper functions for data source URL handling and link display
  */
 
 import type { ITask } from '@svar-ui/gantt-store';
@@ -13,11 +13,11 @@ export interface GitLabLinkInfo {
 }
 
 /**
- * Get GitLab web URL from a task
- * @param task - Gantt task with GitLab metadata (can be null)
+ * Get web URL from a task
+ * @param task - Gantt task with source metadata (can be null)
  * @returns The web URL or null
  */
-export function getGitLabUrl(task: ITask | null | undefined): string | null {
+export function getSourceUrl(task: ITask | null | undefined): string | null {
   if (!task) return null;
   return task._gitlab?.web_url || task.web_url || null;
 }
@@ -33,11 +33,11 @@ export function isMilestoneTask(task: ITask | null | undefined): boolean {
 }
 
 /**
- * Extract GitLab link information from a task
- * @param task - Gantt task with GitLab metadata (can be null)
+ * Extract link information from a task
+ * @param task - Gantt task with source metadata (can be null)
  * @returns Link info including URL, display ID, and type
  */
-export function getGitLabLinkInfo(
+export function getLinkInfo(
   task: ITask | null | undefined,
 ): GitLabLinkInfo {
   if (!task) {
@@ -45,14 +45,14 @@ export function getGitLabLinkInfo(
   }
 
   const isMilestone = isMilestoneTask(task);
-  const url = getGitLabUrl(task);
+  const url = getSourceUrl(task);
 
   if (isMilestone) {
     const milestoneId = task._gitlab?.id;
     return {
       url,
       displayId: milestoneId ? `M#${milestoneId}` : null,
-      title: 'Open milestone in GitLab',
+      title: 'Open milestone',
       isMilestone: true,
     };
   }
@@ -60,18 +60,18 @@ export function getGitLabLinkInfo(
   return {
     url,
     displayId: task.issueId ? `#${task.issueId}` : null,
-    title: 'Open in GitLab',
+    title: 'Open in source',
     isMilestone: false,
   };
 }
 
 /**
- * Open GitLab URL in new tab
- * @param task - Gantt task with GitLab metadata (can be null)
+ * Open source URL in new tab
+ * @param task - Gantt task with source metadata (can be null)
  * @returns true if URL was opened, false otherwise
  */
-export function openGitLabLink(task: ITask | null | undefined): boolean {
-  const url = getGitLabUrl(task);
+export function openSourceLink(task: ITask | null | undefined): boolean {
+  const url = getSourceUrl(task);
   if (url) {
     window.open(url, '_blank');
     return true;
@@ -221,3 +221,14 @@ export function validateLinkGitLabMetadata(
     };
   }
 }
+
+// ============================================================================
+// Deprecated re-exports for backward compatibility
+// ============================================================================
+
+/** @deprecated Use getSourceUrl instead */
+export const getGitLabUrl = getSourceUrl;
+/** @deprecated Use getLinkInfo instead */
+export const getGitLabLinkInfo = getLinkInfo;
+/** @deprecated Use openSourceLink instead */
+export const openGitLabLink = openSourceLink;

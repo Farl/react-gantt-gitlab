@@ -132,10 +132,6 @@ export function loadProjectSettings(
       // 刪除舊 key
       localStorage.removeItem(legacyKey);
 
-      console.log(
-        `[ProjectSettings] Migrated legacy preset key: ${legacyKey} -> ${key}`,
-      );
-
       return migratedSettings;
     }
 

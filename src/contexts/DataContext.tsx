@@ -23,7 +23,7 @@ import type {
   FilterOptions,
   DataSourceConfig,
 } from './DataContext.types';
-import type { SyncOptions } from '../providers/core/DataProviderInterface';
+import type { SyncOptions, DataProviderInterface } from '../providers/core/DataProviderInterface';
 import { useDataSync } from '../hooks/useDataSync';
 import { useFilterPresets } from '../hooks/useFilterPresets';
 import { ToastContainer, useToast } from '../components/Toast';
@@ -86,7 +86,7 @@ export function DataProvider({
   const [currentConfig, setCurrentConfig] = useState<DataSourceConfig | null>(
     null,
   );
-  const [provider, setProvider] = useState<any>(null); // TODO: Use DataProviderInterface type
+  const [provider, setProvider] = useState<DataProviderInterface | null>(null);
   const [configs, setConfigs] = useState<DataSourceConfig[]>([]);
   const [projectPath, setProjectPath] = useState('');
 

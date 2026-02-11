@@ -67,6 +67,16 @@ export default [
       // as it can't be disabled for useWritableProp
       'react-hooks/exhaustive-deps': 'off',
 
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+
       // TODO: later
       'react/prop-types': 'off',
     },

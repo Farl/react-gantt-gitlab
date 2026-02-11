@@ -1,6 +1,6 @@
 /**
- * GitLab Filters Utility
- * Helper functions for filtering and organizing GitLab data in Gantt
+ * Data Filters Utility
+ * Helper functions for filtering and organizing data in Gantt
  */
 
 import type { ITask } from '@svar-ui/gantt-store';

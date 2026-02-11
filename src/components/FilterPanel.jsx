@@ -141,7 +141,7 @@ export function FilterPanel({
   const assigneeOptions = useMemo(() => {
     // First, get members from filterOptions (server source - has username and name)
     const serverMembers = filterOptions?.members || [];
-    const serverMemberMap = new Map(serverMembers.map(m => [m.username, m]));
+    const _serverMemberMap = new Map(serverMembers.map(m => [m.username, m]));
 
     // Then get assignees from tasks (client source) - these are display names
     const taskAssignees = tasks ? DataFilters.getUniqueAssignees(tasks) : [];
@@ -379,7 +379,7 @@ export function FilterPanel({
     (serverFilters.dateRange?.createdBefore ? 1 : 0);
 
   // Total active filter count based on current tab
-  const activeFilterCount = activeTab === 'server' ? serverFilterCount : clientFilterCount;
+  const _activeFilterCount = activeTab === 'server' ? serverFilterCount : clientFilterCount;
 
   // Check if local server filters differ from preset's server filters
   // This allows showing "modified" immediately when server filter is changed (before Apply)
