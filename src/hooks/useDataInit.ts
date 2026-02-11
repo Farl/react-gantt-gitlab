@@ -71,6 +71,8 @@ export interface UseGitLabDataInitReturn {
   getPresetStorageKey: () => string | null;
 }
 
+export { useGitLabDataInit as useDataInit };
+
 export function useGitLabDataInit(
   options: UseGitLabDataInitOptions,
 ): UseGitLabDataInitReturn {
