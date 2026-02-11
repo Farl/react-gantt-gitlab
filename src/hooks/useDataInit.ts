@@ -7,7 +7,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGitLabSync } from './useGitLabSync';
 import { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
-import { toGitLabServerFilters } from '../../utils/DataFilters';
+import { toGitLabServerFilters } from '../utils/DataFilters';
 import { presetHasServerFilters } from '../types/projectSettings';
 import type { GitLabServerFilters, GitLabSyncOptions } from '../types/gitlab';
 import type { FilterPreset } from '../types/filterPreset';

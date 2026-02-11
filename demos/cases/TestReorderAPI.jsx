@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { gitlabConfigManager } from '../../src/config/GitLabConfigManager';
-import { gitlabCredentialManager } from '../../src/config/GitLabCredentialManager';
+import { gitlabConfigManager } from '../../src/config/DataSourceConfigManager';
+import { gitlabCredentialManager } from '../../src/config/DataSourceCredentialManager';
 import { GitLabGraphQLProvider } from '../../src/providers/GitLabGraphQLProvider';
 import { gitlabRestRequest } from '../../src/providers/GitLabApiUtils';
 

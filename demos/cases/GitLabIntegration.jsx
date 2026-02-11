@@ -3,7 +3,7 @@
  * Complete example of GitLab Gantt integration with all features
  */
 
-import { GitLabGantt } from '../../src/components/GitLabGantt.jsx';
+import { GitLabGantt } from '../../src/components/GanttChart.jsx';
 
 export default function GitLabIntegration() {
   return <GitLabGantt autoSync={false} />;
