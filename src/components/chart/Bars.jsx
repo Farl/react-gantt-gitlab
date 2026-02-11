@@ -12,6 +12,7 @@ import { getID } from '../../helpers/locate';
 import storeContext from '../../context';
 import { useStore, useStoreWithCounter } from '@svar-ui/lib-react';
 import { getMatchingRules, parseLabelsString } from '../../types/colorRule';
+import { isMilestoneTask, isFolderTask, getTaskColor, TASK_COLORS } from '../../utils/TaskTypeUtils';
 import './Bars.css';
 
 // Parent task baseline 括號樣式常數（9-slice 設計：斜邊固定，中間伸縮）
@@ -566,13 +567,7 @@ function Bars(props) {
         };
 
         // Determine base color based on task type
-        const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone' || task.type === 'milestone';
-        let baseColor = '#00ba94'; // Default: green for tasks
-        if (isMilestone) {
-          baseColor = '#ad44ab'; // Purple for milestones
-        } else if (task.$isIssue) {
-          baseColor = '#3983eb'; // Blue for issues
-        }
+        let baseColor = getTaskColor(task);
 
         // Build inline style for CSS variables
         const stripeStyle = hasColorRules ? {
@@ -589,7 +584,8 @@ function Bars(props) {
           (task.$reorder ? ' wx-reorder-task' : '') +
           (task.$parent ? ' wx-parent-task' : '') +
           (task.$isIssue !== undefined ? (task.$isIssue ? ' wx-gitlab-issue' : ' wx-gitlab-task') : '') +
-          (task.$isMilestone || task._gitlab?.type === 'milestone' ? ' wx-gitlab-milestone' : '') +
+          (isMilestoneTask(task) ? ' wx-gitlab-milestone' : '') +
+          (isFolderTask(task) ? ' wx-gitlab-folder' : '') +
           stripeClass;
         const leftLinkClass =
           'wx-link wx-left' +
@@ -673,7 +669,7 @@ function Bars(props) {
                 // Parent tasks: 使用括號形式 baseline（向下包覆子任務）
                 <ParentBaselineBracket
                   task={task}
-                  isMilestone={task.type === 'milestone' || task.$isMilestone || task._gitlab?.type === 'milestone'}
+                  isMilestone={task.type === 'milestone' || isMilestoneTask(task)}
                   cellWidth={cellWidthValue}
                 />
               ) : (
@@ -681,7 +677,7 @@ function Bars(props) {
                 <div
                   className={
                     'wx-GKbcLEGA wx-baseline' +
-                    (task.type === 'milestone' || task.$isMilestone || task._gitlab?.type === 'milestone' ? ' wx-milestone' : '')
+                    (task.type === 'milestone' || isMilestoneTask(task) ? ' wx-milestone' : '')
                   }
                   style={baselineStyle(task)}
                 ></div>

@@ -13,6 +13,7 @@ import { normalizeDates } from '@svar-ui/gantt-store';
 import { Grid as WxGrid } from '@svar-ui/react-grid';
 import TextCell from './TextCell.jsx';
 import ActionCell from './ActionCell.jsx';
+import { isMilestoneTask, isFolderTask } from '../../utils/TaskTypeUtils';
 import { useWritableProp, useStore } from '@svar-ui/lib-react';
 import storeContext from '../../context';
 import './Grid.css';
@@ -575,7 +576,8 @@ export default function Grid(props) {
           rowStyle={(row) => {
             let className = 'wx-rHj6070p';
             if (row.$reorder) className += ' wx-reorder-task';
-            if (row.$isMilestone || row._gitlab?.type === 'milestone') className += ' wx-milestone-row';
+            if (isMilestoneTask(row)) className += ' wx-milestone-row';
+            if (isFolderTask(row)) className += ' wx-folder-row';
             return className;
           }}
           columnStyle={(col) =>

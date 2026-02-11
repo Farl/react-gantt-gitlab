@@ -6,6 +6,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import './MoveInModal.css';
 import './shared/modal-close-button.css';
+import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 
 /**
  * @typedef {'parent' | 'milestone' | 'epic'} MoveType
@@ -47,7 +48,7 @@ export function MoveInModal({
   // Extract milestones from allTasks (milestones are tasks with _gitlab.type === 'milestone')
   const milestones = useMemo(() => {
     return allTasks
-      .filter((task) => task._gitlab?.type === 'milestone')
+      .filter((task) => isMilestoneTask(task))
       .map((task) => ({
         // Convert task to milestone-like object for display
         // Note: Milestone task's _gitlab.id is the milestone iid (not milestoneIid which is for Issue/Task)
@@ -78,10 +79,11 @@ export function MoveInModal({
   const availableParentIssues = useMemo(() => {
     const selectedIds = new Set(selectedTasks.map((t) => t.id));
     return allTasks.filter((task) => {
-      // Must be an Issue (not a Task, not a Milestone)
+      // Must be an Issue (not a Task, not a Milestone, not a Folder)
       // Use _gitlab metadata to determine type - NEVER use ID ranges
       if (task._gitlab?.workItemType === 'Task') return false;
-      if (task._gitlab?.type === 'milestone') return false;
+      if (isMilestoneTask(task)) return false;
+      if (isFolderTask(task)) return false;
       // Must not be in the selection
       if (selectedIds.has(task.id)) return false;
       return true;

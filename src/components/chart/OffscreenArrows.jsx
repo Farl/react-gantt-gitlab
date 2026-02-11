@@ -1,6 +1,7 @@
 import { useContext, useMemo, useCallback, useState, useEffect } from 'react';
 import storeContext from '../../context';
 import { useStore } from '@svar-ui/lib-react';
+import { isMilestoneTask, isFolderTask, getTaskColor } from '../../utils/TaskTypeUtils';
 import './OffscreenArrows.css';
 
 /**
@@ -88,7 +89,9 @@ function OffscreenArrows({ scrollLeft, viewportWidth, cellHeight, chartRef }) {
       // GitLab milestones: dates stored directly on task.start/end (not in _gitlab)
       // Regular tasks: need at least dueDate in _gitlab
       // (if no startDate, system uses createdAt as fallback to display bar)
-      const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
+      const isMilestone = isMilestoneTask(task);
+      const isFolder = isFolderTask(task);
+      if (isFolder) return; // Folders have no time bar — skip offscreen arrows
       if (!isMilestone) {
         if (!task._gitlab?.dueDate) return;
       }
@@ -204,19 +207,6 @@ function estimateLabelWidth(text, cellWidth) {
   const labelOffset = getLabelOffset(cellWidth);
   if (!text) return labelOffset;
   return labelOffset + text.length * LABEL_CHAR_WIDTH + LABEL_PADDING;
-}
-
-/**
- * Get the bar color based on task type (same logic as Bars.jsx)
- */
-function getTaskColor(task) {
-  if (task.$isMilestone || task._gitlab?.type === 'milestone' || task.type === 'milestone') {
-    return '#ad44ab'; // Purple for milestones
-  }
-  if (task.$isIssue) {
-    return '#3983eb'; // Blue for issues
-  }
-  return '#00ba94'; // Default: green for tasks
 }
 
 /**

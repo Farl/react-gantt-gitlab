@@ -17,6 +17,7 @@ import { useStore, useWritableProp } from '@svar-ui/lib-react';
 // helpers
 import { modeObserver } from '../helpers/modeResizeObserver';
 import { getGitLabUrl, openGitLabLink } from '../utils/GitLabLinkUtils';
+import { isMilestoneTask } from '../utils/TaskTypeUtils';
 
 import './Editor.css';
 
@@ -131,7 +132,7 @@ function Editor({
   // Check if this is a GitLab milestone (has start AND end dates)
   // vs traditional Gantt milestone (single point in time, type === 'milestone')
   const isGitLabMilestone = useMemo(
-    () => activeTask?.$isMilestone || activeTask?._gitlab?.type === 'milestone',
+    () => activeTask ? isMilestoneTask(activeTask) : false,
     [activeTask]
   );
 

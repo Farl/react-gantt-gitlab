@@ -1,6 +1,7 @@
 import { useContext, useMemo } from 'react';
 import storeContext from '../../context';
 import { useStore } from '@svar-ui/lib-react';
+import { isFolderTask, isMilestoneTask } from '../../utils/TaskTypeUtils';
 import './Links.css';
 
 /**
@@ -97,8 +98,13 @@ function hasVisibleBar(task) {
     return false;
   }
 
+  // Folders have no bar — no link connections
+  if (isFolderTask(task)) {
+    return false;
+  }
+
   // GitLab milestone 特殊處理：日期存在 task.start/end，不在 _gitlab
-  const isGitLabMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
+  const isGitLabMilestone = isMilestoneTask(task);
   if (isGitLabMilestone) {
     return true;
   }

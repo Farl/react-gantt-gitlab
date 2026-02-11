@@ -570,6 +570,11 @@
   background-color: var(--wx-gantt-milestone-color) !important;
 }
 
+/* Folder styling - hide the bar since folders have no time range */
+.wx-bar.wx-gitlab-folder {
+  visibility: hidden;
+}
+
 .gitlab-gantt-loading,
 .gitlab-gantt-empty {
   display: flex;

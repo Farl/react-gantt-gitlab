@@ -6,8 +6,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useMiddleMouseDrag } from '../hooks/useMiddleMouseDrag';
+import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 import './WorkloadChart.css';
 import './shared/TodayMarker.css';
+import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 
 /**
  * Calculate task position and width based on dates and scale
@@ -135,9 +137,7 @@ function groupTasks(allTasks, selectedAssignees, selectedLabels, showOthers = fa
 
   // Filter work items only
   const workItems = allTasks.filter((task) => {
-    const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
-    const isSummary = task.type === 'summary';
-    return !isMilestone && !isSummary && task.start;
+    return !isMilestoneTask(task) && !isFolderTask(task) && task.type !== 'summary' && !!task.start;
   });
 
   // Track which tasks have been categorized (for "Others" group)

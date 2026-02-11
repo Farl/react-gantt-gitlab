@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import DatePickerPopup from '../shared/DatePickerPopup.jsx';
 import { formatDateDisplay } from '../../utils/dateUtils.js';
+import { isMilestoneTask, isFolderTask } from '../../utils/TaskTypeUtils';
 import './DateEditCell.css';
 
 /**
@@ -28,7 +29,8 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
   const cellRef = useRef(null);
   const pickerRef = useRef(null);
 
-  const isMilestone = row.$isMilestone || row._gitlab?.type === 'milestone';
+  const isMilestone = isMilestoneTask(row);
+  const isFolder = isFolderTask(row);
 
   // Always use _gitlab.startDate/_gitlab.dueDate as the source of truth
   // This ensures we show "None" when GitLab has no date, regardless of what svar gantt does
@@ -111,6 +113,11 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showPicker]);
+
+  // Folders have no dates — don't show date editor
+  if (isFolder) {
+    return null;
+  }
 
   const displayValue = formatDateDisplay(date);
   const isNone = displayValue === 'None';

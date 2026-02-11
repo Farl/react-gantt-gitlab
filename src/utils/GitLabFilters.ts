@@ -9,6 +9,11 @@ import type {
   GitLabEpic,
   GitLabServerFilters,
 } from '../types/gitlab';
+import {
+  isFolderTask,
+  isMilestoneTask,
+  isStructuralTask,
+} from './TaskTypeUtils';
 
 /**
  * Server filter options for Preset storage
@@ -79,9 +84,14 @@ export class GitLabFilters {
     const otherMilestoneIids = milestoneIids.filter((id) => id !== 0);
 
     return tasks.filter((task) => {
-      // Skip milestone summary tasks when filtering for "no milestone"
-      if (task._gitlab?.type === 'milestone') {
+      // Milestone nodes: include only if their IID is in the filter
+      if (isMilestoneTask(task)) {
         return otherMilestoneIids.includes(task._gitlab?.iid as number);
+      }
+
+      // Folder nodes pass through — they'll be handled by ensureParentChildIntegrity
+      if (isFolderTask(task)) {
+        return true;
       }
 
       // Issue/Task - check by milestone association stored in _gitlab.milestoneIid
@@ -318,75 +328,51 @@ export class GitLabFilters {
   ): ITask[] {
     const taskMap = new Map<number | string, ITask>();
 
+    /**
+     * Walk up the parent chain from a given parentId, ensuring all ancestors
+     * are included in the result. Stops at root (0) or when chain breaks.
+     */
+    const ensureAncestors = (parentId: number | string | undefined) => {
+      let currentParentId = parentId;
+      while (currentParentId && currentParentId !== 0) {
+        if (!taskMap.has(currentParentId)) {
+          const parentTask = allTasks.find((t) => t.id === currentParentId);
+          if (parentTask) {
+            taskMap.set(currentParentId, parentTask);
+            currentParentId = parentTask.parent;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+    };
+
     // Process each task
     //
     // GitLab Work Item Hierarchy Rules:
-    // - Issue's parent can ONLY be: Epic (via hierarchyWidget) or Milestone (via milestoneWidget, shown as parent in Gantt)
+    // - Issue's parent can be: Milestone, Folder (virtual), or Epic (stored separately)
     // - Task's parent can ONLY be: Issue (via hierarchyWidget)
+    // - Folder's parent can be: Milestone, another Folder, or root (0)
     // - NEVER use ID ranges (e.g., < 10000) to guess parent type - this is unreliable and causes bugs
     // - Always use _gitlab metadata (workItemType, epicParentId, etc.) to determine relationships
     //
     filteredTasks.forEach((task) => {
-      // Check if this task has a parent
       if (task.parent && task.parent !== 0) {
-        // Check if this is an Issue (Issue's parent in Gantt = Milestone, Epic parent stored separately)
-        const isIssue =
-          task.$isIssue ||
-          task._gitlab?.workItemType === 'Issue' ||
-          (task._gitlab?.workItemType !== 'Task' && !task._gitlab?.type);
+        // Task has a parent — check it still exists in the full task list
+        const parentExists = allTasks.some((t) => t.id === task.parent);
 
-        if (isIssue) {
-          // Issue's parent in Gantt context is Milestone
-          const parentExists = allTasks.some((t) => t.id === task.parent);
-
-          if (parentExists) {
-            // Parent (Milestone) exists, keep the relationship
-            taskMap.set(task.id, task);
-
-            // Ensure the milestone is included
-            if (!taskMap.has(task.parent)) {
-              const parentTask = allTasks.find((t) => t.id === task.parent);
-              if (parentTask) {
-                taskMap.set(task.parent, parentTask);
-              }
-            }
-          } else {
-            // Parent doesn't exist (filtered Milestone)
-            // Move to root level
-            const modifiedTask = { ...task, parent: 0 };
-            taskMap.set(task.id, modifiedTask);
-          }
+        if (parentExists) {
+          taskMap.set(task.id, task);
+          // Walk up ancestor chain to ensure all parents are included
+          // Possible chains: Issue → Folder → Milestone → root
+          //                  Task → Issue → Folder → Milestone → root
+          //                  Milestone → Folder → root
+          ensureAncestors(task.parent);
         } else {
-          // Task's parent can ONLY be an Issue (never Epic, never Milestone)
-          const parentExists = allTasks.some((t) => t.id === task.parent);
-
-          if (!parentExists) {
-            // Parent Issue doesn't exist - likely filtered out (e.g., closed issue)
-            // Move task to root level
-            const modifiedTask = { ...task, parent: 0 };
-            taskMap.set(task.id, modifiedTask);
-          } else {
-            // Parent exists, add task as-is
-            taskMap.set(task.id, task);
-
-            // Also ensure the parent is included in the result
-            let currentParentId: number | string | undefined = task.parent;
-            while (currentParentId && currentParentId !== 0) {
-              if (!taskMap.has(currentParentId)) {
-                const parentTask = allTasks.find(
-                  (t) => t.id === currentParentId,
-                );
-                if (parentTask) {
-                  taskMap.set(currentParentId, parentTask);
-                  currentParentId = parentTask.parent;
-                } else {
-                  break;
-                }
-              } else {
-                break;
-              }
-            }
-          }
+          // Parent doesn't exist (filtered out) — move to root level
+          taskMap.set(task.id, { ...task, parent: 0 });
         }
       } else {
         // No parent or root level, add as-is
@@ -416,8 +402,8 @@ export class GitLabFilters {
 
     // Assign tasks to groups
     tasks.forEach((task) => {
-      // Skip milestone summary tasks
-      if (task._gitlab?.type === 'milestone') {
+      // Skip structural nodes (milestones, folders)
+      if (isStructuralTask(task)) {
         return;
       }
 
@@ -561,8 +547,8 @@ export class GitLabFilters {
     };
 
     tasks.forEach((task) => {
-      // Skip milestone summary tasks
-      if (task._gitlab?.type === 'milestone') {
+      // Skip structural nodes (milestones, folders)
+      if (isStructuralTask(task)) {
         return;
       }
 

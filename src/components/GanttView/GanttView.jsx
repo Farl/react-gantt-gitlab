@@ -43,6 +43,7 @@ import { ConfirmDialog } from '../shared/dialogs/ConfirmDialog';
 import { CreateItemDialog } from '../shared/dialogs/CreateItemDialog';
 import { DeleteDialog } from '../shared/dialogs/DeleteDialog';
 import { isLegacyMilestoneId, migrateLegacyMilestoneId } from '../../utils/MilestoneIdUtils.ts';
+import { isMilestoneTask, isFolderTask, isStructuralTask } from '../../utils/TaskTypeUtils';
 import {
   findLinkBySourceTarget,
   validateLinkGitLabMetadata,
@@ -761,10 +762,10 @@ export function GanttView({
         for (const taskId of taskIds) {
           if (processedSet.has(taskId)) continue;
 
-          // Skip milestones for close action (milestones cannot be closed)
+          // Skip milestones and folders for close action (they cannot be closed)
           const task = allTasksRef.current.find(t => t.id === taskId);
-          if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
-            console.log(`[GanttView] Skipping close for milestone: ${taskId}`);
+          if (task && isStructuralTask(task)) {
+            console.log(`[GanttView] Skipping close for structural node: ${taskId}`);
             continue;
           }
 
@@ -1398,6 +1399,12 @@ export function GanttView({
         if (ev.mode === 'child' && ev.target && ev.target !== 0) {
           const parentTask = ganttApi.getTask(ev.target);
 
+          // Check if parent is a folder (virtual node — cannot create under it)
+          if (parentTask && isFolderTask(parentTask)) {
+            showToast('Cannot create items directly under a folder. Folders are determined by labels.', 'warning');
+            return false;
+          }
+
           // Check if parent is a milestone
           if (parentTask && parentTask.$isMilestone) {
             // Creating issue under milestone - show CreateItemDialog
@@ -1421,7 +1428,7 @@ export function GanttView({
           // Check if parent is a GitLab Task (subtask)
           // Only GitLab Tasks cannot have children (third level not allowed)
           // Issues under milestones CAN have children (Tasks)
-          const isParentGitLabTask = parentTask && !parentTask.$isIssue && !parentTask.$isMilestone;
+          const isParentGitLabTask = parentTask && !parentTask.$isIssue && !isStructuralTask(parentTask);
 
           if (isParentGitLabTask) {
             showToast('Cannot create subtasks under a GitLab Task. Only Issues can have Tasks as children.', 'warning');
@@ -1561,9 +1568,15 @@ export function GanttView({
         const task = ganttApi.getTask(ev.id);
         const taskTitle = task ? task.text : `Item ${ev.id}`;
 
+        // Folders are virtual nodes — cannot be deleted
+        if (task && isFolderTask(task)) {
+          showToast('Folders are virtual nodes determined by labels and cannot be deleted.', 'warning');
+          return false;
+        }
+
         // Determine the type of item
         let itemType = 'Issue';
-        if (task?.$isMilestone || task?._gitlab?.type === 'milestone') {
+        if (task && isMilestoneTask(task)) {
           itemType = 'Milestone';
         } else if (task?._gitlab?.workItemType === 'Task') {
           itemType = 'Task';
@@ -1583,7 +1596,8 @@ export function GanttView({
           children: children.map(child => ({
             id: child.id,
             title: child.text,
-            type: child.$isMilestone ? 'Milestone' :
+            type: isFolderTask(child) ? 'Folder' :
+                  isMilestoneTask(child) ? 'Milestone' :
                   child._gitlab?.workItemType === 'Task' ? 'Task' : 'Issue',
           })),
         }]);
@@ -1668,8 +1682,8 @@ export function GanttView({
         const movedTask = ganttApi.getTask(ev.id);
         const targetTask = ganttApi.getTask(ev.target);
 
-        // Skip milestones - they can't be reordered (no way to save order)
-        if (movedTask._gitlab?.type === 'milestone') {
+        // Skip milestones and folders - they can't be reordered
+        if (movedTask._gitlab?.type === 'milestone' || movedTask._gitlab?.type === 'folder') {
           return;
         }
 
@@ -1726,26 +1740,27 @@ export function GanttView({
           // Use the type information we already extracted at the beginning
           const finalTargetType = finalTargetTask._gitlab?.workItemType || finalTargetTask._gitlab?.type || 'unknown';
 
-          // Milestones are special - they can't be used for reordering at all
-          const targetIsMilestone = finalTargetTask.$isMilestone || finalTargetType === 'milestone';
+          // Milestones and folders are special - they can't be used for reordering at all
+          const targetIsMilestone = isMilestoneTask(finalTargetTask);
+          const targetIsFolder = isFolderTask(finalTargetTask);
 
           // Check if types are compatible for reordering
           // Issues can only reorder relative to other Issues
           // Tasks can only reorder relative to other Tasks (within same parent)
-          const typesIncompatible = targetIsMilestone || (movedType !== finalTargetType);
+          const typesIncompatible = targetIsMilestone || targetIsFolder || (movedType !== finalTargetType);
 
           if (typesIncompatible) {
 
-            // For milestones, we need special logic since they appear at the top visually
+            // For milestones/folders, we need special logic since they appear at the top visually
             // but might be at the end of the siblings array due to missing displayOrder
-            const isMilestoneTarget = finalTargetTask.$isMilestone || finalTargetType === 'milestone';
+            const isMilestoneOrFolderTarget = targetIsMilestone || targetIsFolder;
 
-            if (isMilestoneTarget) {
-              // When dragging to a milestone, move before the first compatible Issue
+            if (isMilestoneOrFolderTarget) {
+              // When dragging to a milestone/folder, move before the first compatible Issue
               const firstCompatibleIssue = siblings.find(s => {
                 if (s.id === ev.id) return false; // Skip self
+                if (isStructuralTask(s)) return false;
                 const siblingType = s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
-                if (s.$isMilestone || siblingType === 'milestone') return false;
                 return movedType === siblingType && s._gitlab?.iid;
               });
 
@@ -1768,8 +1783,8 @@ export function GanttView({
             for (let i = targetIndex - 1; i >= 0; i--) {
               const s = siblings[i];
               if (s.id === ev.id) continue; // Skip self
+              if (isStructuralTask(s)) continue; // Skip milestones and folders
               const siblingType = s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
-              if (s.$isMilestone || siblingType === 'milestone') continue; // Skip milestones
               if (movedType === siblingType && s._gitlab?.iid) {
                 compatibleBefore = s;
                 break;
@@ -1780,8 +1795,8 @@ export function GanttView({
             for (let i = targetIndex + 1; i < siblings.length; i++) {
               const s = siblings[i];
               if (s.id === ev.id) continue; // Skip self
+              if (isStructuralTask(s)) continue; // Skip milestones and folders
               const siblingType = s._gitlab?.workItemType || s._gitlab?.type || 'unknown';
-              if (s.$isMilestone || siblingType === 'milestone') continue; // Skip milestones
               if (movedType === siblingType && s._gitlab?.iid) {
                 compatibleAfter = s;
                 break;
@@ -2076,7 +2091,12 @@ export function GanttView({
   // (row.start may be auto-filled with createdAt when GitLab has no startDate)
   // For milestones: Always show the date (milestones always have dates in GitLab)
   const DateCell = useCallback(({ row, column }) => {
-    const isMilestone = row.$isMilestone || row._gitlab?.type === 'milestone';
+    const isMilestone = isMilestoneTask(row);
+
+    // Folders have no dates
+    if (isFolderTask(row)) {
+      return null;
+    }
 
     // Milestones always have dates, so skip the _gitlab check for them
     if (!isMilestone) {
@@ -2114,7 +2134,11 @@ export function GanttView({
     let iconColor;
 
     // Determine icon and color based on GitLab type
-    if (data.$isMilestone || data._gitlab?.type === 'milestone') {
+    if (isFolderTask(data)) {
+      // Folder - gray
+      icon = <i className="far fa-folder"></i>;
+      iconColor = '#8B8B8B';
+    } else if (isMilestoneTask(data)) {
       // Milestone - purple
       icon = <i className="far fa-flag"></i>;
       iconColor = '#ad44ab';

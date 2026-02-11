@@ -8,6 +8,8 @@
  * cause collisions when a project has more than 10000 issues.
  */
 
+import type { ITask } from '@svar-ui/gantt-store';
+
 const MILESTONE_ID_PREFIX = 'm-';
 
 /**
@@ -76,4 +78,12 @@ export function isLegacyMilestoneId(id: number | string): boolean {
     return !isNaN(numId) && numId >= 10000 && String(numId) === id;
   }
   return false;
+}
+
+/**
+ * Check if an ITask is a milestone node.
+ * Use this instead of repeating `task.$isMilestone || task._gitlab?.type === 'milestone'` everywhere.
+ */
+export function isMilestoneTask(task: ITask): boolean {
+  return !!(task.$isMilestone || task._gitlab?.type === 'milestone');
 }

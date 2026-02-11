@@ -62,6 +62,7 @@ import {
   removeBlockedByRelation,
   type DescriptionLinkMetadata,
 } from '../utils/DescriptionMetadataUtils';
+import { buildFolderTree } from '../utils/FolderLabelUtils';
 
 /**
  * Format iteration title for display
@@ -1505,6 +1506,12 @@ export class GitLabGraphQLProvider {
       ...workItemTasks,
     ];
 
+    // Build folder tree from folder:: labels
+    // This creates virtual folder nodes and re-parents issues under them
+    const allMilestoneTasks = [...milestoneTasks, ...referencedMilestoneTasks];
+    const folderResult = buildFolderTree(tasks, allMilestoneTasks);
+    tasks = [...folderResult.folderNodes, ...folderResult.tasks];
+
     // Sort tasks by display order if available
     tasks = this.sortTasksByOrder(tasks);
 
@@ -1539,7 +1546,7 @@ export class GitLabGraphQLProvider {
    */
   private sortTasksByOrder(tasks: ITask[]): ITask[] {
     // Group tasks by parent
-    const tasksByParent = new Map<number, ITask[]>();
+    const tasksByParent = new Map<number | string, ITask[]>();
     tasks.forEach((task) => {
       const parentId = task.parent || 0;
       if (!tasksByParent.has(parentId)) {
@@ -1548,82 +1555,42 @@ export class GitLabGraphQLProvider {
       tasksByParent.get(parentId)!.push(task);
     });
 
-    // Sort each parent group
+    // Sort comparators
+    const compareMilestones = (a: ITask, b: ITask) => {
+      if (a.end && b.end) return a.end.getTime() - b.end.getTime();
+      if (a.end) return -1;
+      if (b.end) return 1;
+      if (a.start && b.start) return a.start.getTime() - b.start.getTime();
+      if (a.start) return -1;
+      if (b.start) return 1;
+      return (a.text || '').localeCompare(b.text || '');
+    };
+
+    const compareByDisplayOrder = (a: ITask, b: ITask) => {
+      const orderA = a.$custom?.displayOrder;
+      const orderB = b.$custom?.displayOrder;
+      if (orderA != null && orderB != null) return orderA - orderB;
+      if (orderA != null) return -1;
+      if (orderB != null) return 1;
+      return Number(a.id) - Number(b.id);
+    };
+
+    // Sort each parent group: milestones first (by date), then folders (by title), then others (by displayOrder)
     const sortedTasks: ITask[] = [];
-    tasksByParent.forEach((parentTasks, parentId) => {
-      if (parentId === 0) {
-        // Root level: separate milestones and issues
-        const milestones = parentTasks.filter(
-          (t) => t._gitlab?.type === 'milestone',
-        );
-        const issues = parentTasks.filter(
-          (t) => t._gitlab?.type !== 'milestone',
-        );
+    tasksByParent.forEach((parentTasks) => {
+      const milestones = parentTasks.filter(
+        (t) => t._gitlab?.type === 'milestone',
+      );
+      const folders = parentTasks.filter((t) => t._gitlab?.type === 'folder');
+      const others = parentTasks.filter(
+        (t) => t._gitlab?.type !== 'milestone' && t._gitlab?.type !== 'folder',
+      );
 
-        // Sort milestones by due date > start date > title
-        milestones.sort((a, b) => {
-          if (a.end && b.end) {
-            return a.end.getTime() - b.end.getTime();
-          }
-          if (a.end) return -1;
-          if (b.end) return 1;
-          if (a.start && b.start) {
-            return a.start.getTime() - b.start.getTime();
-          }
-          if (a.start) return -1;
-          if (b.start) return 1;
-          return (a.text || '').localeCompare(b.text || '');
-        });
+      milestones.sort(compareMilestones);
+      folders.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+      others.sort(compareByDisplayOrder);
 
-        // Sort issues by displayOrder (ascending, nulls last) > id
-        issues.sort((a, b) => {
-          const orderA = a.$custom?.displayOrder;
-          const orderB = b.$custom?.displayOrder;
-
-          // Both have order: sort by order value
-          if (
-            orderA !== undefined &&
-            orderA !== null &&
-            orderB !== undefined &&
-            orderB !== null
-          ) {
-            return orderA - orderB;
-          }
-          // Only A has order: A comes first
-          if (orderA !== undefined && orderA !== null) return -1;
-          // Only B has order: B comes first
-          if (orderB !== undefined && orderB !== null) return 1;
-          // Neither has order: sort by id
-          return Number(a.id) - Number(b.id);
-        });
-
-        // Milestones first, then issues
-        sortedTasks.push(...milestones, ...issues);
-      } else {
-        // Non-root level: sort by displayOrder (ascending, nulls last) > id
-        parentTasks.sort((a, b) => {
-          const orderA = a.$custom?.displayOrder;
-          const orderB = b.$custom?.displayOrder;
-
-          // Both have order: sort by order value
-          if (
-            orderA !== undefined &&
-            orderA !== null &&
-            orderB !== undefined &&
-            orderB !== null
-          ) {
-            return orderA - orderB;
-          }
-          // Only A has order: A comes first
-          if (orderA !== undefined && orderA !== null) return -1;
-          // Only B has order: B comes first
-          if (orderB !== undefined && orderB !== null) return 1;
-          // Neither has order: sort by id
-          return Number(a.id) - Number(b.id);
-        });
-
-        sortedTasks.push(...parentTasks);
-      }
+      sortedTasks.push(...milestones, ...folders, ...others);
     });
 
     return sortedTasks;
@@ -2024,6 +1991,11 @@ export class GitLabGraphQLProvider {
     // Previously used ID >= 10000 as a heuristic, but this fails for projects with 10000+ issues
     if (task._gitlab?.type === 'milestone') {
       return this.updateMilestone(id, task);
+    }
+
+    // Folders are virtual nodes — no API update
+    if (task._gitlab?.type === 'folder') {
+      return;
     }
 
     // Wait for any pending update for this task to complete
@@ -3403,6 +3375,10 @@ export class GitLabGraphQLProvider {
     // Check if this is a milestone based on _gitlab.type
     if (task?._gitlab?.type === 'milestone') {
       return this.deleteMilestone(id, task);
+    }
+    // Folders are virtual nodes — no API deletion
+    if (task?._gitlab?.type === 'folder') {
+      return;
     }
     return this.deleteWorkItem(id);
   }

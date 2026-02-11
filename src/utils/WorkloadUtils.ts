@@ -4,6 +4,7 @@
  */
 
 import type { ITask } from '@svar-ui/gantt-store';
+import { isMilestoneTask, isFolderTask } from './TaskTypeUtils';
 
 export interface WorkloadGroup {
   id: number;
@@ -128,11 +129,14 @@ export function generateWorkloadTasks(
   const result: WorkloadTask[] = [];
   let idCounter = 100000;
 
-  // Filter out milestone and summary tasks - only include actual work items
+  // Filter out milestone, folder, and summary tasks - only include actual work items
   const workItems = allTasks.filter((task) => {
-    const isMilestone = task.$isMilestone || task._gitlab?.type === 'milestone';
-    const isSummary = task.type === 'summary';
-    return !isMilestone && !isSummary && task.start;
+    return (
+      !isMilestoneTask(task) &&
+      !isFolderTask(task) &&
+      task.type !== 'summary' &&
+      !!task.start
+    );
   });
 
   // Process assignee groups
