@@ -326,7 +326,8 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
   /* Checkered background to show transparency */
-  background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
     linear-gradient(-45deg, #ccc 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, #ccc 75%),
     linear-gradient(-45deg, transparent 75%, #ccc 75%);

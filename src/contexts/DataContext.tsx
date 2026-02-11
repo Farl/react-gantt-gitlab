@@ -23,7 +23,10 @@ import type {
   FilterOptions,
   DataSourceConfig,
 } from './DataContext.types';
-import type { SyncOptions, DataProviderInterface } from '../providers/core/DataProviderInterface';
+import type {
+  SyncOptions,
+  DataProviderInterface,
+} from '../providers/core/DataProviderInterface';
 import { useDataSync } from '../hooks/useDataSync';
 import { useFilterPresets } from '../hooks/useFilterPresets';
 import { ToastContainer, useToast } from '../components/Toast';
@@ -171,9 +174,12 @@ export function DataProvider({
   }, []);
 
   // === Filter Preset Operations ===
-  const createNewPreset = useCallback(async (name: string, filters: unknown) => {
-    // TODO: Implement using preset manager
-  }, []);
+  const createNewPreset = useCallback(
+    async (name: string, filters: unknown) => {
+      // TODO: Implement using preset manager
+    },
+    [],
+  );
 
   const updatePreset = useCallback(async (id: string, filters: unknown) => {
     // TODO: Implement using preset manager

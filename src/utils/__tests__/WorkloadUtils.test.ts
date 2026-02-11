@@ -140,9 +140,7 @@ describe('generateWorkloadTasks', () => {
     });
 
     it('should handle comma-separated assignees', () => {
-      const tasks: ITask[] = [
-        makeTask({ id: 1, assigned: 'Alice, Bob' }),
-      ];
+      const tasks: ITask[] = [makeTask({ id: 1, assigned: 'Alice, Bob' })];
 
       const result = generateWorkloadTasks(tasks, ['Alice', 'Bob'], []);
       // Task should appear in both Alice and Bob groups
@@ -155,9 +153,7 @@ describe('generateWorkloadTasks', () => {
     });
 
     it('should show empty row indicator when assignee has no tasks', () => {
-      const tasks: ITask[] = [
-        makeTask({ id: 1, assigned: 'Alice' }),
-      ];
+      const tasks: ITask[] = [makeTask({ id: 1, assigned: 'Alice' })];
 
       const result = generateWorkloadTasks(tasks, ['Alice', 'Bob'], []);
       // Bob has no tasks, should get a "(No tasks)" placeholder
@@ -165,9 +161,7 @@ describe('generateWorkloadTasks', () => {
         (t) => t.$isWorkloadGroup && t.text === 'Bob',
       );
       const bobChildren = result.filter(
-        (t) =>
-          !t.$isWorkloadGroup &&
-          t.$workloadGroupId === bobGroup!.id,
+        (t) => !t.$isWorkloadGroup && t.$workloadGroupId === bobGroup!.id,
       );
       expect(bobChildren).toHaveLength(1);
       expect(bobChildren[0].text).toBe('(No tasks)');
@@ -192,9 +186,7 @@ describe('generateWorkloadTasks', () => {
     });
 
     it('should handle array-type labels', () => {
-      const tasks: ITask[] = [
-        makeTask({ id: 1, labels: ['bug', 'urgent'] }),
-      ];
+      const tasks: ITask[] = [makeTask({ id: 1, labels: ['bug', 'urgent'] })];
 
       const result = generateWorkloadTasks(tasks, [], ['bug']);
       const workTasks = result.filter(
@@ -205,18 +197,14 @@ describe('generateWorkloadTasks', () => {
     });
 
     it('should show empty row indicator when label has no tasks', () => {
-      const tasks: ITask[] = [
-        makeTask({ id: 1, labels: 'bug' }),
-      ];
+      const tasks: ITask[] = [makeTask({ id: 1, labels: 'bug' })];
 
       const result = generateWorkloadTasks(tasks, [], ['bug', 'feature']);
       const featureGroup = result.find(
         (t) => t.$isWorkloadGroup && t.text === 'feature',
       );
       const featureChildren = result.filter(
-        (t) =>
-          !t.$isWorkloadGroup &&
-          t.$workloadGroupId === featureGroup!.id,
+        (t) => !t.$isWorkloadGroup && t.$workloadGroupId === featureGroup!.id,
       );
       expect(featureChildren).toHaveLength(1);
       expect(featureChildren[0].text).toBe('(No tasks)');
@@ -231,20 +219,14 @@ describe('generateWorkloadTasks', () => {
         makeTask({ id: 3, assigned: 'Bob', labels: 'bug' }),
       ];
 
-      const result = generateWorkloadTasks(
-        tasks,
-        ['Alice', 'Bob'],
-        ['bug'],
-      );
+      const result = generateWorkloadTasks(tasks, ['Alice', 'Bob'], ['bug']);
       const ids = result.map((t) => String(t.id));
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(ids.length);
     });
 
     it('should create workload task IDs in wl-{groupId}-{originalId}-{idx} format', () => {
-      const tasks: ITask[] = [
-        makeTask({ id: 42, assigned: 'Alice' }),
-      ];
+      const tasks: ITask[] = [makeTask({ id: 42, assigned: 'Alice' })];
 
       const result = generateWorkloadTasks(tasks, ['Alice'], []);
       const workTask = result.find(

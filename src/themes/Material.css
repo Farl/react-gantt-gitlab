@@ -31,8 +31,8 @@
   --wx-gantt-link-marker-background: #f0f0f0;
   --wx-gantt-link-marker-color: #87a4bc;
 
-  --wx-gantt-bar-shadow: 0px 1px 2px rgba(44, 47, 60, 0.06),
-    0px 3px 10px rgba(44, 47, 60, 0.12);
+  --wx-gantt-bar-shadow:
+    0px 1px 2px rgba(44, 47, 60, 0.06), 0px 3px 10px rgba(44, 47, 60, 0.12);
 
   --wx-gantt-progress-marker-height: 22px;
   --wx-gantt-progress-border-color: #dfdfdf;
@@ -43,8 +43,8 @@
   --wx-grid-header-font: 500 14px Roboto;
   --wx-grid-header-font-color: #a6a6a6;
   --wx-grid-header-text-transform: uppercase;
-  --wx-grid-header-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1),
-    0px 1px 2px rgba(0, 0, 0, 0.1);
+  --wx-grid-header-shadow:
+    0px 3px 5px rgba(0, 0, 0, 0.1), 0px 1px 2px rgba(0, 0, 0, 0.1);
 
   --wx-grid-body-font: 400 14px Roboto;
   --wx-grid-body-font-color: #5f5f5f;
@@ -55,8 +55,8 @@
   --wx-timescale-font: 500 12px Roboto;
   --wx-timescale-font-color: #a6a6a6;
   --wx-timescale-text-transform: uppercase;
-  --wx-timescale-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1),
-    0px 1px 2px rgba(0, 0, 0, 0.1);
+  --wx-timescale-shadow:
+    0px 3px 5px rgba(0, 0, 0, 0.1), 0px 1px 2px rgba(0, 0, 0, 0.1);
   --wx-timescale-border: 1px solid transparent;
 
   /* grid and timescale */
@@ -111,8 +111,8 @@
   --wx-gantt-link-marker-background: #f0f0f0;
   --wx-gantt-link-marker-color: #87a4bc;
 
-  --wx-gantt-bar-shadow: 0px 1px 2px rgba(44, 47, 60, 0.06),
-    0px 3px 10px rgba(44, 47, 60, 0.12);
+  --wx-gantt-bar-shadow:
+    0px 1px 2px rgba(44, 47, 60, 0.06), 0px 3px 10px rgba(44, 47, 60, 0.12);
 
   --wx-gantt-progress-marker-height: 22px;
   --wx-gantt-progress-border-color: #dfdfdf;
@@ -123,8 +123,8 @@
   --wx-grid-header-font: 500 14px Roboto;
   --wx-grid-header-font-color: #a6a6a6;
   --wx-grid-header-text-transform: uppercase;
-  --wx-grid-header-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1),
-    0px 1px 2px rgba(0, 0, 0, 0.1);
+  --wx-grid-header-shadow:
+    0px 3px 5px rgba(0, 0, 0, 0.1), 0px 1px 2px rgba(0, 0, 0, 0.1);
 
   --wx-grid-body-font: 400 14px Roboto;
   --wx-grid-body-font-color: #5f5f5f;
@@ -135,8 +135,8 @@
   --wx-timescale-font: 500 12px Roboto;
   --wx-timescale-font-color: #a6a6a6;
   --wx-timescale-text-transform: uppercase;
-  --wx-timescale-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1),
-    0px 1px 2px rgba(0, 0, 0, 0.1);
+  --wx-timescale-shadow:
+    0px 3px 5px rgba(0, 0, 0, 0.1), 0px 1px 2px rgba(0, 0, 0, 0.1);
   --wx-timescale-border: 1px solid transparent;
 
   /* grid and timescale */

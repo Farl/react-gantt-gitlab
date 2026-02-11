@@ -449,10 +449,7 @@ describe('DataFilters.filterByState', () => {
   });
 
   it('should exclude tasks without state', () => {
-    const tasksWithMissing = [
-      ...tasks,
-      makeTask({ id: 99, state: undefined }),
-    ];
+    const tasksWithMissing = [...tasks, makeTask({ id: 99, state: undefined })];
     const result = DataFilters.filterByState(tasksWithMissing, ['OPEN']);
     expect(result.find((t) => t.id === 99)).toBeUndefined();
   });
@@ -534,7 +531,13 @@ describe('DataFilters.searchTasks', () => {
 
   it('should handle tasks with undefined text and details gracefully', () => {
     const spareTasks = [
-      makeTask({ id: 20, text: undefined, details: undefined, labels: undefined, assigned: undefined }),
+      makeTask({
+        id: 20,
+        text: undefined,
+        details: undefined,
+        labels: undefined,
+        assigned: undefined,
+      }),
     ];
     // Should not throw
     const result = DataFilters.searchTasks(spareTasks, 'test');
@@ -676,7 +679,12 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should include parent Issue when a Task child is in filtered set', () => {
     const allTasks = [
-      makeTask({ id: 1, parent: 0, _gitlab: { workItemType: 'Issue' }, $isIssue: true }),
+      makeTask({
+        id: 1,
+        parent: 0,
+        _gitlab: { workItemType: 'Issue' },
+        $isIssue: true,
+      }),
       makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
     ];
     // Only child in filtered set
@@ -698,7 +706,12 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should move Issue to root level when parent Milestone is not in allTasks', () => {
     const allTasks = [
-      makeTask({ id: 1, parent: 'm-99' as any, _gitlab: { workItemType: 'Issue' }, $isIssue: true }),
+      makeTask({
+        id: 1,
+        parent: 'm-99' as any,
+        _gitlab: { workItemType: 'Issue' },
+        $isIssue: true,
+      }),
     ];
     const result = DataFilters.ensureParentChildIntegrity(allTasks, allTasks);
     expect(result).toHaveLength(1);
@@ -707,8 +720,17 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should preserve parent relationship when milestone parent exists', () => {
     const allTasks = [
-      makeTask({ id: 'm-1' as any, parent: 0, _gitlab: { type: 'milestone', iid: 1 } }),
-      makeTask({ id: 1, parent: 'm-1' as any, _gitlab: { workItemType: 'Issue' }, $isIssue: true }),
+      makeTask({
+        id: 'm-1' as any,
+        parent: 0,
+        _gitlab: { type: 'milestone', iid: 1 },
+      }),
+      makeTask({
+        id: 1,
+        parent: 'm-1' as any,
+        _gitlab: { workItemType: 'Issue' },
+        $isIssue: true,
+      }),
     ];
     const filtered = [allTasks[1]];
     const result = DataFilters.ensureParentChildIntegrity(filtered, allTasks);
@@ -721,7 +743,12 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should handle deep hierarchy: grandchild -> child -> parent', () => {
     const allTasks = [
-      makeTask({ id: 1, parent: 0, _gitlab: { workItemType: 'Issue' }, $isIssue: true }),
+      makeTask({
+        id: 1,
+        parent: 0,
+        _gitlab: { workItemType: 'Issue' },
+        $isIssue: true,
+      }),
       makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
       makeTask({ id: 3, parent: 2, _gitlab: { workItemType: 'Task' } }),
     ];
@@ -736,7 +763,11 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should detect Issue by $isIssue flag', () => {
     const allTasks = [
-      makeTask({ id: 'm-1' as any, parent: 0, _gitlab: { type: 'milestone', iid: 1 } }),
+      makeTask({
+        id: 'm-1' as any,
+        parent: 0,
+        _gitlab: { type: 'milestone', iid: 1 },
+      }),
       makeTask({ id: 1, parent: 'm-1' as any, $isIssue: true }),
     ];
     const filtered = [allTasks[1]];
@@ -747,8 +778,16 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should detect Issue by workItemType=Issue', () => {
     const allTasks = [
-      makeTask({ id: 'm-1' as any, parent: 0, _gitlab: { type: 'milestone', iid: 1 } }),
-      makeTask({ id: 1, parent: 'm-1' as any, _gitlab: { workItemType: 'Issue' } }),
+      makeTask({
+        id: 'm-1' as any,
+        parent: 0,
+        _gitlab: { type: 'milestone', iid: 1 },
+      }),
+      makeTask({
+        id: 1,
+        parent: 'm-1' as any,
+        _gitlab: { workItemType: 'Issue' },
+      }),
     ];
     const filtered = [allTasks[1]];
     const result = DataFilters.ensureParentChildIntegrity(filtered, allTasks);
@@ -759,7 +798,11 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
   it('should treat tasks with no _gitlab metadata and no $isIssue as Issue (fallback)', () => {
     // When workItemType is not 'Task' and _gitlab.type is not set, it defaults to Issue
     const allTasks = [
-      makeTask({ id: 'm-1' as any, parent: 0, _gitlab: { type: 'milestone', iid: 1 } }),
+      makeTask({
+        id: 'm-1' as any,
+        parent: 0,
+        _gitlab: { type: 'milestone', iid: 1 },
+      }),
       makeTask({ id: 1, parent: 'm-1' as any }),
     ];
     const filtered = [allTasks[1]];
@@ -770,7 +813,12 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 
   it('should not duplicate tasks already in filtered set', () => {
     const allTasks = [
-      makeTask({ id: 1, parent: 0, _gitlab: { workItemType: 'Issue' }, $isIssue: true }),
+      makeTask({
+        id: 1,
+        parent: 0,
+        _gitlab: { workItemType: 'Issue' },
+        $isIssue: true,
+      }),
       makeTask({ id: 2, parent: 1, _gitlab: { workItemType: 'Task' } }),
     ];
     // Both parent and child in filtered set
@@ -797,8 +845,30 @@ describe('DataFilters.ensureParentChildIntegrity', () => {
 // ===========================================================================
 describe('DataFilters.groupByMilestone', () => {
   const milestones = [
-    { id: 10, iid: 1, title: 'Sprint 1', description: '', state: 'active' as const, created_at: '', updated_at: '', due_date: null, start_date: null, web_url: '' },
-    { id: 20, iid: 2, title: 'Sprint 2', description: '', state: 'active' as const, created_at: '', updated_at: '', due_date: null, start_date: null, web_url: '' },
+    {
+      id: 10,
+      iid: 1,
+      title: 'Sprint 1',
+      description: '',
+      state: 'active' as const,
+      created_at: '',
+      updated_at: '',
+      due_date: null,
+      start_date: null,
+      web_url: '',
+    },
+    {
+      id: 20,
+      iid: 2,
+      title: 'Sprint 2',
+      description: '',
+      state: 'active' as const,
+      created_at: '',
+      updated_at: '',
+      due_date: null,
+      start_date: null,
+      web_url: '',
+    },
   ];
 
   it('should create groups for each milestone plus a "No Milestone" group', () => {
@@ -811,8 +881,16 @@ describe('DataFilters.groupByMilestone', () => {
 
   it('should assign tasks to the correct milestone group by parent ID', () => {
     const tasks = [
-      makeTask({ id: 1, parent: 10 as any, _gitlab: { workItemType: 'Issue' } }),
-      makeTask({ id: 2, parent: 20 as any, _gitlab: { workItemType: 'Issue' } }),
+      makeTask({
+        id: 1,
+        parent: 10 as any,
+        _gitlab: { workItemType: 'Issue' },
+      }),
+      makeTask({
+        id: 2,
+        parent: 20 as any,
+        _gitlab: { workItemType: 'Issue' },
+      }),
     ];
     const groups = DataFilters.groupByMilestone(tasks, milestones);
     expect(groups.get(10)).toHaveLength(1);
@@ -820,9 +898,7 @@ describe('DataFilters.groupByMilestone', () => {
   });
 
   it('should put tasks without parent in the "No Milestone" group', () => {
-    const tasks = [
-      makeTask({ id: 1, parent: 0 }),
-    ];
+    const tasks = [makeTask({ id: 1, parent: 0 })];
     const groups = DataFilters.groupByMilestone(tasks, milestones);
     expect(groups.get(0)).toHaveLength(1);
   });
@@ -854,8 +930,30 @@ describe('DataFilters.groupByMilestone', () => {
 // ===========================================================================
 describe('DataFilters.groupByEpic', () => {
   const epics = [
-    { id: 100, iid: 1, title: 'Epic A', description: '', state: 'opened' as const, web_url: '', created_at: '', updated_at: '', start_date: null, end_date: null },
-    { id: 200, iid: 2, title: 'Epic B', description: '', state: 'opened' as const, web_url: '', created_at: '', updated_at: '', start_date: null, end_date: null },
+    {
+      id: 100,
+      iid: 1,
+      title: 'Epic A',
+      description: '',
+      state: 'opened' as const,
+      web_url: '',
+      created_at: '',
+      updated_at: '',
+      start_date: null,
+      end_date: null,
+    },
+    {
+      id: 200,
+      iid: 2,
+      title: 'Epic B',
+      description: '',
+      state: 'opened' as const,
+      web_url: '',
+      created_at: '',
+      updated_at: '',
+      start_date: null,
+      end_date: null,
+    },
   ];
 
   it('should create groups for each epic plus a "No Epic" group', () => {
@@ -911,9 +1009,7 @@ describe('DataFilters.getUniqueLabels', () => {
   });
 
   it('should handle labels as arrays', () => {
-    const tasks = [
-      makeTask({ id: 1, labels: ['alpha', 'beta'] as any }),
-    ];
+    const tasks = [makeTask({ id: 1, labels: ['alpha', 'beta'] as any })];
     const labels = DataFilters.getUniqueLabels(tasks);
     expect(labels).toContain('alpha');
     expect(labels).toContain('beta');
@@ -932,17 +1028,13 @@ describe('DataFilters.getUniqueLabels', () => {
   });
 
   it('should return sorted labels', () => {
-    const tasks = [
-      makeTask({ id: 1, labels: 'zebra,alpha,middle' }),
-    ];
+    const tasks = [makeTask({ id: 1, labels: 'zebra,alpha,middle' })];
     const labels = DataFilters.getUniqueLabels(tasks);
     expect(labels).toEqual(['alpha', 'middle', 'zebra']);
   });
 
   it('should trim whitespace from labels', () => {
-    const tasks = [
-      makeTask({ id: 1, labels: ' bug , feature ' }),
-    ];
+    const tasks = [makeTask({ id: 1, labels: ' bug , feature ' })];
     const labels = DataFilters.getUniqueLabels(tasks);
     expect(labels).toContain('bug');
     expect(labels).toContain('feature');
@@ -979,17 +1071,13 @@ describe('DataFilters.getUniqueAssignees', () => {
   });
 
   it('should return sorted assignees', () => {
-    const tasks = [
-      makeTask({ id: 1, assigned: 'zara,alice,mike' }),
-    ];
+    const tasks = [makeTask({ id: 1, assigned: 'zara,alice,mike' })];
     const assignees = DataFilters.getUniqueAssignees(tasks);
     expect(assignees).toEqual(['alice', 'mike', 'zara']);
   });
 
   it('should trim whitespace from assignees', () => {
-    const tasks = [
-      makeTask({ id: 1, assigned: ' alice , bob ' }),
-    ];
+    const tasks = [makeTask({ id: 1, assigned: ' alice , bob ' })];
     const assignees = DataFilters.getUniqueAssignees(tasks);
     expect(assignees).toContain('alice');
     expect(assignees).toContain('bob');
@@ -1164,9 +1252,7 @@ describe('DataFilters.calculateStats', () => {
   });
 
   it('should count completed tasks (state=closed lowercase)', () => {
-    const tasks = [
-      makeTask({ id: 1, progress: 0, state: 'closed' }),
-    ];
+    const tasks = [makeTask({ id: 1, progress: 0, state: 'closed' })];
     const stats = DataFilters.calculateStats(tasks);
     expect(stats.completed).toBe(1);
   });
@@ -1239,9 +1325,7 @@ describe('DataFilters.calculateStats', () => {
   });
 
   it('should treat undefined progress as 0', () => {
-    const tasks = [
-      makeTask({ id: 1, progress: undefined, state: 'OPEN' }),
-    ];
+    const tasks = [makeTask({ id: 1, progress: undefined, state: 'OPEN' })];
     const stats = DataFilters.calculateStats(tasks);
     expect(stats.averageProgress).toBe(0);
     expect(stats.notStarted).toBe(1);

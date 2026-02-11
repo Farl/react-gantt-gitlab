@@ -17,9 +17,7 @@ function createMockProvider(
 ): DataProviderInterface {
   return {
     sync: vi.fn().mockResolvedValue({
-      tasks: [
-        { id: 1, title: 'Task 1', start: new Date(), end: new Date() },
-      ],
+      tasks: [{ id: 1, title: 'Task 1', start: new Date(), end: new Date() }],
       links: [],
       metadata: {},
     }),
@@ -137,7 +135,11 @@ describe('useDataSync', () => {
   it('should handle provider changes by clearing data', async () => {
     const { result, rerender } = renderHook(
       ({ provider }) => useDataSync(provider),
-      { initialProps: { provider: mockProvider as DataProviderInterface | null } },
+      {
+        initialProps: {
+          provider: mockProvider as DataProviderInterface | null,
+        },
+      },
     );
 
     // Change provider to null
@@ -310,7 +312,11 @@ describe('useDataSync', () => {
 
       const { result, rerender } = renderHook(
         ({ provider }) => useDataSync(provider),
-        { initialProps: { provider: mockProvider as DataProviderInterface | null } },
+        {
+          initialProps: {
+            provider: mockProvider as DataProviderInterface | null,
+          },
+        },
       );
 
       // Start a sync that will hang

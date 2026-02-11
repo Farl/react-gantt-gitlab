@@ -165,8 +165,7 @@ describe('extractLinksFromDescription', () => {
 
   it('should handle empty metadata block', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const description =
-      '<!-- GANTT_METADATA_START\n\nGANTT_METADATA_END -->';
+    const description = '<!-- GANTT_METADATA_START\n\nGANTT_METADATA_END -->';
 
     const result = extractLinksFromDescription(description);
     expect(result.hasMetadata).toBe(true);
@@ -214,8 +213,7 @@ describe('updateDescriptionWithLinks', () => {
 
   it('should replace existing metadata block', () => {
     const original =
-      'Description text\n\n' +
-      buildMetadataBlock({ blocks: [1] });
+      'Description text\n\n' + buildMetadataBlock({ blocks: [1] });
 
     const result = updateDescriptionWithLinks(original, {
       blocks: [10, 20],
@@ -224,9 +222,8 @@ describe('updateDescriptionWithLinks', () => {
     // Should contain updated links
     expect(result).toContain('"blocks"');
     // Should only have one metadata block
-    const startCount = (
-      result.match(/<!-- GANTT_METADATA_START/g) || []
-    ).length;
+    const startCount = (result.match(/<!-- GANTT_METADATA_START/g) || [])
+      .length;
     expect(startCount).toBe(1);
 
     // Verify the new links are present
@@ -236,8 +233,7 @@ describe('updateDescriptionWithLinks', () => {
 
   it('should remove metadata block when links are empty', () => {
     const original =
-      'Description text\n\n' +
-      buildMetadataBlock({ blocks: [1, 2] });
+      'Description text\n\n' + buildMetadataBlock({ blocks: [1, 2] });
 
     const result = updateDescriptionWithLinks(original, {});
     expect(result).not.toContain('GANTT_METADATA_START');
@@ -291,8 +287,7 @@ describe('removeLinksFromDescription', () => {
   });
 
   it('should remove metadata block and preserve description', () => {
-    const original =
-      'My content\n\n' + buildMetadataBlock({ blocks: [1, 2] });
+    const original = 'My content\n\n' + buildMetadataBlock({ blocks: [1, 2] });
 
     const result = removeLinksFromDescription(original);
     expect(result).toBe('My content');
@@ -321,10 +316,7 @@ describe('addBlocksRelation', () => {
   });
 
   it('should preserve blocked_by when adding blocks', () => {
-    const result = addBlocksRelation(
-      { blocks: [1], blocked_by: [10] },
-      2,
-    );
+    const result = addBlocksRelation({ blocks: [1], blocked_by: [10] }, 2);
     expect(result.blocks).toEqual([1, 2]);
     expect(result.blocked_by).toEqual([10]);
   });
@@ -351,10 +343,7 @@ describe('addBlockedByRelation', () => {
   });
 
   it('should preserve blocks when adding blocked_by', () => {
-    const result = addBlockedByRelation(
-      { blocks: [1], blocked_by: [5] },
-      10,
-    );
+    const result = addBlockedByRelation({ blocks: [1], blocked_by: [5] }, 10);
     expect(result.blocks).toEqual([1]);
     expect(result.blocked_by).toEqual([5, 10]);
   });
@@ -457,10 +446,7 @@ describe('mergeLinks', () => {
   });
 
   it('should produce union of blocks from both sources', () => {
-    const result = mergeLinks(
-      { blocks: [1, 3] },
-      { blocks: [2, 3, 4] },
-    );
+    const result = mergeLinks({ blocks: [1, 3] }, { blocks: [2, 3, 4] });
     expect(result.blocks).toEqual([1, 2, 3, 4]);
   });
 
@@ -482,10 +468,7 @@ describe('mergeLinks', () => {
   });
 
   it('should return sorted results', () => {
-    const result = mergeLinks(
-      { blocks: [30, 10] },
-      { blocks: [20, 5] },
-    );
+    const result = mergeLinks({ blocks: [30, 10] }, { blocks: [20, 5] });
     expect(result.blocks).toEqual([5, 10, 20, 30]);
   });
 });

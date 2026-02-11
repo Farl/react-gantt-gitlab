@@ -34,7 +34,6 @@ http://localhost:5173/gitlab-integration/willow
 3. 填寫配置表單：
 
    **For GitLab.com:**
-
    - Configuration Name: `My GitLab Project`
    - GitLab URL: `https://gitlab.com`
    - Access Token: 你的 Personal Access Token
@@ -42,7 +41,6 @@ http://localhost:5173/gitlab-integration/willow
    - Project ID: 你的專案 ID（例如：`12345` 或 `namespace/project-name`）
 
    **For Self-Hosted GitLab:**
-
    - Configuration Name: `Company GitLab`
    - GitLab URL: `https://gitlab.example.com`
    - Access Token: 你的 Personal Access Token

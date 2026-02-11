@@ -27,12 +27,7 @@ describe('GanttChart (GitLabGantt wrapper)', () => {
   });
 
   it('should pass all props through to Workspace', () => {
-    render(
-      <GitLabGantt
-        initialConfigId="test-config"
-        autoSync={true}
-      />,
-    );
+    render(<GitLabGantt initialConfigId="test-config" autoSync={true} />);
 
     const workspace = screen.getByTestId('workspace');
     const passedProps = JSON.parse(workspace.getAttribute('data-props'));

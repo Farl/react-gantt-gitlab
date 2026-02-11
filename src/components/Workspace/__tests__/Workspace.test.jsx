@@ -13,13 +13,17 @@ import { render, screen, fireEvent } from '@testing-library/react';
 // Mock the GitLabDataContext module to avoid real provider initialization
 const mockUseGitLabData = vi.fn();
 vi.mock('../../../contexts/GitLabDataContext', () => ({
-  GitLabDataProvider: ({ children }) => <div data-testid="data-provider">{children}</div>,
+  GitLabDataProvider: ({ children }) => (
+    <div data-testid="data-provider">{children}</div>
+  ),
   useGitLabData: () => mockUseGitLabData(),
 }));
 
 // Mock GanttView and KanbanView since they are heavy components
 vi.mock('../../GanttView/GanttView', () => ({
-  GanttView: (props) => <div data-testid="gantt-view" data-hide-toolbar={props.hideSharedToolbar} />,
+  GanttView: (props) => (
+    <div data-testid="gantt-view" data-hide-toolbar={props.hideSharedToolbar} />
+  ),
 }));
 
 vi.mock('../../KanbanView/KanbanView', () => ({
@@ -148,7 +152,10 @@ describe('Workspace', () => {
     const kanbanBtn = screen.getByText('Kanban').closest('button');
     fireEvent.click(kanbanBtn);
 
-    expect(localStorage.setItem).toHaveBeenCalledWith('gitlab-gantt-view-mode', 'kanban');
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'gitlab-gantt-view-mode',
+      'kanban',
+    );
   });
 
   it('should restore view mode from localStorage', () => {

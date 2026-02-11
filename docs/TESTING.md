@@ -7,6 +7,7 @@ This project uses **Vitest** for unit and component testing. Vitest is a blazing
 ## Setup
 
 Testing dependencies have been installed:
+
 - **vitest**: Test framework
 - **@testing-library/react**: React component testing utilities
 - **@testing-library/jest-dom**: Jest-DOM matchers
@@ -18,27 +19,35 @@ Testing dependencies have been installed:
 ## Running Tests
 
 ### Development Mode (Watch)
+
 ```bash
 npm test
 ```
+
 Runs tests in watch mode. Tests re-run when files change.
 
 ### Interactive UI
+
 ```bash
 npm run test:ui
 ```
+
 Opens an interactive browser UI to view test results.
 
 ### Run Once (CI Mode)
+
 ```bash
 npm run test:run
 ```
+
 Runs tests once and exits. Useful for CI/CD pipelines.
 
 ### Coverage Report
+
 ```bash
 npm run test:coverage
 ```
+
 Generates test coverage report (text, JSON, HTML).
 
 ## File Structure
@@ -158,14 +167,18 @@ mockFn.mockRestore();
 ## Configuration
 
 ### vitest.config.ts
+
 Main configuration file for Vitest settings:
+
 - `environment`: jsdom (browser-like environment)
 - `globals`: Global test functions (describe, it, expect)
 - `setupFiles`: Setup file (vitest.setup.ts)
 - `coverage`: Coverage report settings
 
 ### vitest.setup.ts
+
 Setup file that runs before all tests:
+
 - Imports testing-library matchers
 - Mocks window.matchMedia
 - Mocks localStorage
@@ -241,27 +254,32 @@ it('should handle click', async () => {
 - **Integration**: Focus on critical user flows
 
 Run coverage reports with:
+
 ```bash
 npm run test:coverage
 ```
 
 Coverage reports are generated in:
+
 - Terminal: Text summary
 - `coverage/` directory: HTML report (open `coverage/index.html` in browser)
 
 ## Debugging Tests
 
 ### Run Single Test File
+
 ```bash
 npm test DataFilters
 ```
 
 ### Run Tests Matching Pattern
+
 ```bash
 npm test -- --grep "filter"
 ```
 
 ### Enable Debug Logging
+
 ```typescript
 import { screen, debug } from '@testing-library/react';
 
@@ -274,11 +292,13 @@ it('should render', () => {
 ## CI/CD Integration
 
 In CI pipelines, use:
+
 ```bash
 npm run test:run
 ```
 
 This runs tests once with coverage reporting, ideal for:
+
 - GitHub Actions
 - GitLab CI
 - Jenkins

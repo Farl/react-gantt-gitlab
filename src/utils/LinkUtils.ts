@@ -37,9 +37,7 @@ export function isMilestoneTask(task: ITask | null | undefined): boolean {
  * @param task - Gantt task with source metadata (can be null)
  * @returns Link info including URL, display ID, and type
  */
-export function getLinkInfo(
-  task: ITask | null | undefined,
-): GitLabLinkInfo {
+export function getLinkInfo(task: ITask | null | undefined): GitLabLinkInfo {
   if (!task) {
     return { url: null, displayId: null, title: '', isMilestone: false };
   }

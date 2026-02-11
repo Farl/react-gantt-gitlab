@@ -15,35 +15,30 @@ Milestone (Top-level)
 ### ✅ 已完成功能
 
 1. **Milestone 資料獲取與轉換**
-
    - GraphQL 查詢 milestones（project/group level）
    - 轉換 milestone 為 Gantt task 格式
    - 設定 milestone 的時區處理（T00:00:00 和 T23:59:59）
    - 處理沒有日期的 milestone（預設 +30 天）
 
 2. **Milestone CRUD 操作**
-
    - ✅ 創建：使用 REST API `POST /projects/:id/milestones`
    - ✅ 更新：使用 REST API `PUT /projects/:id/milestones/:milestone_id`
    - ✅ 刪除：暫不支援（GitLab API 限制，只能 close）
    - ✅ 時區處理：統一使用 `formatDateForGitLab()` 方法
 
 3. **階層結構**
-
    - Milestone 作為 root level tasks（parent = 0）
    - Issue 可以屬於 milestone（透過 milestoneWidget）
    - Subtask 可以屬於 issue（透過 hierarchyWidget）
    - 正確處理 3 層結構
 
 4. **排序邏輯**
-
    - Root level：Milestone 優先（依 dueDate > startDate > title）
    - Root level：Standalone issues 其次（依 displayOrder > id）
    - Milestone 內的 issues：依 displayOrder > id
    - Issue 內的 subtasks：依 displayOrder > id
 
 5. **UI 整合**
-
    - 透過 Toolbar 的 "Add Task" 建立 milestone
    - 透過 Editor 編輯 milestone 屬性
    - 支援拖曳調整 milestone 日期

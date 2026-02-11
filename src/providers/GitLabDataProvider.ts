@@ -694,7 +694,6 @@ export class GitLabDataProvider {
         `Failed to update dates: ${result.workItemUpdate.errors.join(', ')}`,
       );
     }
-
   }
 
   /**

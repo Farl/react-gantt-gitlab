@@ -297,9 +297,8 @@ export class GitLabConfigManager {
     token: string;
   }): Promise<{ success: boolean; error?: string }> {
     // Delegate to CredentialManager which has the canonical implementation
-    const { GitLabCredentialManager } = await import(
-      './DataSourceCredentialManager'
-    );
+    const { GitLabCredentialManager } =
+      await import('./DataSourceCredentialManager');
     return GitLabCredentialManager.testConnection(config);
   }
 

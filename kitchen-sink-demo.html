@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kitchen Sink Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e0e0e0;
+      padding: 0 40px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 20px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+      border: none;
+      border-bottom: 3px solid transparent;
+      border-radius: 0;
+    }
+
+    .tab:hover {
+      background: #f5f5f5;
+      color: #667eea;
+    }
+
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .controls {
+      padding: 30px 40px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .control-group label {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .control-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .content {
+      padding: 40px;
+      min-height: 600px;
+    }
+
+    .playground-header {
+      margin-bottom: 20px;
+    }
+
+    .playground-header h2 {
+      font-size: 2rem;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .playground-header p {
+      font-size: 1rem;
+      color: #666;
+    }
+
+    .playground-hint {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      color: #856404;
+    }
+
+    .info {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 4px;
+    }
+
+    .info h3 {
+      color: #0d47a1;
+      margin-bottom: 15px;
+      font-size: 1.3rem;
+    }
+
+    .info ol {
+      padding-left: 20px;
+      line-height: 1.8;
+    }
+
+    .info li {
+      margin-bottom: 10px;
+    }
+
+    .info .step {
+      font-weight: 600;
+      color: #1565c0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2rem;
+      color: #666;
+    }
+
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% {
+        content: '.';
+      }
+      40% {
+        content: '..';
+      }
+      60%, 100% {
+        content: '...';
+      }
+    }
+
+    .error {
+      color: #d32f2f;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .success {
+      text-align: center;
+      padding: 20px;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Kitchen Sink Demo</h1>
+      <p>Interactive playground for all kitchen sink components</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="workspace">
+        🏠 Workspace
+      </button>
+      <button class="tab" data-tab="gantt">
+        📊 GanttView
+      </button>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="autoSync">
+          Auto Sync
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="showSettings">
+          Show Settings Modal
+        </label>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <div class="loading">Loading Kitchen Sink Playground</div>
+    </div>
+
+    <div class="info">
+      <h3>Hands-On Guide</h3>
+      <ol>
+        <li><span class="step">Click on tabs</span> to switch between Workspace and GanttView</li>
+        <li><span class="step">Use the toolbar</span> to switch views (Gantt ↔ Kanban)</li>
+        <li><span class="step">Try the filter dropdown</span> to filter tasks</li>
+        <li><span class="step">Toggle the settings modal</span> to see component props</li>
+        <li><span class="step">Enable Auto Sync</span> to see synchronization behavior</li>
+      </ol>
+    </div>
+  </div>
+
+  <script type="module">
+    import React from 'https://esm.sh/react@18.2.0';
+    import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
+    import { useState, useCallback, useEffect } from 'https://esm.sh/react@18.2.0';
+
+    // Import the KitchenSinkPlayground component
+    let PlaygroundComponent;
+
+    try {
+      PlaygroundComponent = await import(
+        'file:///home/clawdbot/projects/react-gantt-gitlab/src/components/__tests__/KitchenSinkPlayground.jsx'
+      ).then(module => module.KitchenSinkPlayground);
+    } catch (error) {
+      console.error('Failed to load Playground component:', error);
+      document.getElementById('content').innerHTML = `
+        <div class="error">
+          <h2>Failed to Load Playground</h2>
+          <p>${error.message}</p>
+          <p style="margin-top: 20px;">Make sure you're running the development server:</p>
+          <p>npm run dev</p>
+        </div>
+      `;
+    }
+
+    if (!PlaygroundComponent) {
+      document.getElementById('content').innerHTML = `
+        <div class="error">
+          <h2>Kitchen Sink Playground Not Found</h2>
+          <p>Please run the development server first:</p>
+          <p>npm run dev</p>
+        </div>
+      `;
+    }
+
+    // Tab handling
+    const [activeTab, setActiveTab] = useState('workspace');
+    const [showSettings, setShowSettings] = useState(false);
+    const [autoSync, setAutoSync] = useState(false);
+
+    // Tab switching
+    const handleTabChange = useCallback((tab) => {
+      setActiveTab(tab);
+    }, []);
+
+    // Settings toggle
+    const handleToggleSettings = useCallback(() => {
+      setShowSettings((prev) => !prev);
+    }, []);
+
+    // Auto sync toggle
+    const handleToggleAutoSync = useCallback(() => {
+      setAutoSync((prev) => !prev);
+    }, []);
+
+    // Initialize tab controls
+    const tabButtons = document.querySelectorAll('.tab');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        handleTabChange(button.dataset.tab);
+      });
+    });
+
+    // Initialize checkbox controls
+    const autoSyncCheckbox = document.getElementById('autoSync');
+    const showSettingsCheckbox = document.getElementById('showSettings');
+
+    if (autoSyncCheckbox) {
+      autoSyncCheckbox.addEventListener('change', (e) => {
+        setAutoSync(e.target.checked);
+      });
+    }
+
+    if (showSettingsCheckbox) {
+      showSettingsCheckbox.addEventListener('change', (e) => {
+        setShowSettings(e.target.checked);
+      });
+    }
+
+    // Render the Playground
+    if (PlaygroundComponent) {
+      const root = document.getElementById('content');
+      const container = document.createElement('div');
+      root.appendChild(container);
+
+      function render() {
+        ReactDOM.render(
+          React.createElement(
+            PlaygroundComponent,
+            {
+              activeTab,
+              showSettings,
+              autoSync,
+              onTabChange: handleTabChange,
+              onToggleSettings: handleToggleSettings,
+              onToggleAutoSync: handleToggleAutoSync,
+            }
+          ),
+          container
+        );
+      }
+
+      render();
+    }
+  </script>
+</body>
+</html>

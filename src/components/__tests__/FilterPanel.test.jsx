@@ -38,17 +38,32 @@ const sampleTasks = [
   {
     id: 't1',
     text: 'Task 1',
-    _gitlab: { labels: ['bug', 'urgent'], milestoneIid: 1, assignees: ['Alice'], state: 'opened' },
+    _gitlab: {
+      labels: ['bug', 'urgent'],
+      milestoneIid: 1,
+      assignees: ['Alice'],
+      state: 'opened',
+    },
   },
   {
     id: 't2',
     text: 'Task 2',
-    _gitlab: { labels: ['feature'], milestoneIid: 2, assignees: ['Bob'], state: 'opened' },
+    _gitlab: {
+      labels: ['feature'],
+      milestoneIid: 2,
+      assignees: ['Bob'],
+      state: 'opened',
+    },
   },
   {
     id: 't3',
     text: 'Task 3',
-    _gitlab: { labels: ['bug'], milestoneIid: 1, assignees: ['Alice', 'Charlie'], state: 'closed' },
+    _gitlab: {
+      labels: ['bug'],
+      milestoneIid: 1,
+      assignees: ['Alice', 'Charlie'],
+      state: 'closed',
+    },
   },
 ];
 
@@ -115,7 +130,11 @@ describe('FilterPanel', () => {
     expect(clientTab.className).toContain('active');
 
     // Search input for client filters should be visible
-    expect(screen.getByPlaceholderText('Search tasks by title, description, labels...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        'Search tasks by title, description, labels...',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('should switch to server tab when clicked', () => {
@@ -138,7 +157,9 @@ describe('FilterPanel', () => {
 
     fireEvent.click(screen.getByText('Filters'));
 
-    expect(screen.getByText(/Filters applied locally to fetched data/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Filters applied locally to fetched data/),
+    ).toBeInTheDocument();
   });
 
   it('should show tab description text for server tab', () => {
@@ -147,7 +168,9 @@ describe('FilterPanel', () => {
     fireEvent.click(screen.getByText('Filters'));
     fireEvent.click(screen.getByText('Server').closest('button'));
 
-    expect(screen.getByText(/Filters applied when fetching from GitLab/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Filters applied when fetching from GitLab/),
+    ).toBeInTheDocument();
   });
 
   // --- Client filter sections rendering ---
@@ -204,7 +227,9 @@ describe('FilterPanel', () => {
 
     // Find the Sprint 1 checkbox
     const sprint1Label = screen.getByText('Sprint 1');
-    const checkbox = sprint1Label.closest('label').querySelector('input[type="checkbox"]');
+    const checkbox = sprint1Label
+      .closest('label')
+      .querySelector('input[type="checkbox"]');
 
     fireEvent.click(checkbox);
 
@@ -223,7 +248,9 @@ describe('FilterPanel', () => {
 
     fireEvent.click(screen.getByText('Filters'));
 
-    const searchInput = screen.getByPlaceholderText('Search tasks by title, description, labels...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search tasks by title, description, labels...',
+    );
     await user.type(searchInput, 'hello');
 
     // onFilterChange should have been called with the search value
@@ -241,7 +268,14 @@ describe('FilterPanel', () => {
     render(
       <FilterPanel
         {...defaultProps}
-        initialFilters={{ milestoneIds: [1], epicIds: [], labels: [], assignees: [], states: [], search: '' }}
+        initialFilters={{
+          milestoneIds: [1],
+          epicIds: [],
+          labels: [],
+          assignees: [],
+          states: [],
+          search: '',
+        }}
       />,
     );
 
@@ -252,7 +286,14 @@ describe('FilterPanel', () => {
     render(
       <FilterPanel
         {...defaultProps}
-        initialFilters={{ milestoneIds: [1], epicIds: [], labels: [], assignees: [], states: [], search: '' }}
+        initialFilters={{
+          milestoneIds: [1],
+          epicIds: [],
+          labels: [],
+          assignees: [],
+          states: [],
+          search: '',
+        }}
       />,
     );
 
@@ -281,12 +322,7 @@ describe('FilterPanel', () => {
   // --- Server tab content ---
 
   it('should show loading state on server tab when filterOptionsLoading is true', () => {
-    render(
-      <FilterPanel
-        {...defaultProps}
-        filterOptionsLoading={true}
-      />,
-    );
+    render(<FilterPanel {...defaultProps} filterOptionsLoading={true} />);
 
     fireEvent.click(screen.getByText('Filters'));
     fireEvent.click(screen.getByText('Server').closest('button'));
@@ -299,7 +335,10 @@ describe('FilterPanel', () => {
       <FilterPanel
         {...defaultProps}
         filterOptions={{
-          labels: [{ title: 'bug', color: '#d73a4a' }, { title: 'enhancement', color: '#a2eeef' }],
+          labels: [
+            { title: 'bug', color: '#d73a4a' },
+            { title: 'enhancement', color: '#a2eeef' },
+          ],
           milestones: [{ iid: 1, title: 'v1.0' }],
           members: [{ username: 'jdoe', name: 'John Doe' }],
         }}

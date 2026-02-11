@@ -26,24 +26,14 @@ describe('SyncButton', () => {
   // --- Existing tests (kept) ---
 
   it('should render sync button', () => {
-    render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
-    );
+    render(<SyncButton onSync={mockSync} syncState={defaultSyncState} />);
 
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
   });
 
   it('should call onSync when clicked', async () => {
-    render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
-    );
+    render(<SyncButton onSync={mockSync} syncState={defaultSyncState} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -55,10 +45,7 @@ describe('SyncButton', () => {
 
   it('should show loading state during sync', () => {
     const { rerender } = render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
+      <SyncButton onSync={mockSync} syncState={defaultSyncState} />,
     );
 
     expect(screen.getByRole('button')).not.toBeDisabled();
@@ -129,12 +116,7 @@ describe('SyncButton', () => {
   });
 
   it('should show "Sync" text when not syncing', () => {
-    render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
-    );
+    render(<SyncButton onSync={mockSync} syncState={defaultSyncState} />);
 
     expect(screen.getByText('Sync')).toBeInTheDocument();
   });
@@ -142,12 +124,7 @@ describe('SyncButton', () => {
   // --- New tests: Animation and accessibility ---
 
   it('should add animating class when sync is triggered', async () => {
-    render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
-    );
+    render(<SyncButton onSync={mockSync} syncState={defaultSyncState} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -172,12 +149,7 @@ describe('SyncButton', () => {
   });
 
   it('should have title attribute for accessibility', () => {
-    render(
-      <SyncButton
-        onSync={mockSync}
-        syncState={defaultSyncState}
-      />,
-    );
+    render(<SyncButton onSync={mockSync} syncState={defaultSyncState} />);
 
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('title', 'Sync data');

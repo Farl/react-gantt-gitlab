@@ -9,11 +9,13 @@ Build a well-maintained, data-source-agnostic Gantt chart library supporting mul
 # Current Status (Phase 8 - Complete ✅)
 
 **Data-Agnostic Refactoring:** 8 phases completed
+
 - ✅ Phase 1-3: Created generic DataProviderInterface, removed GitLab branding from components
 - ✅ Phase 4-7: Generic configuration system, component refactoring (useGanttState hook extracted)
 - ✅ Phase 8: Full Vitest testing infrastructure with 114 passing tests
 
 **Key Architecture Changes:**
+
 - `/src/providers/core/DataProviderInterface.ts` - Generic provider contract for any data source
 - `/src/providers/adapters/GitLabAdapter.ts` - GitLab implementation (wraps existing GitLabGraphQLProvider)
 - `/src/contexts/DataContext.tsx` - Generic data context (replaces GitLabDataContext)
@@ -22,6 +24,7 @@ Build a well-maintained, data-source-agnostic Gantt chart library supporting mul
 - Utility renames: GitLabFilters → DataFilters, GitLabLinkUtils → LinkUtils
 
 **Testing Infrastructure:**
+
 - Vitest with jsdom, globals enabled, coverage reporting
 - Setup file with mocks: window.matchMedia, localStorage, IntersectionObserver, ResizeObserver
 - Test scripts: `npm test` (watch), `npm run test:ui` (interactive), `npm test` (CI)
@@ -60,6 +63,6 @@ Build a well-maintained, data-source-agnostic Gantt chart library supporting mul
 
 - **Beads (bd):** Issue tracking and workflow - see AGENTS.md
 - **Vitest:** `npm test` runs tests in watch mode
-- **ESLint:** `npm run lint` checks code style
-- **Prettier:** `npm run prettier` formats code
+- **Oxlint:** `npm run lint` checks code style
+- **Oxfmt:** `npm run format` formats code
 - **Coverage:** `npm run test:coverage` generates coverage reports

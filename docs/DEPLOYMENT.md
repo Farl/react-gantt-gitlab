@@ -62,7 +62,6 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
    ```
 
 2. Enable GitHub Pages:
-
    - Go to: Repository Settings > Pages
    - Source: Select "GitHub Actions"
 
@@ -100,12 +99,10 @@ A CORS proxy acts as a middleman between your app and the GitLab API.
 1. Choose a CORS proxy option:
 
    **Option A: Public CORS Proxy (Testing Only)**
-
    - Not recommended for production
    - Example: `https://cors-anywhere.herokuapp.com`
 
    **Option B: Deploy Your Own CORS Proxy**
-
    - Recommended for production
    - See instructions below
 

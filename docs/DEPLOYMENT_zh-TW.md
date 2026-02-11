@@ -69,7 +69,6 @@
    ```
 
 2. 啟用 GitHub Pages：
-
    - 前往：Repository Settings > Pages
    - Source：選擇 "GitHub Actions"
 
@@ -119,12 +118,10 @@ requested resource.
 **設定步驟：**
 
 1. **註冊 Cloudflare Workers**
-
    - 前往：https://workers.cloudflare.com/
    - 使用公司帳號註冊或登入
 
 2. **建立新的 Worker**
-
    - 點擊 "Create a Service"
    - 服務名稱：`gitlab-cors-proxy`（或其他名稱）
    - 選擇 "HTTP handler"
@@ -216,7 +213,6 @@ function handleOptions(request) {
 ```
 
 4. **部署 Worker**
-
    - 點擊 "Save and Deploy"
    - 記下你的 Worker URL：`https://gitlab-cors-proxy.你的帳號.workers.dev`
 
@@ -463,12 +459,10 @@ git remote -v
 ## 推薦部署流程
 
 1. **開發階段**
-
    - 使用 `npm run dev`
    - Vite proxy 自動處理 CORS
 
 2. **測試階段**
-
    - 部署到 GitLab Pages
    - 設定 Cloudflare Workers CORS proxy
    - 測試所有 API 功能

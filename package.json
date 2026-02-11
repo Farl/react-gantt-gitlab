@@ -28,13 +28,16 @@
     "build:demo": "BUILD_DEMOS=true vite build",
     "build:full-css": "BUILD_FULL_CSS=true vite build",
     "build:pages": "BUILD_DEMOS=true vite build",
-    "lint": "eslint . --report-unused-disable-directives",
+    "lint": "oxlint .",
     "preview": "vite preview",
     "prepare": "husky",
-    "prettier": "prettier --write ./src/ ./demos/",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:kitchensink": "vitest --ui KitchenSink.test.jsx",
+    "demo:kitchensink": "./demo-kitchensink.sh",
     "test:coverage": "vitest run --coverage"
   },
   "exports": {
@@ -94,15 +97,12 @@
     "@types/react-dom": "18.2.22",
     "@vitejs/plugin-react": "5.0.2",
     "@vitest/ui": "^4.0.18",
-    "eslint": "9.35.0",
-    "eslint-plugin-react": "7.37.5",
-    "eslint-plugin-react-hooks": "5.2.0",
-    "eslint-plugin-react-refresh": "0.4.20",
     "happy-dom": "^20.6.0",
     "husky": "9.1.6",
     "jsdom": "^28.0.0",
     "lint-staged": "15.2.10",
-    "prettier": "3.3.3",
+    "oxfmt": "^0.31.0",
+    "oxlint": "^1.46.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router": "7.8.2",
@@ -115,11 +115,11 @@
   },
   "lint-staged": {
     "*.{ts,js,svelte}": [
-      "eslint --fix",
-      "prettier --write"
+      "oxlint --fix",
+      "oxfmt --write"
     ],
     "*.{css,md,json}": [
-      "prettier --write"
+      "oxfmt --write"
     ]
   }
 }

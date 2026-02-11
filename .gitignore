@@ -35,3 +35,6 @@ dist-ssr
 .claude/skills/
 .ralph-tui/
 skills/
+
+# bv (beads viewer) local config and caches
+.bv/
