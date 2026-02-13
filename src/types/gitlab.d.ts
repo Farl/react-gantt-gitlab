@@ -149,6 +149,7 @@ export interface GitLabConfigLegacy {
 export interface GitLabServerFilters {
   labelNames?: string[]; // GitLab API: labelName
   milestoneTitles?: string[]; // GitLab API: milestoneTitle
+  iterationTitles?: string[]; // GitLab API: iterationTitle (issues query only, single String)
   assigneeUsernames?: string[]; // GitLab API: assigneeUsernames
   createdAfter?: string; // GitLab GraphQL Time type (ISO 8601 format)
   createdBefore?: string; // GitLab GraphQL Time type (ISO 8601 format)
@@ -162,6 +163,7 @@ export interface GitLabFilterOptionsData {
   members: Array<{ username: string; name: string }>;
   labels: Array<{ title: string; color?: string; priority?: number | null }>;
   milestones: Array<{ iid: number; title: string }>;
+  iterations: Array<{ title: string }>; // Formatted title via formatIterationTitle()
 }
 
 export interface GitLabSyncOptions {

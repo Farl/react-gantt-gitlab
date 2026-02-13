@@ -417,6 +417,36 @@ export class GitLabGraphQLProvider {
       }
     `;
 
+    // Paginated query for iterations (always group-level)
+    // GitLab iterations are group-level resources; for project configs, query the parent group
+    const groupPath =
+      this.config.type === 'group'
+        ? fullPath
+        : fullPath.split('/').slice(0, -1).join('/');
+    const canFetchIterations = groupPath.length > 0;
+
+    const iterationsQuery = `
+      query getIterations($groupPath: ID!, $after: String) {
+        group(fullPath: $groupPath) {
+          iterations(state: opened, first: 100, after: $after, includeAncestors: true) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              iid
+              title
+              startDate
+              dueDate
+              iterationCadence {
+                title
+              }
+            }
+          }
+        }
+      }
+    `;
+
     // GitLab REST API label response type
     interface GitLabRestLabel {
       name: string;
@@ -433,8 +463,8 @@ export class GitLabGraphQLProvider {
           ? `/projects/${encodeURIComponent(fullPath)}/labels?include_ancestor_labels=true`
           : `/groups/${encodeURIComponent(fullPath)}/labels?include_ancestor_groups=true`;
 
-      const [membersNodes, milestonesNodes, labelsFromRest] = await Promise.all(
-        [
+      const [membersNodes, milestonesNodes, labelsFromRest, iterationsNodes] =
+        await Promise.all([
           // Paginated members query
           this.queryPaginated<{
             user: { username: string; name: string } | null;
@@ -452,8 +482,41 @@ export class GitLabGraphQLProvider {
             gitlabUrl: this.config.gitlabUrl,
             token: this.config.token,
           }),
-        ],
-      );
+          // Paginated iterations query (always group-level)
+          canFetchIterations
+            ? this.queryPaginated<{
+                iid: string;
+                title: string | null;
+                startDate?: string;
+                dueDate?: string;
+                iterationCadence?: { title: string };
+              }>(iterationsQuery, { groupPath }, (result) => {
+                // Custom extractData: always extract from 'group' root (not this.config.type)
+                const groupData = (result as Record<string, unknown>)?.group as
+                  | Record<string, unknown>
+                  | undefined;
+                const iterations = groupData?.iterations as
+                  | {
+                      nodes?: unknown[];
+                      pageInfo?: {
+                        hasNextPage: boolean;
+                        endCursor: string | null;
+                      };
+                    }
+                  | undefined;
+                return {
+                  nodes: (iterations?.nodes || []) as Array<{
+                    iid: string;
+                    title: string | null;
+                    startDate?: string;
+                    dueDate?: string;
+                    iterationCadence?: { title: string };
+                  }>,
+                  pageInfo: iterations?.pageInfo,
+                };
+              })
+            : Promise.resolve([]),
+        ]);
 
       // Extract members (filter out null users)
       const members: GitLabFilterOptionsData['members'] = membersNodes
@@ -479,13 +542,20 @@ export class GitLabGraphQLProvider {
           title: node.title,
         }));
 
-      return { members, labels, milestones };
+      // Extract iterations (format title using formatIterationTitle)
+      const iterations: GitLabFilterOptionsData['iterations'] = (
+        iterationsNodes || []
+      ).map((node) => ({
+        title: formatIterationTitle(node),
+      }));
+
+      return { members, labels, milestones, iterations };
     } catch (error) {
       console.error(
         '[GitLabGraphQLProvider] Failed to fetch filter options:',
         error,
       );
-      return { members: [], labels: [], milestones: [] };
+      return { members: [], labels: [], milestones: [], iterations: [] };
     }
   }
 
@@ -683,6 +753,8 @@ export class GitLabGraphQLProvider {
         $labelName: [String!],
         $milestoneTitle: [String!],
         $milestoneWildcardId: MilestoneWildcardId,
+        $iterationTitle: String,
+        $iterationWildcardId: IterationWildcardId,
         $assigneeUsernames: [String!],
         $assigneeWildcardId: AssigneeWildcardId,
         $createdAfter: Time,
@@ -696,6 +768,8 @@ export class GitLabGraphQLProvider {
             labelName: $labelName,
             milestoneTitle: $milestoneTitle,
             milestoneWildcardId: $milestoneWildcardId,
+            iterationTitle: $iterationTitle,
+            iterationWildcardId: $iterationWildcardId,
             assigneeUsernames: $assigneeUsernames,
             assigneeWildcardId: $assigneeWildcardId,
             createdAfter: $createdAfter,
@@ -781,6 +855,25 @@ export class GitLabGraphQLProvider {
       issuesVariables.milestoneTitle = otherMilestoneTitles;
     }
 
+    // Handle iteration filtering - only applicable to issues query
+    // NOTE: workItems query does NOT support iterationTitle filter parameter yet
+    // iterationTitle (String, not array) and iterationWildcardId are mutually exclusive
+    if (serverFilters?.iterationTitles?.length) {
+      const iterHasNone = serverFilters.iterationTitles.includes('NONE');
+      const otherIterTitles = serverFilters.iterationTitles.filter(
+        (t) => t !== 'NONE',
+      );
+
+      if (iterHasNone && otherIterTitles.length === 0) {
+        // Only NONE selected - use wildcard to find items without iteration
+        issuesVariables.iterationWildcardId = 'NONE';
+      } else if (otherIterTitles.length === 1) {
+        // Single specific title - use iterationTitle (API accepts single String, not array)
+        issuesVariables.iterationTitle = otherIterTitles[0];
+      }
+      // If multiple titles: server-side cannot handle it (API limitation), client-side filter will apply
+    }
+
     // Fetch work items with optional pagination
     const enablePagination = options.enablePagination !== false; // Default to true
     const MAX_PAGES = 20; // 100 × 20 = 2000 items max
@@ -850,6 +943,8 @@ export class GitLabGraphQLProvider {
           $labelName: [String!],
           $milestoneTitle: [String!],
           $milestoneWildcardId: MilestoneWildcardId,
+          $iterationTitle: String,
+          $iterationWildcardId: IterationWildcardId,
           $assigneeUsernames: [String!],
           $assigneeWildcardId: AssigneeWildcardId,
           $createdAfter: Time,
@@ -863,6 +958,8 @@ export class GitLabGraphQLProvider {
               labelName: $labelName,
               milestoneTitle: $milestoneTitle,
               milestoneWildcardId: $milestoneWildcardId,
+              iterationTitle: $iterationTitle,
+              iterationWildcardId: $iterationWildcardId,
               assigneeUsernames: $assigneeUsernames,
               assigneeWildcardId: $assigneeWildcardId,
               createdAfter: $createdAfter,

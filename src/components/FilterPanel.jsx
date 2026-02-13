@@ -14,6 +14,7 @@ import { presetHasServerFilters, presetHasClientFilters } from '../types/project
 const DEFAULT_SERVER_FILTERS = {
   labelNames: [],
   milestoneTitles: [],
+  iterationTitles: [],
   assigneeUsernames: [],
   dateRange: {
     createdAfter: '',
@@ -24,6 +25,7 @@ const DEFAULT_SERVER_FILTERS = {
 // Default empty client filters
 const DEFAULT_CLIENT_FILTERS = {
   milestoneIds: [],
+  iterationTitles: [],
   epicIds: [],
   labels: [],
   assignees: [],
@@ -37,6 +39,7 @@ const DEFAULT_CLIENT_FILTERS = {
 const parseServerFiltersFromPreset = (presetServerFilters) => ({
   labelNames: presetServerFilters?.labelNames || [],
   milestoneTitles: presetServerFilters?.milestoneTitles || [],
+  iterationTitles: presetServerFilters?.iterationTitles || [],
   assigneeUsernames: presetServerFilters?.assigneeUsernames || [],
   dateRange: presetServerFilters?.dateRange || { createdAfter: '', createdBefore: '' },
 });
@@ -46,6 +49,7 @@ const parseServerFiltersFromPreset = (presetServerFilters) => ({
  */
 const parseClientFiltersFromPreset = (presetFilters) => ({
   milestoneIds: presetFilters?.milestoneIds || [],
+  iterationTitles: presetFilters?.iterationTitles || [],
   epicIds: presetFilters?.epicIds || [],
   labels: presetFilters?.labels || [],
   assignees: presetFilters?.assignees || [],
@@ -217,6 +221,33 @@ export function FilterPanel({
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [epics]);
 
+  // Build iteration options - merge from tasks (client) and filterOptions (server)
+  const iterationOptions = useMemo(() => {
+    // From filterOptions (server source - formatted titles)
+    const serverIterations = filterOptions?.iterations || [];
+
+    // From tasks (client source) - extract unique iterationTitle values
+    const taskIterationTitles = new Set();
+    (tasks || []).forEach(task => {
+      if (task._gitlab?.iterationTitle) {
+        taskIterationTitles.add(task._gitlab.iterationTitle);
+      }
+    });
+
+    // Merge: use title as both value and label
+    const merged = new Map();
+    serverIterations.forEach(it => {
+      merged.set(it.title, { value: it.title, label: it.title });
+    });
+    taskIterationTitles.forEach(title => {
+      if (!merged.has(title)) {
+        merged.set(title, { value: title, label: title });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks, filterOptions?.iterations]);
+
   // Apply initial preset when presets are loaded
   // NOTE: This only sets the UI state. GitLabGantt handles the initial sync with filters.
   // We don't call onServerFilterApply here to avoid double sync.
@@ -272,6 +303,7 @@ export function FilterPanel({
     const hasChanged = prev !== initialFilters && (
       prev?.search !== initialFilters?.search ||
       JSON.stringify(prev?.milestoneIds) !== JSON.stringify(initialFilters?.milestoneIds) ||
+      JSON.stringify(prev?.iterationTitles) !== JSON.stringify(initialFilters?.iterationTitles) ||
       JSON.stringify(prev?.epicIds) !== JSON.stringify(initialFilters?.epicIds) ||
       JSON.stringify(prev?.labels) !== JSON.stringify(initialFilters?.labels) ||
       JSON.stringify(prev?.assignees) !== JSON.stringify(initialFilters?.assignees) ||
@@ -365,6 +397,7 @@ export function FilterPanel({
   // Client filter count
   const clientFilterCount =
     filters.milestoneIds.length +
+    filters.iterationTitles.length +
     filters.epicIds.length +
     filters.labels.length +
     filters.assignees.length +
@@ -374,6 +407,7 @@ export function FilterPanel({
   const serverFilterCount =
     (serverFilters.labelNames?.length || 0) +
     (serverFilters.milestoneTitles?.length || 0) +
+    (serverFilters.iterationTitles?.length || 0) +
     (serverFilters.assigneeUsernames?.length || 0) +
     (serverFilters.dateRange?.createdAfter ? 1 : 0) +
     (serverFilters.dateRange?.createdBefore ? 1 : 0);
@@ -400,6 +434,7 @@ export function FilterPanel({
     return (
       JSON.stringify(serverFilters.labelNames || []) !== JSON.stringify(presetParsed.labelNames || []) ||
       JSON.stringify(serverFilters.milestoneTitles || []) !== JSON.stringify(presetParsed.milestoneTitles || []) ||
+      JSON.stringify(serverFilters.iterationTitles || []) !== JSON.stringify(presetParsed.iterationTitles || []) ||
       JSON.stringify(serverFilters.assigneeUsernames || []) !== JSON.stringify(presetParsed.assigneeUsernames || []) ||
       (serverFilters.dateRange?.createdAfter || '') !== (presetParsed.dateRange?.createdAfter || '') ||
       (serverFilters.dateRange?.createdBefore || '') !== (presetParsed.dateRange?.createdBefore || '')
@@ -623,6 +658,19 @@ export function FilterPanel({
                   emptyMessage="No milestones"
                 />
 
+                {/* Iterations - Client uses OR logic */}
+                <FilterMultiSelect
+                  title="Iterations (OR)"
+                  options={[
+                    { value: 'NONE', label: 'None (No Iteration)' },
+                    ...iterationOptions,
+                  ]}
+                  selected={filters.iterationTitles}
+                  onChange={(values) => handleFilterFieldChange('iterationTitles', values)}
+                  placeholder="Search iterations..."
+                  emptyMessage="No iterations"
+                />
+
                 {/* Epics - Client uses OR logic */}
                 <FilterMultiSelect
                   title="Epics (OR)"
@@ -706,6 +754,22 @@ export function FilterPanel({
                     onChange={(values) => handleServerFilterChange('milestoneTitles', values)}
                     placeholder="Search milestones..."
                     emptyMessage="No milestones available"
+                  />
+
+                  {/* Iterations - Server filter (issues query only, OR logic) */}
+                  <FilterMultiSelect
+                    title="Iterations (OR)"
+                    options={[
+                      { value: 'NONE', label: 'None (No Iteration)' },
+                      ...(filterOptions?.iterations || []).map(it => ({
+                        value: it.title,
+                        label: it.title,
+                      })),
+                    ]}
+                    selected={serverFilters.iterationTitles || []}
+                    onChange={(values) => handleServerFilterChange('iterationTitles', values)}
+                    placeholder="Search iterations..."
+                    emptyMessage="No iterations available"
                   />
 
                   {/* Assignees - GitLab API uses AND logic for multiple assignees */}

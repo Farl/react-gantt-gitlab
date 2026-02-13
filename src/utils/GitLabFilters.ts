@@ -22,6 +22,7 @@ import {
 export interface ServerFilterOptions {
   labelNames?: string[];
   milestoneTitles?: string[];
+  iterationTitles?: string[];
   assigneeUsernames?: string[];
   dateRange?: {
     createdAfter?: string;
@@ -36,6 +37,7 @@ export interface ServerFilterOptions {
 export interface FilterOptions {
   // Client-side filter options (applied after data is fetched)
   milestoneIds?: number[];
+  iterationTitles?: string[];
   epicIds?: number[];
   labels?: string[];
   assignees?: string[];
@@ -60,6 +62,7 @@ export function toGitLabServerFilters(
   return {
     labelNames: options.labelNames,
     milestoneTitles: options.milestoneTitles,
+    iterationTitles: options.iterationTitles,
     assigneeUsernames: options.assigneeUsernames,
     createdAfter: options.dateRange?.createdAfter,
     createdBefore: options.dateRange?.createdBefore,
@@ -105,6 +108,48 @@ export class GitLabFilters {
       // Check for specific milestones
       if (taskMilestoneIid && otherMilestoneIids.length > 0) {
         return otherMilestoneIids.includes(taskMilestoneIid);
+      }
+
+      return false;
+    });
+  }
+
+  /**
+   * Filter tasks by iteration using _gitlab.iterationTitle
+   * Supports "NONE" to filter tasks without iteration
+   *
+   * Note: Uses formatted iteration title (e.g. "Sprint 1: Feb 1-28") for matching.
+   * This matches the value stored in _gitlab.iterationTitle via formatIterationTitle().
+   */
+  static filterByIteration(tasks: ITask[], iterationTitles: string[]): ITask[] {
+    if (iterationTitles.length === 0) {
+      return tasks;
+    }
+
+    const includeNoIteration = iterationTitles.includes('NONE');
+    const otherTitles = iterationTitles.filter((t) => t !== 'NONE');
+
+    return tasks.filter((task) => {
+      // Milestone nodes have no iteration — treat like "no iteration"
+      if (isMilestoneTask(task)) {
+        return includeNoIteration;
+      }
+
+      // Folder nodes pass through — they'll be handled by ensureParentChildIntegrity
+      if (isFolderTask(task)) {
+        return true;
+      }
+
+      const taskIterationTitle = task._gitlab?.iterationTitle;
+
+      // Check for no iteration
+      if (includeNoIteration && !taskIterationTitle) {
+        return true;
+      }
+
+      // Check for specific iterations
+      if (taskIterationTitle && otherTitles.length > 0) {
+        return otherTitles.includes(taskIterationTitle);
       }
 
       return false;
@@ -279,6 +324,10 @@ export class GitLabFilters {
 
     if (options.milestoneIds && options.milestoneIds.length > 0) {
       filtered = this.filterByMilestone(filtered, options.milestoneIds);
+    }
+
+    if (options.iterationTitles && options.iterationTitles.length > 0) {
+      filtered = this.filterByIteration(filtered, options.iterationTitles);
     }
 
     if (options.epicIds && options.epicIds.length > 0) {

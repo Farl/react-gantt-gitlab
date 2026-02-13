@@ -17,6 +17,7 @@ export interface StoredFilters {
   filterType?: 'client' | 'server';
   clientFilters?: {
     milestoneIds?: number[];
+    iterationTitles?: string[];
     epicIds?: number[];
     labels?: string[];
     assignees?: string[];
@@ -213,6 +214,7 @@ export function createStoredFilters(
   // Always store client filters if present
   const hasClientFilters =
     (filterOptions.milestoneIds?.length ?? 0) > 0 ||
+    (filterOptions.iterationTitles?.length ?? 0) > 0 ||
     (filterOptions.epicIds?.length ?? 0) > 0 ||
     (filterOptions.labels?.length ?? 0) > 0 ||
     (filterOptions.assignees?.length ?? 0) > 0 ||
@@ -222,6 +224,7 @@ export function createStoredFilters(
   if (hasClientFilters) {
     result.clientFilters = {
       milestoneIds: filterOptions.milestoneIds,
+      iterationTitles: filterOptions.iterationTitles,
       epicIds: filterOptions.epicIds,
       labels: filterOptions.labels,
       assignees: filterOptions.assignees,
@@ -235,6 +238,7 @@ export function createStoredFilters(
     const hasServerFilters =
       (serverFilters.labelNames?.length ?? 0) > 0 ||
       (serverFilters.milestoneTitles?.length ?? 0) > 0 ||
+      (serverFilters.iterationTitles?.length ?? 0) > 0 ||
       (serverFilters.assigneeUsernames?.length ?? 0) > 0 ||
       !!serverFilters.dateRange?.createdAfter ||
       !!serverFilters.dateRange?.createdBefore;
@@ -254,6 +258,7 @@ export function createStoredFilters(
 export function restoreFilterOptions(stored: StoredFilters): FilterOptions {
   return {
     milestoneIds: stored.clientFilters?.milestoneIds,
+    iterationTitles: stored.clientFilters?.iterationTitles,
     epicIds: stored.clientFilters?.epicIds,
     labels: stored.clientFilters?.labels,
     assignees: stored.clientFilters?.assignees,
@@ -271,6 +276,7 @@ export function hasServerFilters(filters?: StoredFilters): boolean {
   return (
     (sf.labelNames?.length ?? 0) > 0 ||
     (sf.milestoneTitles?.length ?? 0) > 0 ||
+    (sf.iterationTitles?.length ?? 0) > 0 ||
     (sf.assigneeUsernames?.length ?? 0) > 0 ||
     !!sf.dateRange?.createdAfter ||
     !!sf.dateRange?.createdBefore
@@ -285,6 +291,7 @@ export function hasClientFilters(filters?: StoredFilters): boolean {
   const cf = filters.clientFilters;
   return (
     (cf.milestoneIds?.length ?? 0) > 0 ||
+    (cf.iterationTitles?.length ?? 0) > 0 ||
     (cf.epicIds?.length ?? 0) > 0 ||
     (cf.labels?.length ?? 0) > 0 ||
     (cf.assignees?.length ?? 0) > 0 ||
@@ -318,6 +325,7 @@ export function presetHasServerFilters(presetFilters?: {
   return (
     (sf.labelNames?.length ?? 0) > 0 ||
     (sf.milestoneTitles?.length ?? 0) > 0 ||
+    (sf.iterationTitles?.length ?? 0) > 0 ||
     (sf.assigneeUsernames?.length ?? 0) > 0 ||
     !!sf.dateRange?.createdAfter ||
     !!sf.dateRange?.createdBefore
@@ -330,6 +338,7 @@ export function presetHasServerFilters(presetFilters?: {
  */
 export function presetHasClientFilters(presetFilters?: {
   milestoneIds?: number[];
+  iterationTitles?: string[];
   epicIds?: number[];
   labels?: string[];
   assignees?: string[];
@@ -339,6 +348,7 @@ export function presetHasClientFilters(presetFilters?: {
   if (!presetFilters) return false;
   return (
     (presetFilters.milestoneIds?.length ?? 0) > 0 ||
+    (presetFilters.iterationTitles?.length ?? 0) > 0 ||
     (presetFilters.epicIds?.length ?? 0) > 0 ||
     (presetFilters.labels?.length ?? 0) > 0 ||
     (presetFilters.assignees?.length ?? 0) > 0 ||

@@ -10,10 +10,11 @@ import type { GitLabDataProvider } from '../providers/GitLabDataProvider';
 import type { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
 import type { HolidayEntry } from '../providers/GitLabSnippetApi';
 
-/** Server filter options from GitLab (labels, milestones, members) */
+/** Server filter options from GitLab (labels, milestones, iterations, members) */
 export interface ServerFilterOptions {
   labels?: Array<{ name: string; color: string }>;
   milestones?: Array<{ id: number; title: string; iid: number }>;
+  iterations?: Array<{ title: string }>;
   members?: Array<{ id: number; username: string; name: string }>;
 }
 
