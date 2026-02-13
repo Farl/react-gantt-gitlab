@@ -42,6 +42,8 @@ export function KanbanBoard({
   board,
   tasks,
   childTasksMap,
+  parentTaskMap,
+  viewMode = 'issues',
   labelColorMap,
   onCardDoubleClick,
   activeTaskId = null,
@@ -220,6 +222,8 @@ export function KanbanBoard({
           name={list.name}
           tasks={list.tasks}
           childTasksMap={childTasksMap}
+          parentTaskMap={parentTaskMap}
+          viewMode={viewMode}
           sortBy={list.sortBy}
           sortOrder={list.sortOrder}
           defaultSortBy={list.defaultSortBy}

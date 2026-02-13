@@ -211,7 +211,18 @@ export function useGitLabSync(
       try {
         // Sync to GitLab
         if (provider instanceof GitLabGraphQLProvider) {
-          await provider.updateWorkItem(id, updates);
+          // When labels are being updated, include _gitlab from original task
+          // so the provider can detect work item type (Task vs Issue) for API routing
+          const originalTask = previousTasks[taskIndex];
+          const needsMeta =
+            updates.labels !== undefined && originalTask._gitlab;
+          const updatesForProvider = needsMeta
+            ? {
+                ...updates,
+                _gitlab: { ...originalTask._gitlab, ...updates._gitlab },
+              }
+            : updates;
+          await provider.updateWorkItem(id, updatesForProvider);
         } else {
           await provider.updateIssue(id, updates);
         }

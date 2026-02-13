@@ -26,7 +26,9 @@ import { CreateBoardDialog } from './CreateBoardDialog';
 import { BoardSettingsModal } from './BoardSettingsModal';
 import { ListEditDialog } from './ListEditDialog';
 import { GitLabFilters } from '../../utils/GitLabFilters';
+import { isGitLabTask } from '../../utils/TaskTypeUtils';
 import { useDragOperations } from '../../hooks/useDragOperations';
+import { ViewModeToggle } from './ViewModeToggle';
 import { ProjectSelector } from '../ProjectSelector';
 import { ColorRulesEditor } from '../ColorRulesEditor';
 import './KanbanView.css';
@@ -80,6 +82,9 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     isGroup: currentConfig?.type === 'group',
     autoLoad: !!proxyConfig && !!currentConfig?.fullPath,
   });
+
+  // View mode: 'issues' (default) | 'tasks' | 'all'
+  const [viewMode, setViewMode] = useState('issues');
 
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -142,24 +147,37 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     });
   }, [allTasks, labelPriorityMap]);
 
-  // Apply client-side filters (same as Gantt)
+  // Apply client-side filters based on view mode
   const filteredTasks = useMemo(() => {
-    // Only include issues (not milestones, not Tasks which are child items)
-    const issuesOnly = tasksWithPriority.filter(
-      (task) =>
-        (task.$isIssue || task._gitlab?.type === 'issue') &&
-        task._gitlab?.workItemType !== 'Task'
-    );
-    return GitLabFilters.applyFilters(issuesOnly, filterOptions);
-  }, [tasksWithPriority, filterOptions]);
+    let filtered;
+    if (viewMode === 'issues') {
+      // Default: only Issues (not milestones, not Tasks which are child items)
+      filtered = tasksWithPriority.filter(
+        (task) =>
+          (task.$isIssue || task._gitlab?.type === 'issue') &&
+          !isGitLabTask(task)
+      );
+    } else if (viewMode === 'tasks') {
+      // Tasks only: show Tasks as independent cards
+      filtered = tasksWithPriority.filter((task) => isGitLabTask(task));
+    } else {
+      // All: both Issues and Tasks (exclude milestones, folders)
+      filtered = tasksWithPriority.filter((task) => {
+        const type = task._gitlab?.type;
+        if (type && type !== 'issue') return false; // exclude milestones, folders
+        return task.$isIssue || isGitLabTask(task);
+      });
+    }
+    return GitLabFilters.applyFilters(filtered, filterOptions);
+  }, [tasksWithPriority, filterOptions, viewMode]);
 
   // Build child tasks map: issueId -> childTasks[]
-  // Child tasks are items with workItemType='Task' and have a parent
+  // Only used in 'issues' mode (in other modes Tasks are independent cards)
   const childTasksMap = useMemo(() => {
+    if (viewMode !== 'issues') return new Map();
     const map = new Map();
     tasksWithPriority.forEach((task) => {
-      // Check if this is a Task (child item) with a parent
-      if (task._gitlab?.workItemType === 'Task' && task.parent) {
+      if (isGitLabTask(task) && task.parent) {
         const parentId = task.parent;
         if (!map.has(parentId)) {
           map.set(parentId, []);
@@ -168,7 +186,29 @@ export function KanbanView({ showSettings, onSettingsClose }) {
       }
     });
     return map;
-  }, [tasksWithPriority]);
+  }, [tasksWithPriority, viewMode]);
+
+  // Build parent task map: taskId -> parentIssueObject
+  // Used in 'tasks' and 'all' modes to show parent Issue reference on Task cards
+  const parentTaskMap = useMemo(() => {
+    if (viewMode === 'issues') return new Map();
+    // Build Issue lookup map for O(1) access
+    const issueById = new Map();
+    allTasks.forEach((t) => {
+      if (t.$isIssue && !isGitLabTask(t)) {
+        issueById.set(t.id, t);
+      }
+    });
+    // Map each Task to its parent Issue
+    const map = new Map();
+    allTasks.forEach((task) => {
+      if (isGitLabTask(task) && task.parent) {
+        const parent = issueById.get(task.parent);
+        if (parent) map.set(task.id, parent);
+      }
+    });
+    return map;
+  }, [viewMode, allTasks]);
 
   // === Drag-and-Drop Operations ===
   // Reorder task wrapper: converts task ID to GitLab IID for API call
@@ -307,16 +347,19 @@ export function KanbanView({ showSettings, onSettingsClose }) {
 
   return (
     <div className="kanban-view">
-      {/* Board Selector */}
-      <BoardSelector
-        boards={boards}
-        currentBoard={currentBoard}
-        onSelectBoard={selectBoard}
-        onCreateBoard={() => setShowCreateDialog(true)}
-        onEditBoard={() => setShowSettingsModal(true)}
-        loading={boardsLoading}
-        saving={boardsSaving}
-      />
+      {/* Board Selector + View Mode Toggle */}
+      <div className="kanban-view-toolbar">
+        <BoardSelector
+          boards={boards}
+          currentBoard={currentBoard}
+          onSelectBoard={selectBoard}
+          onCreateBoard={() => setShowCreateDialog(true)}
+          onEditBoard={() => setShowSettingsModal(true)}
+          loading={boardsLoading}
+          saving={boardsSaving}
+        />
+        <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+      </div>
 
       {/* Board Content */}
       <div className="kanban-view-content">
@@ -329,6 +372,8 @@ export function KanbanView({ showSettings, onSettingsClose }) {
             board={currentBoard}
             tasks={filteredTasks}
             childTasksMap={childTasksMap}
+            parentTaskMap={parentTaskMap}
+            viewMode={viewMode}
             labelColorMap={labelColorMap}
             onCardDoubleClick={handleCardDoubleClick}
             onSameListReorder={handleSameListReorder}

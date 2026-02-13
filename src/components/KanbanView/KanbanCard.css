@@ -60,6 +60,26 @@
   font-weight: 500;
 }
 
+/* ID + Type tag group */
+.kanban-card-id-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Type tag (shown in 'tasks' and 'all' modes) */
+.kanban-card-type-tag {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  line-height: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 .kanban-card-title {
   color: #1f2937;
   /* Single line with ellipsis for overflow */
@@ -67,6 +87,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+}
+
+/* Parent Issue reference (for Tasks in 'tasks'/'all' modes) */
+.kanban-card-parent-ref {
+  display: flex;
+  align-items: center;
+  margin-top: 3px;
+  font-size: 10px;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kanban-card-parent-ref:hover {
+  color: #1f75cb;
+}
+
+.kanban-card-parent-ref span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kanban-card-icon {
@@ -214,4 +257,12 @@
 
 .wx-willow-dark-theme .kanban-card-task-done {
   color: var(--wx-gitlab-control-text, #9fa1ae);
+}
+
+.wx-willow-dark-theme .kanban-card-parent-ref {
+  color: var(--wx-demo-text-secondary, #9fa1ae);
+}
+
+.wx-willow-dark-theme .kanban-card-parent-ref:hover {
+  color: #37a9ef;
 }

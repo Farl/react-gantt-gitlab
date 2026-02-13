@@ -1,0 +1,67 @@
+/**
+ * ViewModeToggle Styles
+ *
+ * Segmented button matching BoardSelector styling patterns.
+ */
+
+.view-mode-toggle {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-mode-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  background: white;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.view-mode-toggle-btn:last-child {
+  border-right: none;
+}
+
+.view-mode-toggle-btn:hover:not(.active) {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.view-mode-toggle-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+
+.view-mode-toggle-btn i {
+  font-size: 10px;
+}
+
+/* ========== Dark Theme ========== */
+.wx-willow-dark-theme .view-mode-toggle {
+  border-color: var(--wx-gitlab-button-border, #384047);
+}
+
+.wx-willow-dark-theme .view-mode-toggle-btn {
+  background: var(--wx-gitlab-button-background, #2c2f33);
+  border-right-color: var(--wx-gitlab-button-border, #384047);
+  color: var(--wx-gitlab-button-text, #9fa1ae);
+}
+
+.wx-willow-dark-theme .view-mode-toggle-btn:hover:not(.active) {
+  background: var(--wx-gitlab-button-hover-background, #33373c);
+  color: var(--wx-gitlab-button-hover-text, #e6e6e6);
+}
+
+.wx-willow-dark-theme .view-mode-toggle-btn.active {
+  background: #3b82f6;
+  color: white;
+}

@@ -34,6 +34,23 @@
   color: #6b7280;
 }
 
+/* Toolbar: BoardSelector + ViewModeToggle side by side */
+.kanban-view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+/* Remove BoardSelector's own border/padding when inside toolbar */
+.kanban-view-toolbar .board-selector {
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+}
+
 .kanban-view-content {
   flex: 1;
   overflow: hidden;
@@ -133,6 +150,11 @@
 }
 
 /* ========== Dark Theme ========== */
+.wx-willow-dark-theme .kanban-view-toolbar {
+  background: var(--wx-gitlab-control-background, #23262a);
+  border-bottom-color: var(--wx-gitlab-header-border, #384047);
+}
+
 .wx-willow-dark-theme .kanban-view {
   background: var(--wx-gitlab-control-background, #23262a);
 }

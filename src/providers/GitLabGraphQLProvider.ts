@@ -63,6 +63,7 @@ import {
   type DescriptionLinkMetadata,
 } from '../utils/DescriptionMetadataUtils';
 import { buildFolderTree } from '../utils/FolderLabelUtils';
+import { isGitLabTask } from '../utils/TaskTypeUtils';
 import {
   compareMilestones,
   compareByDisplayOrder,
@@ -2772,15 +2773,24 @@ export class GitLabGraphQLProvider {
       input.stateEvent = task.state === 'closed' ? 'CLOSE' : 'REOPEN';
     }
 
-    // Labels - use REST API since GraphQL WorkItemWidgetLabelsUpdateInput
-    // requires addLabelIds/removeLabelIds instead of direct labelIds
+    // Labels - routing depends on work item type:
+    // Issues: use REST API (faster, simpler)
+    // Tasks: use GraphQL labelsWidget (REST /issues/ endpoint doesn't work for Tasks)
     if (task.labels !== undefined) {
       const labelTitles = String(task.labels)
         .split(',')
         .map((l) => l.trim())
         .filter(Boolean);
-      // Use REST API to update labels
-      await this.updateIssueLabels(id, labelTitles);
+
+      const isTask = isGitLabTask(task as ITask);
+
+      if (isTask) {
+        // Tasks: use GraphQL labelsWidget with addLabelIds/removeLabelIds
+        await this.updateWorkItemLabels(workItemId, labelTitles);
+      } else {
+        // Issues: use REST API
+        await this.updateIssueLabels(id, labelTitles);
+      }
     }
 
     // TODO: Handle assignees, milestone
@@ -4751,6 +4761,131 @@ export class GitLabGraphQLProvider {
       `[GitLabGraphQL] Updated issue #${issueIid} labels to:`,
       labels,
     );
+  }
+
+  /**
+   * Update work item labels using GraphQL labelsWidget
+   * Used for Tasks (which cannot use the REST /issues/ endpoint)
+   * @param workItemGlobalId - Work item global ID (gid://gitlab/WorkItem/...)
+   * @param desiredLabelTitles - Array of label titles to set
+   */
+  async updateWorkItemLabels(
+    workItemGlobalId: string,
+    desiredLabelTitles: string[],
+  ): Promise<void> {
+    // Resolve desired label titles to global IDs
+    const desiredLabelIdMap =
+      desiredLabelTitles.length > 0
+        ? await this.getLabelIdsByTitles(desiredLabelTitles)
+        : new Map<string, string>();
+
+    const desiredLabelIds = desiredLabelTitles
+      .map((title) => desiredLabelIdMap.get(title))
+      .filter((id): id is string => !!id);
+
+    // Log any labels that couldn't be resolved
+    const notFound = desiredLabelTitles.filter(
+      (t) => !desiredLabelIdMap.has(t),
+    );
+    if (notFound.length > 0) {
+      console.warn(
+        '[GitLabGraphQL] Labels not found for Task update:',
+        notFound.join(', '),
+      );
+    }
+
+    // Query current labels on the work item to compute add/remove diffs
+    const currentLabelsQuery = `
+      query getWorkItemLabels($id: WorkItemID!) {
+        workItem(id: $id) {
+          widgets {
+            ... on WorkItemWidgetLabels {
+              labels {
+                nodes {
+                  id
+                  title
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const currentResult = await this.graphqlClient.query<{
+      workItem: {
+        widgets: Array<{
+          labels?: {
+            nodes: Array<{ id: string; title: string }>;
+          };
+        }>;
+      };
+    }>(currentLabelsQuery, { id: workItemGlobalId });
+
+    const currentLabelNodes =
+      currentResult.workItem.widgets.find((w) => w.labels !== undefined)?.labels
+        ?.nodes || [];
+    const currentLabelIds = new Set(currentLabelNodes.map((l) => l.id));
+    const desiredLabelIdSet = new Set(desiredLabelIds);
+
+    // Compute diff
+    const addLabelIds = desiredLabelIds.filter(
+      (id) => !currentLabelIds.has(id),
+    );
+    const removeLabelIds = [...currentLabelIds].filter(
+      (id) => !desiredLabelIdSet.has(id),
+    );
+
+    // Skip if no changes
+    if (addLabelIds.length === 0 && removeLabelIds.length === 0) {
+      console.log('[GitLabGraphQL] No label changes needed for work item');
+      return;
+    }
+
+    const mutation = `
+      mutation updateWorkItemLabels($input: WorkItemUpdateInput!) {
+        workItemUpdate(input: $input) {
+          workItem {
+            id
+            iid
+          }
+          errors
+        }
+      }
+    `;
+
+    const input: any = {
+      id: workItemGlobalId,
+      labelsWidget: {},
+    };
+    if (addLabelIds.length > 0) {
+      input.labelsWidget.addLabelIds = addLabelIds;
+    }
+    if (removeLabelIds.length > 0) {
+      input.labelsWidget.removeLabelIds = removeLabelIds;
+    }
+
+    const result = await this.graphqlClient.mutate<{
+      workItemUpdate: {
+        workItem: { id: string; iid: string };
+        errors: string[];
+      };
+    }>(mutation, { input });
+
+    if (result.workItemUpdate.errors?.length > 0) {
+      console.error(
+        '[GitLabGraphQL] Task label update errors:',
+        result.workItemUpdate.errors,
+      );
+      throw new Error(
+        `Failed to update task labels: ${result.workItemUpdate.errors.join(', ')}`,
+      );
+    }
+
+    console.log(`[GitLabGraphQL] Updated task labels via GraphQL:`, {
+      added: addLabelIds.length,
+      removed: removeLabelIds.length,
+    });
   }
 
   /**

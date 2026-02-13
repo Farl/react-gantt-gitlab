@@ -106,6 +106,8 @@ export function KanbanList({
   name,
   tasks,
   childTasksMap,
+  parentTaskMap,
+  viewMode = 'issues',
   sortBy = 'position',
   sortOrder = 'asc',
   defaultSortBy = 'position', // Default sort field from list config
@@ -167,7 +169,9 @@ export function KanbanList({
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         <div className="kanban-list-content">
           {sortedTasks.length === 0 ? (
-            <div className="kanban-list-empty">No issues</div>
+            <div className="kanban-list-empty">
+              {viewMode === 'tasks' ? 'No tasks' : viewMode === 'all' ? 'No items' : 'No issues'}
+            </div>
           ) : (
             sortedTasks.map((task) => (
               <KanbanCard
@@ -175,6 +179,8 @@ export function KanbanList({
                 task={task}
                 listId={id}
                 childTasks={childTasksMap?.get(task.id) || []}
+                parentTask={parentTaskMap?.get(task.id)}
+                viewMode={viewMode}
                 labelColorMap={labelColorMap}
                 onDoubleClick={onCardDoubleClick}
                 isDragging={task.id === activeTaskId}

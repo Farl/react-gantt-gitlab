@@ -75,7 +75,7 @@ function Editor({
       buttons.push({
         comp: 'button',
         type: 'danger',
-        text: _('Delete'),
+        text: 'Close / Delete...',
         id: 'delete',
       });
 

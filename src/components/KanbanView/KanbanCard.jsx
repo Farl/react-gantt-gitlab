@@ -3,18 +3,21 @@
 /**
  * KanbanCard
  *
- * Displays a single issue as a compact card in the Kanban board.
- * Shows: ID, title, assignees, labels, task completion, due date
+ * Displays a single Issue or Task as a compact card in the Kanban board.
+ * Shows: ID, title, assignees, labels, due date.
+ *
+ * View mode behavior:
+ * - 'issues': Shows Issues with child Task checklists inside each card.
+ * - 'tasks': Shows Tasks as independent cards with parent Issue reference.
+ * - 'all': Shows both Issues and Tasks with type indicator (color bar + tag).
  *
  * Supports drag-and-drop via @dnd-kit/sortable.
- * - listId: The column/list this card belongs to (for drag data)
- * - isDragging: External dragging state (e.g., from parent)
- * - isDragOverlay: True when this card is rendered as a drag overlay
  */
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { openGitLabLink } from '../../utils/GitLabLinkUtils';
+import { isGitLabTask, TASK_COLORS } from '../../utils/TaskTypeUtils';
 import './KanbanCard.css';
 
 /**
@@ -65,6 +68,8 @@ export function KanbanCard({
   task,
   labelColorMap,
   childTasks = [], // Child tasks (workItemType=Task) to display
+  parentTask, // Parent Issue object (for Tasks in 'tasks'/'all' mode)
+  viewMode = 'issues', // Current view mode
   maxLabels = 2,
   maxAssignees = 2,
   listId,
@@ -106,8 +111,19 @@ export function KanbanCard({
   const assignees = parseAssignees(task.assigned);
   const dueInfo = formatDueDate(task.end);
 
+  // Determine if this card is a Task (not an Issue)
+  const isTaskItem = isGitLabTask(task);
+
+  // Show type indicators in 'tasks' and 'all' modes
+  const showTypeIndicator = viewMode !== 'issues';
+
+  // Type bar color: blue for Issues, teal for Tasks
+  const typeBarColor = isTaskItem ? TASK_COLORS.task : TASK_COLORS.issue;
+  const typeLabel = isTaskItem ? 'Task' : 'Issue';
+
   // Child tasks (GitLab Tasks with workItemType='Task')
-  const hasChildTasks = childTasks && childTasks.length > 0;
+  // Only show in 'issues' mode (in other modes, Tasks are independent cards)
+  const hasChildTasks = viewMode === 'issues' && childTasks && childTasks.length > 0;
 
   // Calculate visible labels and overflow
   const visibleLabels = labels.slice(0, maxLabels);
@@ -133,23 +149,36 @@ export function KanbanCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(showTypeIndicator ? { borderLeft: `3px solid ${typeBarColor}` } : {}),
+      }}
       className={classNames.join(' ')}
       data-task-id={task.id}
       {...attributes}
       {...listeners}
     >
-      {/* Issue ID, Due Date, and Title */}
+      {/* Issue/Task ID, Type Tag, Due Date, and Title */}
       <div className="kanban-card-header">
         <div className="kanban-card-header-row">
-          <span
-            className="kanban-card-id"
-            onClick={handleIdClick}
-            onMouseDown={handleIdMouseDown}
-            onTouchStart={handleIdMouseDown}
-            title="Open in GitLab"
-          >
-            #{task._gitlab?.iid || task.id}
+          <span className="kanban-card-id-group">
+            <span
+              className="kanban-card-id"
+              onClick={handleIdClick}
+              onMouseDown={handleIdMouseDown}
+              onTouchStart={handleIdMouseDown}
+              title="Open in GitLab"
+            >
+              #{task._gitlab?.iid || task.id}
+            </span>
+            {showTypeIndicator && (
+              <span
+                className="kanban-card-type-tag"
+                style={{ backgroundColor: typeBarColor }}
+              >
+                {typeLabel}
+              </span>
+            )}
           </span>
           {dueInfo.text && (
             <span
@@ -163,6 +192,23 @@ export function KanbanCard({
         <span className="kanban-card-title">{task.text}</span>
       </div>
 
+      {/* Parent Issue reference (for Tasks in 'tasks'/'all' modes) */}
+      {showTypeIndicator && isTaskItem && parentTask && (
+        <div
+          className="kanban-card-parent-ref"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openGitLabLink(parentTask);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          title={`Open parent issue #${parentTask._gitlab?.iid || parentTask.id} in GitLab`}
+        >
+          <i className="fas fa-level-up-alt kanban-card-icon" />
+          <span>Parent: #{parentTask._gitlab?.iid || parentTask.id} {parentTask.text}</span>
+        </div>
+      )}
 
       {/* Assignees */}
       {assignees.length > 0 && (

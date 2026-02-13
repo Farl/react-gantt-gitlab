@@ -828,6 +828,10 @@ export function GanttView({
     // Find the delete-task option index and insert Move In... before it
     const deleteIndex = options.findIndex((opt) => opt.id === 'delete-task');
     if (deleteIndex !== -1) {
+      // Rename "Delete" to "Close / Delete..." since the dialog offers both options
+      // and close is the preferred default action for Issues/Tasks
+      options[deleteIndex] = { ...options[deleteIndex], text: 'Close / Delete...' };
+
       // Insert Move In... before delete (after the separator that precedes delete)
       options.splice(deleteIndex, 0, {
         id: 'move-in',

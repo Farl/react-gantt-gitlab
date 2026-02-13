@@ -27,6 +27,18 @@ export function isStructuralTask(task: ITask | null | undefined): boolean {
   return isMilestoneTask(task) || isFolderTask(task);
 }
 
+/**
+ * Check if an ITask is a GitLab Task (child work item of an Issue).
+ * Handles both data formats:
+ * - GraphQL-fetched: `_gitlab.workItemType` is a string ('Task')
+ * - REST-fetched: `_gitlab.workItemType` is an object ({ name: 'Task' })
+ */
+export function isGitLabTask(task: ITask | null | undefined): boolean {
+  if (!task) return false;
+  const wit = task._gitlab?.workItemType;
+  return wit === 'Task' || (typeof wit === 'object' && wit?.name === 'Task');
+}
+
 // --- Color constants (single source of truth) ---
 
 export const TASK_COLORS = {

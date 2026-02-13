@@ -118,6 +118,8 @@ export function KanbanBoardDnd({
   board,
   tasks,
   childTasksMap,
+  parentTaskMap,
+  viewMode = 'issues',
   labelColorMap,
   onCardDoubleClick,
   onSameListReorder,
@@ -252,6 +254,8 @@ export function KanbanBoardDnd({
         board={board}
         tasks={tasks}
         childTasksMap={childTasksMap}
+        parentTaskMap={parentTaskMap}
+        viewMode={viewMode}
         labelColorMap={labelColorMap}
         onCardDoubleClick={onCardDoubleClick}
         activeTaskId={activeTask?.id}
@@ -266,6 +270,8 @@ export function KanbanBoardDnd({
           <KanbanCard
             task={activeTask}
             labelColorMap={labelColorMap}
+            viewMode={viewMode}
+            parentTask={parentTaskMap?.get(activeTask.id)}
             isDragOverlay
           />
         )}
