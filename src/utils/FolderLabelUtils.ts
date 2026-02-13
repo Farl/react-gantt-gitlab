@@ -28,6 +28,8 @@
  */
 
 import type { ITask } from '@svar-ui/gantt-store';
+import { createMilestoneTaskId, isMilestoneTask } from './MilestoneIdUtils';
+import { compareMilestones, compareByDisplayOrder } from './TaskSortUtils';
 
 const FOLDER_LABEL_PREFIX = 'folder::';
 const FOLDER_ID_PREFIX = 'f-';
@@ -287,4 +289,78 @@ export function buildFolderTree(
     tasks: modifiedTasks,
     folderNodes: Array.from(folderNodeMap.values()),
   };
+}
+
+/**
+ * Strip folder nodes and restore original parent references.
+ * Used when the "Show Folders" display toggle is OFF.
+ *
+ * Restoration logic:
+ * - Milestones: restore parent to 0 (root) — Phase 1 of buildFolderTree moved them under folders
+ * - Issues: restore parent to milestone (m-{iid}) or root (0) — _gitlab.milestoneIid is preserved
+ * - GitLab Tasks: never re-parented by buildFolderTree, no change needed
+ * - Folders: removed entirely
+ */
+export function stripFolderNodes(tasks: ITask[]): ITask[] {
+  // Collect all folder node IDs for quick lookup
+  const folderIds = new Set<string | number>();
+  for (const task of tasks) {
+    if (isFolderTask(task)) {
+      folderIds.add(task.id);
+    }
+  }
+
+  // Fast path: no folders to strip
+  if (folderIds.size === 0) return tasks;
+
+  // Remove folder nodes and restore parent references for orphaned children
+  const restored = tasks
+    .filter((task) => !isFolderTask(task))
+    .map((task) => {
+      // If task's parent is not a folder, no change needed
+      if (!folderIds.has(task.parent as string | number)) {
+        return task;
+      }
+
+      // Task's parent is a folder — restore original parent
+      if (isMilestoneTask(task)) {
+        // Milestones were at root (parent: 0) before buildFolderTree Phase 1
+        return { ...task, parent: 0 };
+      }
+
+      if (task.$isIssue) {
+        // Issues: restore to milestone parent or root
+        const milestoneIid = task._gitlab?.milestoneIid;
+        if (milestoneIid) {
+          return { ...task, parent: createMilestoneTaskId(milestoneIid) };
+        }
+        return { ...task, parent: 0 };
+      }
+
+      // Defensive fallback for any other task type
+      return { ...task, parent: 0 };
+    });
+
+  // Re-sort by parent group to maintain milestones-first ordering.
+  // Without this, milestones moved from folder children back to root
+  // keep their old array position and end up after issues.
+  const tasksByParent = new Map<number | string, ITask[]>();
+  for (const task of restored) {
+    const pid = task.parent || 0;
+    if (!tasksByParent.has(pid)) tasksByParent.set(pid, []);
+    tasksByParent.get(pid)!.push(task);
+  }
+
+  const sorted: ITask[] = [];
+  tasksByParent.forEach((group) => {
+    const milestones = group.filter((t) => isMilestoneTask(t));
+    const others = group.filter((t) => !isMilestoneTask(t));
+
+    milestones.sort(compareMilestones);
+    others.sort(compareByDisplayOrder);
+
+    sorted.push(...milestones, ...others);
+  });
+
+  return sorted;
 }

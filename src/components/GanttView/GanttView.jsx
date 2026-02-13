@@ -44,6 +44,7 @@ import { CreateItemDialog } from '../shared/dialogs/CreateItemDialog';
 import { DeleteDialog } from '../shared/dialogs/DeleteDialog';
 import { isLegacyMilestoneId, migrateLegacyMilestoneId } from '../../utils/MilestoneIdUtils.ts';
 import { isMilestoneTask, isFolderTask, isStructuralTask } from '../../utils/TaskTypeUtils';
+import { stripFolderNodes } from '../../utils/FolderLabelUtils';
 import {
   findLinkBySourceTarget,
   validateLinkGitLabMetadata,
@@ -305,6 +306,12 @@ export function GanttView({
     return saved || 'day';
   });
 
+  // Show/hide folder nodes in the Gantt tree (default: OFF)
+  const [showFolders, setShowFolders] = useState(() => {
+    const saved = localStorage.getItem('gantt-show-folders');
+    return saved !== null ? saved === 'true' : false;
+  });
+
   // Column settings (visibility + order) from extracted hook
   const { columnSettings, toggleColumn, reorderColumns } = useColumnSettings();
 
@@ -357,6 +364,11 @@ export function GanttView({
   useEffect(() => {
     localStorage.setItem('gantt-length-unit', lengthUnit);
   }, [lengthUnit]);
+
+  // Save show folders setting to localStorage
+  useEffect(() => {
+    localStorage.setItem('gantt-show-folders', showFolders.toString());
+  }, [showFolders]);
 
   // Ref to store fold state before data updates
   const openStateRef = useRef(new Map());
@@ -543,10 +555,16 @@ export function GanttView({
     });
   }, [allTasks, countWorkdays, labelPriorityMap]);
 
+  // Strip folder nodes when "Show Folders" toggle is OFF
+  const tasksForDisplay = useMemo(() => {
+    if (showFolders) return tasksWithWorkdays;
+    return stripFolderNodes(tasksWithWorkdays);
+  }, [tasksWithWorkdays, showFolders]);
+
   // Apply filters to tasks
   const filteredTasks = useMemo(() => {
-    return GitLabFilters.applyFilters(tasksWithWorkdays, filterOptions);
-  }, [tasksWithWorkdays, filterOptions]);
+    return GitLabFilters.applyFilters(tasksForDisplay, filterOptions);
+  }, [tasksForDisplay, filterOptions]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -2397,6 +2415,14 @@ export function GanttView({
                 <option value="month">Month</option>
                 <option value="quarter">Quarter</option>
               </select>
+            </label>
+            <label className="control-label">
+              <input
+                type="checkbox"
+                checked={showFolders}
+                onChange={(e) => setShowFolders(e.target.checked)}
+              />
+              Show Folders
             </label>
           </div>
         );

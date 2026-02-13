@@ -9,7 +9,6 @@ import { useMiddleMouseDrag } from '../hooks/useMiddleMouseDrag';
 import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 import './WorkloadChart.css';
 import './shared/TodayMarker.css';
-import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 
 /**
  * Calculate task position and width based on dates and scale

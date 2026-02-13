@@ -63,6 +63,10 @@ import {
   type DescriptionLinkMetadata,
 } from '../utils/DescriptionMetadataUtils';
 import { buildFolderTree } from '../utils/FolderLabelUtils';
+import {
+  compareMilestones,
+  compareByDisplayOrder,
+} from '../utils/TaskSortUtils';
 
 /**
  * Format iteration title for display
@@ -1554,26 +1558,6 @@ export class GitLabGraphQLProvider {
       }
       tasksByParent.get(parentId)!.push(task);
     });
-
-    // Sort comparators
-    const compareMilestones = (a: ITask, b: ITask) => {
-      if (a.end && b.end) return a.end.getTime() - b.end.getTime();
-      if (a.end) return -1;
-      if (b.end) return 1;
-      if (a.start && b.start) return a.start.getTime() - b.start.getTime();
-      if (a.start) return -1;
-      if (b.start) return 1;
-      return (a.text || '').localeCompare(b.text || '');
-    };
-
-    const compareByDisplayOrder = (a: ITask, b: ITask) => {
-      const orderA = a.$custom?.displayOrder;
-      const orderB = b.$custom?.displayOrder;
-      if (orderA != null && orderB != null) return orderA - orderB;
-      if (orderA != null) return -1;
-      if (orderB != null) return 1;
-      return Number(a.id) - Number(b.id);
-    };
 
     // Sort each parent group: milestones first (by date), then folders (by title), then others (by displayOrder)
     const sortedTasks: ITask[] = [];
