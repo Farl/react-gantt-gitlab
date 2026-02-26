@@ -40,7 +40,7 @@ jobs:
         run: npm run build:pages
         env:
           VITE_BASE_PATH: /react-gantt-gitlab/
-          VITE_CORS_PROXY: https://gitlab-cors-proxy.farllee.workers.dev
+          VITE_CORS_PROXY: ${{ vars.VITE_CORS_PROXY }}
 
       - name: Verify build output
         run: |

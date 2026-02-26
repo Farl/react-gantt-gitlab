@@ -20,9 +20,8 @@ function DemoExplorerContent({
   const [githubLink, setGithubLink] = useState('');
   const [show, setShow] = useState(false);
 
-  const baseLink =
-    (import.meta.env.VITE_REPO_URL || 'https://github.com/nicefacer/react-gantt-gitlab') +
-    '/tree/main/demos/cases/';
+  const repoUrl = import.meta.env.VITE_REPO_URL;
+  const baseLink = repoUrl ? `${repoUrl}/tree/main/demos/cases/` : '';
 
   useEffect(() => {
     document.body.className = `wx-willow-theme`;
@@ -166,13 +165,15 @@ function DemoExplorerContent({
                 onChange={handleSkinChange}
               />
             </div>
-            <div className="wx-demos btn-box">
-              <a href={githubLink} target="_blank" rel="noopener noreferrer">
-                <Button type="secondary" css="toggle-btn">
-                  See code on GitLab
-                </Button>
-              </a>
-            </div>
+            {githubLink && (
+              <div className="wx-demos btn-box">
+                <a href={githubLink} target="_blank" rel="noopener noreferrer">
+                  <Button type="secondary" css="toggle-btn">
+                    See code
+                  </Button>
+                </a>
+              </div>
+            )}
           </div>
         </div>
 

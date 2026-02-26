@@ -10,8 +10,7 @@ pages:
   cache:
     paths:
       - node_modules/
-  variables:
-    VITE_CORS_PROXY: "https://gitlab-cors-proxy.farllee.workers.dev"
+  # VITE_CORS_PROXY is set in GitLab CI/CD Settings > Variables
   script:
     - npm ci
     - npm run build:pages
