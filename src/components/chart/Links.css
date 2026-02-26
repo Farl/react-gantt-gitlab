@@ -1,3 +1,16 @@
+/* Container: wraps SVG + delete button overlay.
+   z-index: 3 places it above Bars so polyline strokes are clickable.
+   pointer-events: none on container lets all non-stroke clicks pass through to Bars. */
+.wx-links-container.wx-dkx3NwEn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
 .wx-links.wx-dkx3NwEn {
   position: absolute;
   top: 0;
@@ -15,4 +28,35 @@
   stroke-width: 2;
   z-index: 0;
   fill: transparent;
+}
+
+/* Selected link: highlight with thicker stroke and primary color */
+.wx-line.wx-link-selected.wx-dkx3NwEn {
+  stroke: var(--wx-color-primary, #2196f3);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 2px var(--wx-color-primary, #2196f3));
+}
+
+/* Delete button: positioned at link midpoint */
+.wx-link-delete-btn.wx-dkx3NwEn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--wx-color-danger, #f44336);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.wx-link-delete-btn.wx-dkx3NwEn:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  background: var(--wx-color-danger-hover, #d32f2f);
 }

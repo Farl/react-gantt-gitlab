@@ -46,6 +46,7 @@ function Chart(props) {
 
   const [chartHeight, setChartHeight] = useState();
   const [chartWidth, setChartWidth] = useState(0);
+  const [selectedLinkId, setSelectedLinkId] = useState(null);
   const chartRef = useRef(null);
   const areaRef = useRef(null);
 
@@ -61,6 +62,10 @@ function Chart(props) {
 
   // Middle mouse drag to scroll
   const { isDragging, onMouseDown } = useMiddleMouseDrag(chartRef);
+
+  const handleDeselectLink = useCallback(() => {
+    setSelectedLinkId(null);
+  }, []);
 
   const extraRows = 1;
 
@@ -306,8 +311,17 @@ function Chart(props) {
             )
           : null}
 
-        <Links />
-        <Bars readonly={readonly} taskTemplate={taskTemplate} colorRules={colorRules} />
+        <Links
+          readonly={readonly}
+          selectedLinkId={selectedLinkId}
+          onSelectLink={setSelectedLinkId}
+        />
+        <Bars
+          readonly={readonly}
+          taskTemplate={taskTemplate}
+          colorRules={colorRules}
+          onDeselectLink={handleDeselectLink}
+        />
       </div>
 
       {/* Off-screen arrows - placed at chart level to avoid overflow clipping */}

@@ -1,4 +1,4 @@
-import { useContext, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo } from 'react';
 import storeContext from '../../context';
 import { useStore } from '@svar-ui/lib-react';
 import { isFolderTask, isMilestoneTask } from '../../utils/TaskTypeUtils';
@@ -131,6 +131,8 @@ function hasVisibleBar(task) {
  * 改進 library 的行為：
  * 1. 使用動態水平偏移量（cellWidth / 2，最大 20px），在不同 zoom level 下更自然
  * 2. 「下往上」的 link 從目標下方繞過，而非上方（修正 library 的 ㄇ 字形問題）
+ *
+ * @returns {{ points: string, midX: number, midY: number }}
  */
 function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, baselines) {
   const { isFromStart, isToStart } = getLinkEndpoints(link.type);
@@ -161,6 +163,7 @@ function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, 
   const needsDetour = turnX1 >= turnX2;
 
   let pathPoints;
+  let midX, midY;
 
   if (needsDetour) {
     // 需要繞開：決定從哪個 bar 的下方繞過
@@ -169,6 +172,10 @@ function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, 
     const detourBaseY = isTargetAbove ? targetY : sourceY;
     const barHeight = detourTask.$h;
     const detourY = detourBaseY + barHeight + DETOUR_PADDING;
+
+    // Midpoint: center of the horizontal detour segment
+    midX = (turnX1 + turnX2) / 2;
+    midY = detourY;
 
     pathPoints = generatePathPoints([
       [startX, startY],
@@ -180,6 +187,10 @@ function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, 
     ]);
   } else {
     // 不需要繞開：直接連接
+    // Midpoint: vertical segment midpoint
+    midX = turnX1;
+    midY = (startY + endY) / 2;
+
     pathPoints = generatePathPoints([
       [startX, startY],
       [turnX1, startY],
@@ -188,7 +199,11 @@ function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, 
     ]);
   }
 
-  return `${pathPoints},${generateArrowPoints(endX, endY, isToStart)}`;
+  return {
+    points: `${pathPoints},${generateArrowPoints(endX, endY, isToStart)}`,
+    midX,
+    midY,
+  };
 }
 
 /**
@@ -197,7 +212,7 @@ function calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, 
  * ====================================================================
  */
 
-export default function Links() {
+export default function Links({ readonly, selectedLinkId, onSelectLink }) {
   const api = useContext(storeContext);
   const links = useStore(api, "_links");
   const tasks = useStore(api, "_tasks");
@@ -222,10 +237,10 @@ export default function Links() {
 
         // 只有當兩端任務都有可見的 bar 時才計算路徑
         if (hasVisibleBar(sourceTask) && hasVisibleBar(targetTask)) {
-          return {
-            ...link,
-            $p: calculateLinkPath(link, sourceTask, targetTask, cellHeight, cellWidth, baselines)
-          };
+          const { points, midX, midY } = calculateLinkPath(
+            link, sourceTask, targetTask, cellHeight, cellWidth, baselines
+          );
+          return { ...link, $p: points, $midX: midX, $midY: midY };
         }
         // 任一端沒有可見 bar，不顯示此 link
         return null;
@@ -233,15 +248,85 @@ export default function Links() {
       .filter(Boolean);
   }, [links, taskMap, cellHeight, cellWidth, baselines]);
 
+  // Dispatch delete-link action for the given link object
+  const deleteLink = useCallback((link) => {
+    api.exec('delete-link', {
+      id: link.id,
+      link: { source: link.source, target: link.target },
+    });
+    onSelectLink(null);
+  }, [api, onSelectLink]);
+
+  // Click on a polyline to select/deselect the link
+  const handleLinkClick = useCallback((e, link) => {
+    if (readonly) return;
+    e.stopPropagation();
+    onSelectLink(selectedLinkId === link.id ? null : link.id);
+  }, [readonly, selectedLinkId, onSelectLink]);
+
+  // Click delete button to remove the link
+  const handleDeleteClick = useCallback((e, link) => {
+    e.stopPropagation();
+    deleteLink(link);
+  }, [deleteLink]);
+
+  // Keyboard: Delete/Backspace to delete selected link, Escape to deselect
+  useEffect(() => {
+    if (!selectedLinkId || readonly) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Don't intercept if user is typing in an input/textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        const link = processedLinks.find(l => l.id === selectedLinkId);
+        if (link) deleteLink(link);
+      }
+      if (e.key === 'Escape') {
+        onSelectLink(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLinkId, readonly, processedLinks, deleteLink, onSelectLink]);
+
+  // Find the selected link for rendering the delete button
+  const selectedLink = selectedLinkId
+    ? processedLinks.find(l => l.id === selectedLinkId)
+    : null;
+
   return (
-    <svg className="wx-dkx3NwEn wx-links">
-      {processedLinks.map(link => (
-        <polyline
-          className="wx-dkx3NwEn wx-line"
-          points={link.$p}
-          key={link.id}
-        />
-      ))}
-    </svg>
+    <div className="wx-dkx3NwEn wx-links-container">
+      <svg className="wx-dkx3NwEn wx-links">
+        {processedLinks.map(link => (
+          <polyline
+            className={
+              'wx-dkx3NwEn wx-line' +
+              (link.id === selectedLinkId ? ' wx-link-selected' : '')
+            }
+            points={link.$p}
+            key={link.id}
+            onClick={readonly ? undefined : (e) => handleLinkClick(e, link)}
+          />
+        ))}
+      </svg>
+      {!readonly && selectedLink && (
+        <div
+          className="wx-dkx3NwEn wx-link-delete-btn"
+          style={{
+            left: `${selectedLink.$midX}px`,
+            top: `${selectedLink.$midY}px`,
+          }}
+          onClick={(e) => handleDeleteClick(e, selectedLink)}
+          title="Delete link"
+        >
+          <svg viewBox="0 0 12 12" width="12" height="12">
+            <line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" strokeWidth="2" />
+            <line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" strokeWidth="2" />
+          </svg>
+        </div>
+      )}
+    </div>
   );
 }

@@ -84,7 +84,7 @@ const ParentBaselineBracket = ({ task, isMilestone, cellWidth }) => {
 };
 
 function Bars(props) {
-  const { readonly, taskTemplate: TaskTemplate, colorRules = [] } = props;
+  const { readonly, taskTemplate: TaskTemplate, colorRules = [], onDeselectLink } = props;
 
   const api = useContext(storeContext);
 
@@ -442,6 +442,9 @@ function Bars(props) {
         ignoreNextClickRef.current = false;
         return;
       }
+
+      // Deselect any selected link when clicking on bars area
+      if (onDeselectLink) onDeselectLink();
 
       const id = locateID(e.target);
       if (id) {
