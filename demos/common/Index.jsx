@@ -41,8 +41,12 @@ function DemoExplorerContent({
       const matched = links.find((a) => a[0] === targetPage);
       if (matched) {
         setTitle(matched[1]);
-        const name = matched[3] || matched[1];
-        setGithubLink(`${baseLink}${name}.jsx`);
+        if (baseLink) {
+          const name = matched[3] || matched[1];
+          setGithubLink(`${baseLink}${name}.jsx`);
+        } else {
+          setGithubLink('');
+        }
       }
     },
     [skin, baseLink],

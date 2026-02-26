@@ -41,6 +41,7 @@ jobs:
         env:
           VITE_BASE_PATH: /react-gantt-gitlab/
           VITE_CORS_PROXY: ${{ vars.VITE_CORS_PROXY }}
+          VITE_REPO_URL: ${{ vars.VITE_REPO_URL }}
 
       - name: Verify build output
         run: |
