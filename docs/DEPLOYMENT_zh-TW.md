@@ -23,9 +23,8 @@
 
 **限制：**
 
-- ⚠️ **網域不同仍有 CORS 問題**
-  - GitLab API: `gitlab.rayark.com`
-  - GitLab Pages: `pages.rayark.io`
+- ⚠️ **若 Pages 與 GitLab API 網域不同，仍有 CORS 問題**
+  - 例如：GitLab API 在 `gitlab.yourcompany.com`，Pages 在 `pages.yourcompany.io`
   - 需要額外配置 CORS proxy
 
 **部署步驟：**
@@ -41,11 +40,11 @@
 3. Pipeline 完成後，網站將部署至：
 
    ```
-   https://<project-name>-<hash>.pages.rayark.io/
+   https://<project-name>-<hash>.pages.yourcompany.io/
    ```
 
 4. 檢查部署狀態：
-   - Pipeline: `https://gitlab.rayark.com/<username>/<project-name>/-/pipelines`
+   - Pipeline: `https://your-gitlab-domain.com/<username>/<project-name>/-/pipelines`
    - Pages 設定: Settings > Pages
 
 ### 選項 2：GitHub Pages
@@ -90,17 +89,12 @@
 
 ### 問題說明
 
-當你的應用程式部署在：
-
-- `pages.rayark.io` (GitLab Pages)
-- 或 `github.io` (GitHub Pages)
-
-但試圖存取 `gitlab.rayark.com` 的 GitLab API 時，瀏覽器會因為 CORS 政策而阻擋這些請求。
+當你的應用程式部署在與 GitLab API 不同的網域時（例如 GitLab Pages 在 `pages.yourcompany.io`，API 在 `gitlab.yourcompany.com`），瀏覽器會因為 CORS 政策而阻擋這些請求。
 
 **錯誤訊息範例：**
 
 ```
-Access to fetch at 'https://gitlab.rayark.com/api/v4/...' from origin 'https://pages.rayark.io'
+Access to fetch at 'https://gitlab.yourcompany.com/api/v4/...' from origin 'https://pages.yourcompany.io'
 has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the
 requested resource.
 ```
@@ -114,148 +108,45 @@ requested resource.
 - ✅ 免費方案可用（每天 100,000 requests）
 - ✅ 設定簡單，部署快速
 - ✅ 全球 CDN，速度快
-- ✅ 適合 Rayark 內部使用
 
 **設定步驟：**
 
-1. **註冊 Cloudflare Workers**
+本專案已包含可直接使用的 Cloudflare Worker，詳細說明請參考 [`worker/README.md`](../worker/README.md)。
 
-   - 前往：https://workers.cloudflare.com/
-   - 使用公司帳號註冊或登入
+**快速步驟：**
 
-2. **建立新的 Worker**
+1. 編輯 `worker/worker.js` — 將你的 GitLab 網域加入 `ALLOWED_DOMAINS`
+2. 部署至 Cloudflare Workers（免費方案：每天 100,000 requests）
+3. 設定 `VITE_CORS_PROXY` 環境變數指向你的 Worker URL
 
-   - 點擊 "Create a Service"
-   - 服務名稱：`gitlab-cors-proxy`（或其他名稱）
-   - 選擇 "HTTP handler"
+**CI/CD 配置範例：**
 
-3. **貼上以下程式碼**：
+**GitHub Actions** (`.github/workflows/deploy-github-pages.yml`)：
 
-```javascript
-// Cloudflare Worker for GitLab CORS Proxy
-addEventListener('fetch', (event) => {
-  event.respondWith(handleRequest(event.request));
-});
-
-async function handleRequest(request) {
-  const url = new URL(request.url);
-
-  // 處理 CORS preflight OPTIONS 請求
-  if (request.method === 'OPTIONS') {
-    return handleOptions(request);
-  }
-
-  // 從 URL path 取得目標 GitLab URL
-  // 例如：https://your-worker.workers.dev/https://gitlab.rayark.com/api/v4/user
-  const targetUrl = url.pathname.slice(1); // 移除開頭的 /
-
-  // 安全檢查：只允許 gitlab.rayark.com
-  if (!targetUrl.startsWith('https://gitlab.rayark.com')) {
-    return new Response('Forbidden: Only gitlab.rayark.com is allowed', {
-      status: 403,
-    });
-  }
-
-  try {
-    // 複製原始請求的 headers
-    const headers = new Headers(request.headers);
-
-    // 如果有 X-GitLab-Token，轉換為 PRIVATE-TOKEN
-    if (headers.has('X-GitLab-Token')) {
-      headers.set('PRIVATE-TOKEN', headers.get('X-GitLab-Token'));
-      headers.delete('X-GitLab-Token');
-    }
-
-    // 轉發請求到 GitLab
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers: headers,
-      body:
-        request.method !== 'GET' && request.method !== 'HEAD'
-          ? await request.blob()
-          : null,
-    });
-
-    // 建立新的 Response 並加上 CORS headers
-    const newResponse = new Response(response.body, response);
-
-    // 加入 CORS headers
-    newResponse.headers.set('Access-Control-Allow-Origin', '*');
-    newResponse.headers.set(
-      'Access-Control-Allow-Methods',
-      'GET, POST, PUT, DELETE, OPTIONS',
-    );
-    newResponse.headers.set(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, PRIVATE-TOKEN, X-GitLab-Token',
-    );
-    newResponse.headers.set('Access-Control-Max-Age', '86400');
-
-    return newResponse;
-  } catch (error) {
-    return new Response(`Error: ${error.message}`, {
-      status: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
-  }
-}
-
-function handleOptions(request) {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers':
-        'Content-Type, Authorization, PRIVATE-TOKEN, X-GitLab-Token',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
-}
+```yaml
+- name: Build
+  run: npm run build:pages
+  env:
+    VITE_BASE_PATH: /react-gantt-gitlab/
+    VITE_CORS_PROXY: https://gitlab-cors-proxy.your-account.workers.dev
 ```
 
-4. **部署 Worker**
+**GitLab CI** (`.gitlab-ci.yml`)：
 
-   - 點擊 "Save and Deploy"
-   - 記下你的 Worker URL：`https://gitlab-cors-proxy.你的帳號.workers.dev`
+```yaml
+pages:
+  script:
+    - npm ci
+    - npm run build:pages
+    - mkdir -p public
+    - cp -r dist-demos/* public/
+  variables:
+    VITE_CORS_PROXY: 'https://gitlab-cors-proxy.your-account.workers.dev'
+```
 
-5. **設定環境變數**
+#### 方案 2：使用內部 Nginx 反向代理（最安全）
 
-   建立 `.env.production`：
-
-   ```env
-   VITE_CORS_PROXY=https://gitlab-cors-proxy.你的帳號.workers.dev
-   ```
-
-6. **更新 CI/CD 配置**
-
-   **GitHub Actions** (`.github/workflows/deploy-github-pages.yml`)：
-
-   ```yaml
-   - name: Build
-     run: npm run build:pages
-     env:
-       VITE_BASE_PATH: /react-gantt-gitlab/
-       VITE_CORS_PROXY: https://gitlab-cors-proxy.你的帳號.workers.dev
-   ```
-
-   **GitLab CI** (`.gitlab-ci.yml`)：
-
-   ```yaml
-   pages:
-     script:
-       - npm ci
-       - npm run build:pages
-       - mkdir -p public
-       - cp -r dist-demos/* public/
-     variables:
-       VITE_CORS_PROXY: 'https://gitlab-cors-proxy.你的帳號.workers.dev'
-   ```
-
-#### 方案 2：使用公司內部 Nginx 反向代理（最安全）
-
-如果 Rayark 有自己的伺服器，可以設定 Nginx 反向代理。
+如果有自己的伺服器，可以設定 Nginx 反向代理。
 
 **Nginx 配置範例：**
 
@@ -264,7 +155,7 @@ function handleOptions(request) {
 
 server {
     listen 80;
-    server_name gitlab-proxy.rayark.com;  # 或內部網域
+    server_name gitlab-proxy.yourcompany.com;
 
     # CORS headers
     add_header 'Access-Control-Allow-Origin' '*' always;
@@ -281,8 +172,8 @@ server {
 
     location / {
         # 轉發到 GitLab
-        proxy_pass https://gitlab.rayark.com;
-        proxy_set_header Host gitlab.rayark.com;
+        proxy_pass https://gitlab.yourcompany.com;
+        proxy_set_header Host gitlab.yourcompany.com;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -296,17 +187,17 @@ server {
 **使用方式：**
 
 ```env
-VITE_CORS_PROXY=https://gitlab-proxy.rayark.com
+VITE_CORS_PROXY=https://gitlab-proxy.yourcompany.com
 ```
 
-#### 方案 3：請 IT 在 GitLab 上啟用 CORS（最理想）
+#### 方案 3：請管理員在 GitLab 上啟用 CORS（最理想）
 
-如果可以的話，直接在 `gitlab.rayark.com` 上設定 CORS headers 是最好的解決方案。
+如果可以的話，直接在 GitLab 伺服器上設定 CORS headers 是最好的解決方案。
 
 **需要在 GitLab 伺服器上設定：**
 
 ```
-Access-Control-Allow-Origin: https://pages.rayark.io, https://farl.github.io
+Access-Control-Allow-Origin: https://your-pages-domain.com, https://username.github.io
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 Access-Control-Allow-Headers: Content-Type, Authorization, PRIVATE-TOKEN
 ```
@@ -351,7 +242,7 @@ npm run preview
 
 ```env
 # GitLab 配置
-VITE_GITLAB_URL=https://gitlab.rayark.com
+VITE_GITLAB_URL=https://gitlab.yourcompany.com
 VITE_GITLAB_TOKEN=你的-token
 VITE_GITLAB_PROJECT_ID=你的-project-id
 
@@ -398,7 +289,7 @@ script:
 **症狀：**
 
 ```
-Access to fetch at 'https://gitlab.rayark.com/...' has been blocked by CORS policy
+Access to fetch at 'https://gitlab.yourcompany.com/...' has been blocked by CORS policy
 ```
 
 **解決方案：** 使用上述的 CORS 解決方案之一：
@@ -428,7 +319,7 @@ const base = process.env.VITE_BASE_PATH || '/';
 ```bash
 # 加入 remotes
 git remote add origin git@github.com:username/repo.git
-git remote add gitlab git@gitlab.rayark.com:username/repo.git
+git remote add gitlab git@your-gitlab-domain.com:username/repo.git
 
 # 推送到兩個 remote
 git push origin main

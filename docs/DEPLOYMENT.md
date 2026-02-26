@@ -17,7 +17,7 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
 
 **Advantages:**
 
-- Same domain as GitLab API (`gitlab.rayark.com`)
+- Same domain as GitLab API
 - No CORS issues
 - Direct API access without proxy
 
@@ -34,11 +34,11 @@ This guide explains how to deploy this React Gantt application to GitHub Pages a
 3. Once the pipeline completes, your site will be available at:
 
    ```
-   https://<username>.gitlab.rayark.com/<project-name>/
+   https://<username>.your-gitlab-domain.com/<project-name>/
    ```
 
 4. Check deployment status:
-   - Go to: `https://gitlab.rayark.com/<username>/<project-name>/-/pipelines`
+   - Go to: `https://your-gitlab-domain.com/<username>/<project-name>/-/pipelines`
    - Or: Settings > Pages
 
 ### Option 2: GitHub Pages
@@ -83,7 +83,7 @@ Cross-Origin Resource Sharing (CORS) is a browser security feature that blocks r
 
 ### The Problem
 
-When your app is hosted on `github.io` but tries to access GitLab API at `gitlab.rayark.com`, the browser blocks these requests due to CORS policy.
+When your app is hosted on `github.io` but tries to access GitLab API at a different domain (e.g. `gitlab.example.com`), the browser blocks these requests due to CORS policy.
 
 ### Solutions
 
@@ -136,86 +136,13 @@ A CORS proxy acts as a middleman between your app and the GitLab API.
 
 #### Solution 3: Deploy Your Own CORS Proxy
 
-**Using Cloudflare Workers (Free Tier Available):**
+A ready-to-use Cloudflare Worker is included in this repository. See [`worker/README.md`](../worker/README.md) for full setup instructions.
 
-```javascript
-// worker.js
-addEventListener('fetch', (event) => {
-  event.respondWith(handleRequest(event.request));
-});
+**Quick overview:**
 
-async function handleRequest(request) {
-  const url = new URL(request.url);
-  const targetUrl = url.pathname.slice(1); // Remove leading slash
-
-  // Only allow requests to your GitLab instance
-  if (!targetUrl.startsWith('https://gitlab.rayark.com')) {
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  // Forward the request
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-
-  // Add CORS headers
-  const newResponse = new Response(response.body, response);
-  newResponse.headers.set('Access-Control-Allow-Origin', '*');
-  newResponse.headers.set(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, DELETE, OPTIONS',
-  );
-  newResponse.headers.set(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, PRIVATE-TOKEN',
-  );
-
-  return newResponse;
-}
-```
-
-**Using Vercel Serverless Functions:**
-
-```javascript
-// api/proxy.js
-export default async function handler(req, res) {
-  const { url } = req.query;
-
-  // Validate GitLab URL
-  if (!url || !url.startsWith('https://gitlab.rayark.com')) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: req.method,
-      headers: {
-        'PRIVATE-TOKEN': req.headers['private-token'] || '',
-        'Content-Type': 'application/json',
-      },
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
-    });
-
-    const data = await response.json();
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader(
-      'Access-Control-Allow-Methods',
-      'GET, POST, PUT, DELETE, OPTIONS',
-    );
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type, PRIVATE-TOKEN',
-    );
-
-    res.status(response.status).json(data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-```
+1. Edit `worker/worker.js` — add your GitLab domain to `ALLOWED_DOMAINS`
+2. Deploy to Cloudflare Workers (free tier: 100k requests/day)
+3. Set `VITE_CORS_PROXY` to your worker URL
 
 ---
 
@@ -254,8 +181,8 @@ npm run preview
 Create `.env.local` for local development:
 
 ```env
-# GitLab Configuration
-VITE_GITLAB_URL=https://gitlab.rayark.com
+# GitLab Configuration (see .env.example for all options)
+VITE_GITLAB_URL=https://gitlab.com
 VITE_GITLAB_TOKEN=your-token-here
 VITE_GITLAB_PROJECT_ID=your-project-id
 
@@ -286,7 +213,7 @@ pages:
 **Symptoms:**
 
 ```
-Access to fetch at 'https://gitlab.rayark.com/...' has been blocked by CORS policy
+Access to fetch at 'https://gitlab.example.com/...' has been blocked by CORS policy
 ```
 
 **Solution:** Use one of the CORS solutions above, or deploy to GitLab Pages instead.
@@ -321,7 +248,7 @@ You can push to both GitHub and GitLab:
 ```bash
 # Add remotes
 git remote add origin git@github.com:username/repo.git
-git remote add gitlab git@gitlab.rayark.com:username/repo.git
+git remote add gitlab git@your-gitlab-domain.com:username/repo.git
 
 # Push to both
 git push origin main

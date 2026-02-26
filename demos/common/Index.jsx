@@ -21,7 +21,7 @@ function DemoExplorerContent({
   const [show, setShow] = useState(false);
 
   const baseLink =
-    'https://gitlab.rayark.com/farllee/react-gantt-gitlab' +
+    (import.meta.env.VITE_REPO_URL || 'https://github.com/nicefacer/react-gantt-gitlab') +
     '/tree/main/demos/cases/';
 
   useEffect(() => {
@@ -46,7 +46,7 @@ function DemoExplorerContent({
         setGithubLink(`${baseLink}${name}.jsx`);
       }
     },
-    [skin],
+    [skin, baseLink],
   );
 
   const handleSkinChange = ({ value }) => {
