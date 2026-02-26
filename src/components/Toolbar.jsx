@@ -81,12 +81,14 @@ export default function Toolbar({
   const buttons = useMemo(() => {
     if (api && rSelected?.length) {
       // When tasks are selected, show all buttons
+      // v2.5: isDisabled(task, state) expects state object with { _tasks, ... }
+      const state = { _tasks: rTasks || [] };
       return finalItems.map((item) => {
-        if (!item.check) return item;
-        const isDisabled = rSelected.some(
-          (task) => !item.check(task, rTasks),
+        if (!item.isDisabled) return item;
+        const disabled = rSelected.some(
+          (task) => item.isDisabled(task, state),
         );
-        return { ...item, disabled: isDisabled };
+        return { ...item, disabled };
       });
     }
     // When no tasks are selected, show only add-task, add-milestone, and blueprints buttons

@@ -9,7 +9,7 @@ import {
 import { context } from '@svar-ui/react-core';
 import { locateID, locateAttr } from '@svar-ui/lib-dom';
 import { reorder } from '../../helpers/reorder';
-import { normalizeDates } from '@svar-ui/gantt-store';
+import { prepareEditTask } from '@svar-ui/gantt-store';
 import { Grid as WxGrid } from '@svar-ui/react-grid';
 import TextCell from './TextCell.jsx';
 import ActionCell from './ActionCell.jsx';
@@ -534,10 +534,10 @@ export default function Grid(props) {
           if (v !== null && v && !isNaN(v) && !(v instanceof Date)) v *= 1;
           update[column] = v;
 
-          // Skip normalizeDates if value is null (date being cleared)
+          // Skip prepareEditTask if value is null (date being cleared)
           // to prevent auto-filling default dates
           if (v !== null) {
-            normalizeDates(update, handlersStateRef.current.durationUnitVal, true, column);
+            prepareEditTask(update, { durationUnit: handlersStateRef.current.durationUnitVal }, column);
           }
 
           api.exec('update-task', {

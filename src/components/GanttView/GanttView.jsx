@@ -38,7 +38,7 @@ import { ApplyBlueprintModal } from '../ApplyBlueprintModal.jsx';
 import { BlueprintManager } from '../BlueprintManager.jsx';
 import { useBlueprint } from '../../hooks/useBlueprint.ts';
 import { applyBlueprint as applyBlueprintService } from '../../providers/BlueprintService.ts';
-import { defaultMenuOptions } from '@svar-ui/gantt-store';
+import { defaultMenuOptions, format as dateFnsFormat } from '@svar-ui/gantt-store';
 import { ConfirmDialog } from '../shared/dialogs/ConfirmDialog';
 import { CreateItemDialog } from '../shared/dialogs/CreateItemDialog';
 import { DeleteDialog } from '../shared/dialogs/DeleteDialog';
@@ -572,42 +572,45 @@ export function GanttView({
   }, [filteredTasks]);
 
   // Dynamic scales based on lengthUnit (lengthUnit = the smallest time unit to display)
+  // v2.5 breaking change: scale format strings are no longer processed through date-fns.
+  // String values are used literally. Must use format functions instead.
+  const fmt = useCallback((pattern) => (d) => dateFnsFormat(d, pattern), []);
   const scales = useMemo(() => {
     switch (lengthUnit) {
       case 'hour':
         return [
-          { unit: 'day', step: 1, format: 'MMM d' },
-          { unit: 'hour', step: 2, format: 'HH:mm' }, // Show every 2 hours to reduce cells
+          { unit: 'day', step: 1, format: fmt('MMM d') },
+          { unit: 'hour', step: 2, format: fmt('HH:mm') }, // Show every 2 hours to reduce cells
         ];
       case 'day':
         return [
-          { unit: 'year', step: 1, format: 'yyyy' },
-          { unit: 'month', step: 1, format: 'MMMM' },
-          { unit: 'day', step: 1, format: 'd' },
+          { unit: 'year', step: 1, format: fmt('yyyy') },
+          { unit: 'month', step: 1, format: fmt('MMMM') },
+          { unit: 'day', step: 1, format: fmt('d') },
         ];
       case 'week':
         return [
-          { unit: 'month', step: 1, format: 'MMM' },
-          { unit: 'week', step: 1, format: 'w' },
+          { unit: 'month', step: 1, format: fmt('MMM') },
+          { unit: 'week', step: 1, format: fmt('w') },
         ];
       case 'month':
         return [
-          { unit: 'year', step: 1, format: 'yyyy' },
-          { unit: 'month', step: 1, format: 'MMM' },
+          { unit: 'year', step: 1, format: fmt('yyyy') },
+          { unit: 'month', step: 1, format: fmt('MMM') },
         ];
       case 'quarter':
         return [
-          { unit: 'year', step: 1, format: 'yyyy' },
-          { unit: 'quarter', step: 1, format: 'QQQ' },
+          { unit: 'year', step: 1, format: fmt('yyyy') },
+          { unit: 'quarter', step: 1, format: (d) => 'Q' + (Math.floor(d.getMonth() / 3) + 1) },
         ];
       default:
         return [
-          { unit: 'year', step: 1, format: 'yyyy' },
-          { unit: 'month', step: 1, format: 'MMMM' },
-          { unit: 'day', step: 1, format: 'd' },
+          { unit: 'year', step: 1, format: fmt('yyyy') },
+          { unit: 'month', step: 1, format: fmt('MMMM') },
+          { unit: 'day', step: 1, format: fmt('d') },
         ];
     }
-  }, [lengthUnit]);
+  }, [lengthUnit, fmt]);
 
   // Track pending editor changes (for Save button)
   const pendingEditorChangesRef = useRef(new Map());
@@ -837,8 +840,8 @@ export function GanttView({
         id: 'move-in',
         text: 'Move In...',
         icon: 'wxi-folder',
-        // Enable when any task is selected
-        check: (task) => task != null,
+        // Disable when no task is selected
+        isDisabled: (task) => task == null,
       });
     } else {
       // Fallback: add at the end if delete not found
@@ -847,7 +850,7 @@ export function GanttView({
         id: 'move-in',
         text: 'Move In...',
         icon: 'wxi-folder',
-        check: (task) => task != null,
+        isDisabled: (task) => task == null,
       });
     }
 
@@ -857,15 +860,15 @@ export function GanttView({
       id: 'save-as-blueprint',
       text: 'Save as Blueprint...',
       icon: 'fas fa-copy',
-      // Only show for Milestones
-      check: (task) => task?._gitlab?.type === 'milestone',
+      // Only enable for Milestones
+      isDisabled: (task) => task?._gitlab?.type !== 'milestone',
     });
     options.push({
       id: 'create-from-blueprint',
       text: 'Create from Blueprint...',
       icon: 'fas fa-paste',
-      // Show for any context (can also be accessed from toolbar)
-      check: (task) => task != null,
+      // Disable when no task is selected
+      isDisabled: (task) => task == null,
     });
 
     return options;
@@ -1399,7 +1402,7 @@ export function GanttView({
               await syncTask(ev.id, taskChanges);
 
               // If a date was cleared, refresh from GitLab because svar Gantt
-              // doesn't properly handle null dates (auto-fills via normalizeDates)
+              // doesn't properly handle null dates (auto-fills via prepareEditTask)
               if (hasDateCleared) {
                 sync();
               }

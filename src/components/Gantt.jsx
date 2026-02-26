@@ -13,7 +13,7 @@ import { en } from '@svar-ui/gantt-locales';
 
 // stores
 import { EventBusRouter } from '@svar-ui/lib-state';
-import { DataStore, defaultColumns, defaultTaskTypes } from '@svar-ui/gantt-store';
+import { DataStore, defaultColumns, defaultTaskTypes, format as dateFnsFormat } from '@svar-ui/gantt-store';
 
 // context 
 import StoreContext from '../context';
@@ -31,9 +31,11 @@ const camelize = (s) =>
     .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : ''))
     .join('');
 
+// v2.5 breaking change: scale format strings are no longer processed through date-fns.
+// String values are used literally. Must use format functions instead.
 const defaultScales = [
-  { unit: 'month', step: 1, format: 'MMMM yyy' },
-  { unit: 'day', step: 1, format: 'd' },
+  { unit: 'month', step: 1, format: (d) => dateFnsFormat(d, 'MMMM yyyy') },
+  { unit: 'day', step: 1, format: (d) => dateFnsFormat(d, 'd') },
 ];
 
 const Gantt = forwardRef(function Gantt(
@@ -157,6 +159,9 @@ const Gantt = forwardRef(function Gantt(
         markers,
         durationUnit,
       });
+      // v2.5: DataStore.init() forcefully disables pro features (baselines, markers,
+      // unscheduledTasks). Re-apply them via setState after init.
+      dataStore.setState({ baselines, markers, unscheduledTasks });
 
       // Restore sort state (use setTimeout to avoid re-triggering this effect)
       if (currentSort?.length > 0) {
@@ -216,6 +221,8 @@ const Gantt = forwardRef(function Gantt(
       markers,
       durationUnit,
     });
+    // v2.5: DataStore.init() forcefully disables pro features. Re-apply via setState.
+    dataStore.setState({ baselines, markers, unscheduledTasks });
   }
 
   // Custom locale with YY/MM/DD date format

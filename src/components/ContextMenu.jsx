@@ -129,9 +129,10 @@ const ContextMenu = forwardRef(function ContextMenu(
       const tasks = selectedTasks.length ? selectedTasks : task ? [task] : [];
 
       let result = filter ? filter(item, task) : true;
-      if (item.check && result) {
-        const isDisabled = tasks.some((t) => !item.check(t, rTasksVal));
-        item.css = isDisabled ? 'wx-disabled' : '';
+      if (item.isDisabled && result) {
+        // v2.5: isDisabled(task, state) expects state object with { _tasks, ... }
+        const state = { _tasks: rTasksVal || [] };
+        item.disabled = tasks.some((t) => item.isDisabled(t, state));
       }
       return result;
     },

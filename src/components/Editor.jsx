@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
 import { Editor as WxEditor, registerEditorItem } from '@svar-ui/react-editor';
 import { Locale, RichSelect, Slider, Counter, TwoState } from '@svar-ui/react-core';
-import { defaultEditorItems, normalizeDates } from '@svar-ui/gantt-store';
+import { defaultEditorItems, prepareEditTask } from '@svar-ui/gantt-store';
 import { dateToString, locale } from '@svar-ui/lib-dom';
 import { en } from '@svar-ui/gantt-locales';
 import { en as coreEn } from '@svar-ui/core-locales';
@@ -314,7 +314,7 @@ function Editor({
   }, [api, taskId, autoSave, saveLinks, deleteTask, hide, activeTask]);
 
   // Track which date fields the user has actually changed
-  // This is needed because svar's normalizeDates auto-fills the other date field
+  // This is needed because svar's prepareEditTask auto-fills the other date field
   const changedDateFieldsRef = useRef(new Set());
 
   const normalizeTask = useCallback((t, key) => {
@@ -325,13 +325,13 @@ function Editor({
       changedDateFieldsRef.current.add(key);
     }
 
-    // Skip normalizeDates for date fields entirely
-    // normalizeDates auto-fills start/end which we don't want - dates should be independent
+    // Skip prepareEditTask for date fields entirely
+    // prepareEditTask auto-fills start/end which we don't want - dates should be independent
     if (key === 'start' || key === 'end') {
       return t;
     }
 
-    normalizeDates(t, unit, true, key);
+    prepareEditTask(t, { durationUnit: unit }, key);
     return t;
   }, [unscheduledTasks, unit]);
 
