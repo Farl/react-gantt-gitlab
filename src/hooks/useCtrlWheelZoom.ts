@@ -15,6 +15,11 @@
  * container element is rendered conditionally (e.g. after data loading).
  *
  * Cursor-anchored zoom: adjusts scrollLeft so the content under the cursor stays fixed.
+ * Uses a reference element (marker or bar) to track actual content movement across
+ * SVAR's scale transitions (day→week→month), which avoids drift from SVAR's non-linear
+ * grid layout. A continuous rAF poll loop keeps scroll anchored against SVAR's delayed
+ * re-renders and Chart.jsx's syncScrollToDOM overwrites.
+ *
  * Supports Ctrl+0 / Cmd+0 keyboard shortcut to reset zoom.
  * Persists zoom multiplier to localStorage (debounced).
  * Auto-resets to 1.0× when baseCellWidth changes (e.g. lengthUnit switch).
@@ -68,6 +73,12 @@ const MAX_CELL_WIDTH = 400;
 const ZOOM_FACTOR = 1.15;
 /** localStorage debounce delay (ms) */
 const STORAGE_DEBOUNCE_MS = 300;
+/**
+ * How long (ms) to keep the scroll anchor alive after the last wheel event.
+ * The rAF poll runs continuously during this window to fight SVAR's delayed
+ * re-renders and Chart.jsx's syncScrollToDOM overwrites.
+ */
+const GESTURE_END_DELAY_MS = 500;
 
 /**
  * Clamp the zoom multiplier so that the resulting cellWidth stays within bounds.
@@ -77,6 +88,27 @@ function clampMultiplier(multiplier: number, baseCellWidth: number): number {
   const minMul = Math.max(MIN_MULTIPLIER, MIN_CELL_WIDTH / baseCellWidth);
   const maxMul = Math.min(MAX_MULTIPLIER, MAX_CELL_WIDTH / baseCellWidth);
   return Math.max(minMul, Math.min(maxMul, multiplier));
+}
+
+// ---------------------------------------------------------------------------
+// Zoom anchor state — tracks cursor position during a zoom gesture
+// ---------------------------------------------------------------------------
+
+interface ZoomAnchor {
+  /** Cursor position as fraction of scrollWidth (fallback when no ref element) */
+  timeFraction: number;
+  /** Cursor distance from scrollEl's left edge (px) */
+  cursorOffset: number;
+  /** The scrollable element (.wx-chart) */
+  scrollEl: HTMLElement;
+  /** scrollWidth from last poll cycle — used to detect SVAR re-renders */
+  lastScrollWidth: number;
+  /** Reference element (marker or bar) for tracking content movement */
+  refEl: HTMLElement | null;
+  /** refEl.style.left from last poll cycle */
+  oldRefLeft: number;
+  /** Cursor's content-space X from last poll cycle */
+  oldContentX: number;
 }
 
 export function useCtrlWheelZoom({
@@ -154,6 +186,10 @@ export function useCtrlWheelZoom({
   const baseCellWidthRef = useRef(baseCellWidth);
   baseCellWidthRef.current = baseCellWidth;
 
+  // Zoom anchor and gesture-end timer refs
+  const zoomAnchorRef = useRef<ZoomAnchor | null>(null);
+  const zoomEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Wheel event handler — depends on `container` state so it re-runs when element appears
   useEffect(() => {
     if (!enabled || !container) return;
@@ -179,20 +215,112 @@ export function useCtrlWheelZoom({
 
       if (newMultiplier === oldMultiplier) return;
 
-      // Cursor-anchored scroll adjustment
+      // Reset gesture-end timer on every wheel event. The rAF poll loop runs
+      // continuously until this timer fires, keeping scroll anchored against
+      // SVAR's delayed re-renders and Chart.jsx's syncScrollToDOM overwrites.
+      if (zoomEndTimerRef.current) clearTimeout(zoomEndTimerRef.current);
+      zoomEndTimerRef.current = setTimeout(() => {
+        zoomAnchorRef.current = null;
+      }, GESTURE_END_DELAY_MS);
+
+      // --- Cursor-anchored scroll adjustment ---
+      //
+      // Uses a reference element (marker or bar) to track how content actually
+      // moves across zoom/scale transitions. The ref element's ratio
+      // (newRefLeft / oldRefLeft) captures SVAR's actual content scaling,
+      // including non-linear shifts at scale boundaries (day→week→month).
+      //
+      // The cursor's content position is scaled by the same ratio, then
+      // scrollLeft is set so the cursor stays at the same screen position.
       const scrollEl = findScrollElement();
       if (scrollEl) {
-        const containerRect = container.getBoundingClientRect();
-        const cursorX = e.clientX;
-        const cursorContentX =
-          scrollEl.scrollLeft + (cursorX - containerRect.left);
-        const ratio = newMultiplier / oldMultiplier;
-        const newScrollLeft =
-          cursorContentX * ratio - (cursorX - containerRect.left);
-        // Apply scroll adjustment after state update (via rAF to let React render)
-        requestAnimationFrame(() => {
-          scrollEl.scrollLeft = Math.max(0, newScrollLeft);
-        });
+        // Use scrollEl's rect (not container's) because the container includes
+        // the left grid/table panel whose width would corrupt cursorOffset.
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const cursorOffset = e.clientX - scrollRect.left;
+
+        // Find a reference element to track content movement.
+        const refEl = (scrollEl.querySelector('.wx-marker') ||
+          scrollEl.querySelector('.wx-bar')) as HTMLElement | null;
+        const oldRefLeft = refEl ? parseFloat(refEl.style.left) || 0 : 0;
+        const oldScrollLeft = scrollEl.scrollLeft;
+        const oldScrollWidth = scrollEl.scrollWidth;
+
+        // Compute cursor's content-space X from the ref element's screen
+        // position, not scrollLeft + cursorOffset. When SVAR re-renders between
+        // gesture end and next wheel event, scrollLeft is stale but the ref
+        // element's position is already updated. This keeps oldContentX and
+        // oldRefLeft consistent (same layout frame).
+        let oldContentX: number;
+        if (refEl) {
+          const refScreenX = scrollRect.left + (oldRefLeft - oldScrollLeft);
+          oldContentX = oldRefLeft + (e.clientX - refScreenX);
+        } else {
+          oldContentX = oldScrollLeft + cursorOffset;
+        }
+
+        const timeFraction =
+          oldScrollWidth > 0 ? oldContentX / oldScrollWidth : 0;
+
+        const anchor = zoomAnchorRef.current;
+        if (anchor) {
+          // Gesture in progress — update only cursorOffset and lastScrollWidth.
+          // oldRefLeft/oldContentX must stay from the last successful poll
+          // resolution, not the current DOM (which SVAR hasn't updated yet).
+          anchor.lastScrollWidth = scrollEl.scrollWidth;
+          anchor.cursorOffset = cursorOffset;
+        } else {
+          // Start new gesture
+          zoomAnchorRef.current = {
+            timeFraction,
+            cursorOffset,
+            scrollEl,
+            lastScrollWidth: oldScrollWidth,
+            refEl,
+            oldRefLeft,
+            oldContentX,
+          };
+
+          // Start rAF poll loop — runs until gesture-end timer clears the anchor
+          let targetScrollLeft = -1;
+          const poll = () => {
+            const a = zoomAnchorRef.current;
+            if (!a) return; // gesture ended
+
+            const newScrollWidth = a.scrollEl.scrollWidth;
+            if (newScrollWidth !== a.lastScrollWidth) {
+              // SVAR re-rendered — compute new scroll position
+              if (a.refEl && a.refEl.isConnected) {
+                const newRefLeft = parseFloat(a.refEl.style.left) || 0;
+                const ratio = a.oldRefLeft > 0 ? newRefLeft / a.oldRefLeft : 1;
+                const newContentX = a.oldContentX * ratio;
+                targetScrollLeft = Math.max(0, newContentX - a.cursorOffset);
+              } else {
+                // Fallback: no ref element, use scrollWidth ratio
+                const newContentX = a.timeFraction * newScrollWidth;
+                targetScrollLeft = Math.max(0, newContentX - a.cursorOffset);
+              }
+              a.scrollEl.scrollLeft = targetScrollLeft;
+
+              // Update state for next poll cycle
+              a.lastScrollWidth = a.scrollEl.scrollWidth;
+              a.oldRefLeft = a.refEl ? parseFloat(a.refEl.style.left) || 0 : 0;
+              a.oldContentX = a.scrollEl.scrollLeft + a.cursorOffset;
+              requestAnimationFrame(poll);
+            } else {
+              // Idle frame: re-apply target if Chart.jsx's syncScrollToDOM
+              // overwrote it with a stale SVAR store value
+              if (
+                targetScrollLeft >= 0 &&
+                Math.abs(a.scrollEl.scrollLeft - targetScrollLeft) > 1
+              ) {
+                a.scrollEl.scrollLeft = targetScrollLeft;
+              }
+              requestAnimationFrame(poll);
+            }
+          };
+          requestAnimationFrame(poll);
+        }
       }
 
       setZoomMultiplier(newMultiplier);
