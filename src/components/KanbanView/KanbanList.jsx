@@ -112,6 +112,8 @@ export function KanbanList({
   sortOrder = 'asc',
   defaultSortBy = 'position', // Default sort field from list config
   defaultSortOrder = 'asc', // Default sort order from list config
+  listType = 'label', // 'label' | 'status' — list grouping dimension
+  listColor = null, // Resolved indicator color hex (status color or first label color)
   labelColorMap,
   specialType = null, // 'others' | 'closed'
   onCardDoubleClick,
@@ -119,6 +121,8 @@ export function KanbanList({
   activeTaskId = null, // ID of the currently dragged task
   isOver = false, // Whether a dragged item is over this list (from parent)
   isDragEnabled = true, // Whether same-list drag is enabled (false when sortBy !== 'position')
+  closedTotalCount, // Real total count of closed issues (Closed list only)
+  closedFetchLimit, // Max number of closed issues fetched (Closed list only)
 }) {
   // Setup droppable for this list
   const { setNodeRef, isOver: isOverDroppable } = useDroppable({
@@ -153,8 +157,19 @@ export function KanbanList({
     <div className={listClass} data-list-id={id} ref={setNodeRef}>
       {/* List Header */}
       <div className={headerClass}>
+        {/* Color indicator: circle = status list, square = label list */}
+        {!specialType && listColor && (
+          <span
+            className={`kanban-list-indicator kanban-list-indicator-${listType}`}
+            style={{ backgroundColor: listColor }}
+          />
+        )}
         <span className="kanban-list-name">{name}</span>
-        <span className="kanban-list-count">{tasks.length}</span>
+        <span className="kanban-list-count">
+          {closedTotalCount != null && closedTotalCount > tasks.length
+            ? closedTotalCount
+            : tasks.length}
+        </span>
         <SortControl
           sortBy={sortBy}
           sortOrder={sortOrder}
@@ -190,6 +205,13 @@ export function KanbanList({
           )}
         </div>
       </SortableContext>
+
+      {/* Footer: show limit notice for Closed list when not all issues are loaded */}
+      {closedTotalCount != null && closedFetchLimit != null && closedTotalCount > tasks.length && (
+        <div className="kanban-list-footer">
+          Showing {tasks.length} of {closedTotalCount} closed issues
+        </div>
+      )}
     </div>
   );
 }

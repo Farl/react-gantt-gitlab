@@ -47,6 +47,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     provider,
     sync,
     syncTask,
+    externalTasksRef,
     reorderTaskLocal,
     // For settings modal
     reloadConfigs,
@@ -98,6 +99,52 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     }
   }, [boardsError, showToast]);
 
+  // Determine if the board needs closed issues.
+  // Closed issues are needed when:
+  // - showClosed is enabled (Closed list is visible)
+  // - Any status list exists (status lists match from all tasks including closed,
+  //   because statuses like "Done" or "Won't do" correspond to CLOSED state)
+  const boardNeedsClosed = useMemo(() => {
+    if (!currentBoard) return false;
+    if (currentBoard.showClosed) return true;
+    return (currentBoard.lists || []).some((l) => (l.type || 'label') === 'status');
+  }, [currentBoard]);
+
+  // Fetch limited closed issues separately to avoid loading the entire closed backlog.
+  // Main sync only fetches open issues for performance. This supplements with recent
+  // closed issues (configurable limit) so status lists (Done/Canceled) and the Closed
+  // list have content.
+  // Closed tasks are kept in local state (not in the global task list) so Gantt/Workload
+  // views don't see them. They're registered in externalTasksRef so syncTask can find
+  // them for API calls when dragging.
+  const CLOSED_ISSUES_LIMIT = 50;
+  const [closedTasks, setClosedTasks] = useState([]);
+  const [closedTotalCount, setClosedTotalCount] = useState(0);
+
+  useEffect(() => {
+    if (!boardNeedsClosed || !provider?.fetchClosedWorkItems) {
+      setClosedTasks([]);
+      setClosedTotalCount(0);
+      return;
+    }
+    let cancelled = false;
+    provider.fetchClosedWorkItems(CLOSED_ISSUES_LIMIT)
+      .then(({ tasks, totalCount }) => {
+        if (!cancelled) {
+          setClosedTasks(tasks);
+          setClosedTotalCount(totalCount);
+        }
+      })
+      .catch((err) => { if (!cancelled) console.error('[KanbanView] Failed to fetch closed issues:', err); });
+    return () => { cancelled = true; };
+  }, [boardNeedsClosed, provider, currentBoard?.id]);
+
+  // Register closed tasks with externalTasksRef so syncTask can find them for drag operations
+  useEffect(() => {
+    externalTasksRef.current = closedTasks;
+    return () => { externalTasksRef.current = []; };
+  }, [closedTasks, externalTasksRef]);
+
   // Build label color map from server filter options
   const labelColorMap = useMemo(() => {
     const map = new Map();
@@ -128,9 +175,23 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     }));
   }, [serverFilterOptions?.labels]);
 
+  // Get available statuses for list editing
+  const availableStatuses = useMemo(() => {
+    return serverFilterOptions?.statuses || [];
+  }, [serverFilterOptions?.statuses]);
+
+  // Merge open tasks (from main sync) with closed tasks (local state).
+  // Deduplicate by ID in case a task appears in both (e.g., after drag state change).
+  const allTasksWithClosed = useMemo(() => {
+    if (closedTasks.length === 0) return allTasks;
+    const openIds = new Set(allTasks.map((t) => t.id));
+    const uniqueClosed = closedTasks.filter((t) => !openIds.has(t.id));
+    return [...allTasks, ...uniqueClosed];
+  }, [allTasks, closedTasks]);
+
   // Add labelPriority to tasks
   const tasksWithPriority = useMemo(() => {
-    return allTasks.map((task) => {
+    return allTasksWithClosed.map((task) => {
       const taskLabels = task.labels
         ? task.labels.split(', ').filter(Boolean)
         : [];
@@ -145,7 +206,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
 
       return { ...task, labelPriority };
     });
-  }, [allTasks, labelPriorityMap]);
+  }, [allTasksWithClosed, labelPriorityMap]);
 
   // Apply client-side filters based on view mode
   const filteredTasks = useMemo(() => {
@@ -239,18 +300,14 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     [provider, filteredTasks, reorderTaskLocal]
   );
 
-  // Refresh tasks by triggering a sync
-  const refreshTasks = useCallback(() => {
-    sync();
-  }, [sync]);
-
   // Get drag operation handlers from hook
   const { handleSameListReorder, handleCrossListDrag } = useDragOperations({
     tasks: filteredTasks,
     syncTask,
     reorderTask,
     showToast,
-    refreshTasks,
+    refreshTasks: sync,
+    availableStatuses,
   });
 
   // Handle card double-click (open editor)
@@ -378,6 +435,8 @@ export function KanbanView({ showSettings, onSettingsClose }) {
             onCardDoubleClick={handleCardDoubleClick}
             onSameListReorder={handleSameListReorder}
             onCrossListDrag={handleCrossListDrag}
+            closedTotalCount={closedTotalCount}
+            closedFetchLimit={CLOSED_ISSUES_LIMIT}
           />
         )}
       </div>
@@ -406,6 +465,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
         isOpen={editingList !== null}
         list={editingList || null}
         availableLabels={availableLabels}
+        availableStatuses={availableStatuses}
         onClose={() => setEditingList(null)}
         onSave={handleSaveList}
         saving={boardsSaving}

@@ -205,13 +205,23 @@
 }
 
 .list-item-labels {
-  display: block;
+  display: flex;
+  align-items: center;
   font-size: 11px;
   color: #6b7280;
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.list-item-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
 /* Sort controls for special lists (inline) */

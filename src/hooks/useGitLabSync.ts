@@ -36,6 +36,12 @@ export interface GitLabSyncResult {
   syncState: SyncState;
   sync: (options?: GitLabSyncOptions) => Promise<void>;
   syncTask: (id: number | string, updates: Partial<ITask>) => Promise<void>;
+  /**
+   * Ref for registering external tasks (e.g., closed issues from KanbanView).
+   * syncTask uses this as a fallback lookup when a task isn't in the main list.
+   * This avoids polluting the global task list visible to Gantt/Workload views.
+   */
+  externalTasksRef: React.MutableRefObject<ITask[]>;
   reorderTaskLocal: (
     taskId: number | string,
     targetTaskId: number | string,
@@ -48,7 +54,12 @@ export interface GitLabSyncResult {
   deleteLink: (
     linkId: number | string,
     apiSourceIid: number | string,
-    linkedWorkItemGlobalId: string,
+    linkedWorkItemGlobalId: string | undefined,
+    options?: {
+      isNativeLink?: boolean;
+      metadataRelation?: 'blocks' | 'blocked_by';
+      metadataTargetIid?: number;
+    },
   ) => Promise<void>;
 }
 
@@ -77,6 +88,10 @@ export function useGitLabSync(
   const onWarningRef = useRef(onWarning);
   // AbortController for cancelling in-flight sync requests
   const abortControllerRef = useRef<AbortController | null>(null);
+  // External tasks (e.g., closed issues) registered by consumers like KanbanView.
+  // syncTask uses this as fallback lookup — these tasks are NOT in the main list
+  // so Gantt/Workload views don't see them.
+  const externalTasksRef = useRef<ITask[]>([]);
 
   // Keep refs in sync
   useEffect(() => {
@@ -196,10 +211,39 @@ export function useGitLabSync(
 
       // Capture snapshot for potential rollback
       const previousTasks = tasksRef.current;
-      const taskIndex = previousTasks.findIndex((t) => t.id === id);
+      let taskIndex = previousTasks.findIndex((t) => t.id === id);
 
+      // Fallback: check externalTasksRef for tasks not in main list (e.g., closed issues
+      // managed by KanbanView). If found, use the external task directly for the API call
+      // but skip optimistic update on the main list (the caller manages its own state).
       if (taskIndex === -1) {
-        throw new Error(`Task ${id} not found`);
+        const externalTask = externalTasksRef.current.find((t) => t.id === id);
+        if (!externalTask) {
+          throw new Error(`Task ${id} not found`);
+        }
+
+        // For external tasks: just call the API, no optimistic update on main list
+        try {
+          if (provider instanceof GitLabGraphQLProvider) {
+            const needsMeta =
+              (updates.labels !== undefined ||
+                (updates as any)._statusId !== undefined) &&
+              externalTask._gitlab;
+            const updatesForProvider = needsMeta
+              ? {
+                  ...updates,
+                  _gitlab: { ...externalTask._gitlab, ...updates._gitlab },
+                }
+              : updates;
+            await provider.updateWorkItem(id, updatesForProvider);
+          } else {
+            await provider.updateIssue(id, updates);
+          }
+        } catch (error) {
+          console.error('Failed to sync external task update:', error);
+          throw error;
+        }
+        return;
       }
 
       // Optimistic update: apply changes to local state immediately
@@ -211,11 +255,13 @@ export function useGitLabSync(
       try {
         // Sync to GitLab
         if (provider instanceof GitLabGraphQLProvider) {
-          // When labels are being updated, include _gitlab from original task
-          // so the provider can detect work item type (Task vs Issue) for API routing
+          // Include _gitlab metadata from original task when needed by provider
+          // (labels need work item type for API routing, status needs global ID)
           const originalTask = previousTasks[taskIndex];
           const needsMeta =
-            updates.labels !== undefined && originalTask._gitlab;
+            (updates.labels !== undefined ||
+              (updates as any)._statusId !== undefined) &&
+            originalTask._gitlab;
           const updatesForProvider = needsMeta
             ? {
                 ...updates,
@@ -596,6 +642,7 @@ export function useGitLabSync(
 
     if (provider) {
       // Clear old data immediately when provider changes
+      externalTasksRef.current = [];
       setTasks([]);
       setLinks([]);
       setMilestones([]);
@@ -667,6 +714,7 @@ export function useGitLabSync(
     syncState,
     sync,
     syncTask,
+    externalTasksRef,
     reorderTaskLocal,
     createTask,
     createMilestone,

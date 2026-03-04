@@ -3,8 +3,10 @@
  *
  * Dialog for creating or editing a list within a board.
  * Uses BaseDialog for consistent modal behavior.
- * - List name (optional, auto-generated from labels)
- * - Label selection (multi-select using FilterMultiSelect)
+ * - List type tab: Label or Status
+ * - Label mode: multi-select labels (AND logic)
+ * - Status mode: single-select from namespace allowed statuses
+ * - List name (optional, auto-generated)
  * - Display sort settings
  */
 
@@ -19,6 +21,7 @@ import './ListEditDialog.css';
  * @param {boolean} props.isOpen - Whether dialog is visible
  * @param {import('../../types/issueBoard').IssueBoardList | null} props.list - List to edit (null for new)
  * @param {Array<{title: string, color?: string}>} props.availableLabels - List of available labels with colors
+ * @param {Array<{id: string, name: string, color: string, position: number, category: string}>} props.availableStatuses - Allowed statuses from namespace
  * @param {function} props.onClose - Callback to close dialog
  * @param {function} props.onSave - Callback when changes are saved (listData) => void
  * @param {boolean} props.saving - Whether a save operation is in progress
@@ -27,12 +30,15 @@ export function ListEditDialog({
   isOpen,
   list,
   availableLabels = [],
+  availableStatuses = [],
   onClose,
   onSave,
   saving = false,
 }) {
   const [name, setName] = useState('');
+  const [listType, setListType] = useState('label'); // 'label' | 'status'
   const [selectedLabels, setSelectedLabels] = useState([]);
+  const [selectedStatusId, setSelectedStatusId] = useState('');
   const [sortBy, setSortBy] = useState('position');
   const [sortOrder, setSortOrder] = useState('asc');
 
@@ -42,12 +48,16 @@ export function ListEditDialog({
   useEffect(() => {
     if (list) {
       setName(list.name);
+      setListType(list.type || 'label');
       setSelectedLabels([...list.labels]);
+      setSelectedStatusId(list.statusId || '');
       setSortBy(list.sortBy);
       setSortOrder(list.sortOrder);
     } else {
       setName('');
+      setListType('label');
       setSelectedLabels([]);
+      setSelectedStatusId('');
       setSortBy('position');
       setSortOrder('asc');
     }
@@ -62,21 +72,35 @@ export function ListEditDialog({
     }));
   }, [availableLabels]);
 
-  // Generate default name from selected labels
+  // Get selected status object for display
+  const selectedStatus = useMemo(() => {
+    return availableStatuses.find((s) => s.id === selectedStatusId) || null;
+  }, [availableStatuses, selectedStatusId]);
+
+  // Generate default name based on list type
   const getDefaultName = () => {
+    if (listType === 'status') {
+      return selectedStatus?.name || 'Untitled List';
+    }
     if (selectedLabels.length === 0) return 'Untitled List';
     if (selectedLabels.length <= 3) return selectedLabels.join(' + ');
     return `${selectedLabels.slice(0, 2).join(' + ')} +${selectedLabels.length - 2}`;
   };
 
   const handleSave = () => {
-    // Use custom name if provided, otherwise generate from labels
+    // Use custom name if provided, otherwise generate
     const finalName = name.trim() || getDefaultName();
 
     const listData = {
       id: list?.id || '', // Will be generated if new
       name: finalName,
-      labels: selectedLabels,
+      type: listType,
+      // Label mode fields
+      labels: listType === 'label' ? selectedLabels : [],
+      // Status mode fields
+      statusId: listType === 'status' ? selectedStatusId : undefined,
+      statusName: listType === 'status' ? selectedStatus?.name : undefined,
+      statusColor: listType === 'status' ? selectedStatus?.color : undefined,
       sortBy,
       sortOrder,
     };
@@ -112,7 +136,25 @@ export function ListEditDialog({
       footer={footer}
       className="list-edit-dialog"
     >
-      {/* Name input (optional - will use labels if empty) */}
+      {/* List type tabs */}
+      <div className="list-edit-type-tabs">
+        <button
+          className={`list-edit-type-tab ${listType === 'label' ? 'active' : ''}`}
+          onClick={() => setListType('label')}
+          disabled={saving}
+        >
+          Label
+        </button>
+        <button
+          className={`list-edit-type-tab ${listType === 'status' ? 'active' : ''}`}
+          onClick={() => setListType('status')}
+          disabled={saving}
+        >
+          Status
+        </button>
+      </div>
+
+      {/* Name input (optional - will auto-generate) */}
       <div className="dialog-form-group">
         <label htmlFor="list-name">Name (optional)</label>
         <input
@@ -125,23 +167,61 @@ export function ListEditDialog({
           disabled={saving}
         />
         <span className="dialog-hint">
-          Leave empty to auto-generate from labels
+          Leave empty to auto-generate from {listType === 'status' ? 'status' : 'labels'}
         </span>
       </div>
 
-      {/* Labels selection */}
-      <div className="dialog-form-group list-edit-labels-field">
-        <label>Labels (issues must have ALL selected)</label>
-        <FilterMultiSelect
-          title=""
-          options={labelOptions}
-          selected={selectedLabels}
-          onChange={setSelectedLabels}
-          placeholder="Search labels..."
-          emptyMessage="No labels available"
-          showCount={false}
-        />
-      </div>
+      {/* Label selection (shown when listType === 'label') */}
+      {listType === 'label' && (
+        <div className="dialog-form-group list-edit-labels-field">
+          <label>Labels (issues must have ALL selected)</label>
+          <FilterMultiSelect
+            title=""
+            options={labelOptions}
+            selected={selectedLabels}
+            onChange={setSelectedLabels}
+            placeholder="Search labels..."
+            emptyMessage="No labels available"
+            showCount={false}
+          />
+        </div>
+      )}
+
+      {/* Status selection (shown when listType === 'status') */}
+      {listType === 'status' && (
+        <div className="dialog-form-group">
+          <label>Status</label>
+          <div className="list-edit-status-list">
+            {availableStatuses.map((status) => (
+              <label
+                key={status.id}
+                className={`list-edit-status-option ${selectedStatusId === status.id ? 'selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="status-select"
+                  value={status.id}
+                  checked={selectedStatusId === status.id}
+                  onChange={(e) => setSelectedStatusId(e.target.value)}
+                  disabled={saving}
+                />
+                <span
+                  className="list-edit-status-dot"
+                  style={{ backgroundColor: status.color }}
+                />
+                <span className="list-edit-status-name">{status.name}</span>
+                <span className="list-edit-status-category">{status.category}</span>
+              </label>
+            ))}
+            {availableStatuses.length === 0 && (
+              <div className="list-edit-status-empty">
+                No statuses available. The current namespace does not have the Status widget enabled.
+                Status is available for group-level namespaces with GitLab Premium or Ultimate.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sort settings */}
       <div className="dialog-form-group">

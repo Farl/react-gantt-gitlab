@@ -2,7 +2,7 @@
  * useDragOperations Hook
  *
  * React hook for managing drag-and-drop operations in the Kanban board.
- * Handles same-list reorder, cross-list drag (label changes), and close/reopen for Closed list.
+ * Handles same-list reorder, cross-list drag (label/status changes), and close/reopen for Closed list.
  * Provides snapshot capture for potential rollback on API failures.
  */
 
@@ -17,6 +17,29 @@ interface DragSnapshot {
   sourceListId: string;
 }
 
+/** List info passed from KanbanBoardDnd */
+export interface DragListInfo {
+  /** Special list type: 'regular', 'others', 'closed' */
+  type: 'regular' | 'others' | 'closed';
+  /** Labels for label-type lists */
+  labels: string[];
+  /** List grouping dimension: 'label' or 'status' */
+  listType: string;
+  /** Status GID for status-type lists */
+  statusId?: string | null;
+  /** Status display name for status-type lists */
+  statusName?: string | null;
+}
+
+/** Status definition from GitLab namespace */
+export interface StatusDefinition {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  category: string;
+}
+
 /** Parameters for useDragOperations hook */
 export interface UseDragOperationsParams {
   /** Current tasks array */
@@ -24,7 +47,7 @@ export interface UseDragOperationsParams {
   /**
    * Function to sync task updates to GitLab
    * @param taskId - The task ID to update
-   * @param updates - The updates to apply (labels, state, etc.)
+   * @param updates - The updates to apply (labels, state, status, etc.)
    */
   syncTask: (taskId: TID, updates: Record<string, unknown>) => Promise<void>;
   /**
@@ -46,6 +69,8 @@ export interface UseDragOperationsParams {
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   /** Function to refresh tasks from GitLab after error */
   refreshTasks: () => void;
+  /** Available statuses from the GitLab namespace (for determining default closed status) */
+  availableStatuses?: StatusDefinition[];
 }
 
 /** Return type of useDragOperations hook */
@@ -69,18 +94,16 @@ export interface UseDragOperationsReturn {
     position: 'before' | 'after',
   ) => Promise<boolean>;
   /**
-   * Handle cross-list drag operation (label changes, close/reopen)
+   * Handle cross-list drag operation (label/status changes, close/reopen)
    * @param taskId - The task ID to move
-   * @param sourceLabels - Labels of the source list
-   * @param targetLabels - Labels of the target list
-   * @param targetType - Type of target list (regular, others, closed)
+   * @param sourceList - Source list info
+   * @param targetList - Target list info
    * @returns true if successful, false if failed
    */
   handleCrossListDrag: (
     taskId: TID,
-    sourceLabels: string[],
-    targetLabels: string[],
-    targetType: 'regular' | 'others' | 'closed',
+    sourceList: DragListInfo,
+    targetList: DragListInfo,
   ) => Promise<boolean>;
   /** Clear the saved snapshot after successful operation */
   clearSnapshot: () => void;
@@ -91,7 +114,8 @@ export interface UseDragOperationsReturn {
  *
  * This hook encapsulates the API operations for:
  * - Same-list reorder: Updates task position via reorderTask
- * - Cross-list drag: Updates labels via syncTask
+ * - Cross-list drag (label): Updates labels via syncTask
+ * - Cross-list drag (status): Updates status via syncTask
  * - Close/reopen: Updates state for Closed list interactions
  *
  * Provides error handling with toast notifications and automatic refresh on failure.
@@ -106,6 +130,7 @@ export function useDragOperations({
   reorderTask,
   showToast,
   refreshTasks,
+  availableStatuses = [],
 }: UseDragOperationsParams): UseDragOperationsReturn {
   // Snapshot reference for potential rollback
   const snapshotRef = useRef<DragSnapshot | null>(null);
@@ -154,19 +179,22 @@ export function useDragOperations({
   );
 
   /**
-   * Cross-list drag: handle label changes and state changes
+   * Cross-list drag: handle label changes, status changes, and state changes
    *
-   * Different behaviors based on target list type:
-   * - closed: Close the issue
-   * - others: Remove source labels only (and reopen if was closed)
-   * - regular: Swap labels (remove source, add target) (and reopen if was closed)
+   * Different behaviors based on source/target list types:
+   * - To closed: Close the issue
+   * - To others: Remove source labels only (and reopen if was closed)
+   * - Label → Label: Swap labels (remove source, add target)
+   * - Label → Status: Remove source labels, set target status
+   * - Status → Label: Add target labels (status unchanged by label drag)
+   * - Status → Status: Set target status
+   * - Status → Others: No-op for status (status stays, just not in any status list)
    */
   const handleCrossListDrag = useCallback(
     async (
       taskId: TID,
-      sourceLabels: string[],
-      targetLabels: string[],
-      targetType: 'regular' | 'others' | 'closed',
+      sourceList: DragListInfo,
+      targetList: DragListInfo,
     ): Promise<boolean> => {
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return false;
@@ -178,34 +206,89 @@ export function useDragOperations({
         : [];
 
       try {
-        // Handle different target types
-        if (targetType === 'closed') {
-          // Close the issue
-          await syncTask(taskId, { state: 'closed' });
-        } else if (targetType === 'others') {
-          // Remove source labels only (move to "uncategorized")
-          const newLabels = currentLabels.filter(
-            (l) => !sourceLabels.includes(l),
-          );
-          await syncTask(taskId, {
-            labels: newLabels.join(', '),
-            // If was closed, reopen
-            ...(task.state === 'closed' ? { state: 'opened' } : {}),
-          });
-        } else {
-          // Regular list: swap labels (remove source, add target)
-          const newLabels = currentLabels
-            .filter((l) => !sourceLabels.includes(l))
-            .concat(targetLabels);
-          // Remove duplicates
-          const uniqueLabels = [...new Set(newLabels)];
-          await syncTask(taskId, {
-            labels: uniqueLabels.join(', '),
-            // If was closed, reopen
-            ...(task.state === 'closed' ? { state: 'opened' } : {}),
-          });
+        // Handle target = Closed list: close the issue and set default closed status.
+        // GitLab requires state and status to be consistent — a closed issue should
+        // have a status in the "done" or "canceled" category.
+        if (targetList.type === 'closed') {
+          const closedUpdates: Record<string, unknown> = { state: 'closed' };
+          // Find default closed status (first status with "done" category, or "canceled")
+          const defaultClosedStatus =
+            availableStatuses.find((s) => s.category === 'done') ||
+            availableStatuses.find((s) => s.category === 'canceled');
+          if (defaultClosedStatus) {
+            closedUpdates._statusId = defaultClosedStatus.id;
+            const currentGitlab = (task as any)._gitlab || {};
+            closedUpdates._gitlab = {
+              ...currentGitlab,
+              status: {
+                ...currentGitlab.status,
+                id: defaultClosedStatus.id,
+                name: defaultClosedStatus.name,
+              },
+            };
+          }
+          await syncTask(taskId, closedUpdates);
+          return true;
         }
-        // syncTask handles optimistic update, no need to refresh on success
+
+        const updates: Record<string, unknown> = {};
+
+        // If was closed, reopen
+        if (
+          task.state === 'closed' ||
+          (task as any)._gitlab?.state === 'closed'
+        ) {
+          updates.state = 'opened';
+        }
+
+        // Handle label changes — only when source or target is a label list
+        // Status-only drags (Status → Status) don't touch labels at all
+        if (sourceList.listType === 'label' && sourceList.labels.length > 0) {
+          if (targetList.type === 'others') {
+            // Label → Others: remove source labels
+            const newLabels = currentLabels.filter(
+              (l) => !sourceList.labels.includes(l),
+            );
+            updates.labels = newLabels.join(', ');
+          } else if (targetList.listType === 'label') {
+            // Label → Label: remove source labels, add target labels
+            const newLabels = currentLabels
+              .filter((l) => !sourceList.labels.includes(l))
+              .concat(targetList.labels);
+            updates.labels = [...new Set(newLabels)].join(', ');
+          }
+          // Label → Status: only update status, don't touch labels
+        } else if (
+          sourceList.type === 'others' ||
+          (sourceList.type === 'regular' && sourceList.listType !== 'label')
+        ) {
+          if (targetList.listType === 'label') {
+            // Others/Status → Label: add target labels
+            const newLabels = currentLabels.concat(targetList.labels);
+            updates.labels = [...new Set(newLabels)].join(', ');
+          }
+        }
+
+        // Handle status changes
+        if (targetList.listType === 'status' && targetList.statusId) {
+          updates._statusId = targetList.statusId;
+          // Optimistic update: update _gitlab.status so the card moves immediately
+          const currentGitlab = (task as any)._gitlab || {};
+          updates._gitlab = {
+            ...currentGitlab,
+            status: {
+              ...currentGitlab.status,
+              id: targetList.statusId,
+              name: targetList.statusName || '',
+            },
+          };
+        }
+
+        // Only sync if there are actual updates
+        if (Object.keys(updates).length > 0) {
+          await syncTask(taskId, updates);
+        }
+
         return true;
       } catch (error) {
         showToast(
@@ -216,7 +299,7 @@ export function useDragOperations({
         return false;
       }
     },
-    [tasks, syncTask, showToast, refreshTasks],
+    [tasks, syncTask, showToast, refreshTasks, availableStatuses],
   );
 
   /**

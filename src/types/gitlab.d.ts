@@ -159,11 +159,21 @@ export interface GitLabServerFilters {
  * Filter options available for server-side filtering
  * These are fetched before sync to allow users to set filters immediately
  */
+/** GitLab work item status (from WorkItemWidgetStatus) */
+export interface GitLabWorkItemStatus {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  category: string;
+}
+
 export interface GitLabFilterOptionsData {
   members: Array<{ username: string; name: string }>;
   labels: Array<{ title: string; color?: string; priority?: number | null }>;
   milestones: Array<{ iid: number; title: string }>;
   iterations: Array<{ title: string }>; // Formatted title via formatIterationTitle()
+  statuses?: GitLabWorkItemStatus[]; // Allowed statuses from namespace widget definitions
 }
 
 export interface GitLabSyncOptions {

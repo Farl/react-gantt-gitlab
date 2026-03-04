@@ -10,6 +10,48 @@
   z-index: 1001;
 }
 
+/* ========== Type Tabs ========== */
+.list-edit-type-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.list-edit-type-tab {
+  flex: 1;
+  padding: 7px 12px;
+  border: none;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.list-edit-type-tab:not(:last-child) {
+  border-right: 1px solid #d1d5db;
+}
+
+.list-edit-type-tab.active {
+  background: #1f75cb;
+  color: white;
+}
+
+.list-edit-type-tab:hover:not(.active):not(:disabled) {
+  background: #e5e7eb;
+}
+
+.list-edit-type-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ========== Label Selection ========== */
+
 /* Hide the FilterMultiSelect header since we have our own label */
 .list-edit-labels-field .fms-header {
   display: none;
@@ -20,7 +62,70 @@
   max-height: 180px;
 }
 
-/* Sort settings layout */
+/* ========== Status Selection ========== */
+.list-edit-status-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.list-edit-status-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.list-edit-status-option:last-child {
+  border-bottom: none;
+}
+
+.list-edit-status-option:hover {
+  background: #f9fafb;
+}
+
+.list-edit-status-option.selected {
+  background: #eff6ff;
+}
+
+.list-edit-status-option input[type='radio'] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.list-edit-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.list-edit-status-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.list-edit-status-category {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.list-edit-status-empty {
+  padding: 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* ========== Sort Settings ========== */
 .list-edit-sort {
   display: flex;
   gap: 8px;
@@ -28,4 +133,55 @@
 
 .list-edit-sort select {
   flex: 1;
+}
+
+/* ========== Dark Theme ========== */
+.wx-willow-dark-theme .list-edit-type-tabs {
+  border-color: var(--wx-gitlab-button-border, #384047);
+}
+
+.wx-willow-dark-theme .list-edit-type-tab {
+  background: var(--wx-gitlab-control-background, #23262a);
+  color: var(--wx-demo-text-secondary, #9fa1ae);
+}
+
+.wx-willow-dark-theme .list-edit-type-tab:not(:last-child) {
+  border-right-color: var(--wx-gitlab-button-border, #384047);
+}
+
+.wx-willow-dark-theme .list-edit-type-tab.active {
+  background: #1f75cb;
+  color: white;
+}
+
+.wx-willow-dark-theme .list-edit-type-tab:hover:not(.active):not(:disabled) {
+  background: var(--wx-gitlab-button-hover-background, #33373c);
+}
+
+.wx-willow-dark-theme .list-edit-status-list {
+  border-color: var(--wx-gitlab-header-border, #384047);
+}
+
+.wx-willow-dark-theme .list-edit-status-option {
+  border-bottom-color: var(--wx-gitlab-header-border, #384047);
+}
+
+.wx-willow-dark-theme .list-edit-status-option:hover {
+  background: var(--wx-gitlab-button-hover-background, #33373c);
+}
+
+.wx-willow-dark-theme .list-edit-status-option.selected {
+  background: rgba(31, 117, 203, 0.15);
+}
+
+.wx-willow-dark-theme .list-edit-status-name {
+  color: var(--wx-demo-text-primary, #e6e6e6);
+}
+
+.wx-willow-dark-theme .list-edit-status-category {
+  color: var(--wx-demo-text-secondary, #9fa1ae);
+}
+
+.wx-willow-dark-theme .list-edit-status-empty {
+  color: var(--wx-demo-text-secondary, #9fa1ae);
 }

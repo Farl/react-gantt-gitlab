@@ -32,6 +32,22 @@
   border-bottom-color: #93c5fd;
 }
 
+/* Color indicator before list name: circle = status, square = label */
+.kanban-list-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.kanban-list-indicator-status {
+  border-radius: 50%;
+}
+
+.kanban-list-indicator-label {
+  border-radius: 2px;
+}
+
 .kanban-list-name {
   font-weight: 600;
   font-size: 13px;
@@ -80,6 +96,16 @@
   font-style: italic;
 }
 
+.kanban-list-footer {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  flex-shrink: 0;
+}
+
 /* Drop target highlight styles */
 .kanban-list-over {
   background: #dbeafe;
@@ -126,6 +152,12 @@
 
 .wx-willow-dark-theme .kanban-list-empty {
   color: var(--wx-gitlab-control-text, #9fa1ae);
+}
+
+.wx-willow-dark-theme .kanban-list-footer {
+  color: var(--wx-gitlab-control-text, #9fa1ae);
+  border-top-color: var(--wx-gitlab-header-border, #384047);
+  background: #1e2124;
 }
 
 .wx-willow-dark-theme .kanban-list-over {

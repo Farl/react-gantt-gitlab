@@ -549,7 +549,66 @@ export class GitLabGraphQLProvider {
         title: formatIterationTitle(node),
       }));
 
-      return { members, labels, milestones, iterations };
+      // Fetch allowed statuses from namespace widget definitions
+      // This is a separate query because it uses the namespace API (not project/group)
+      let statuses: GitLabFilterOptionsData['statuses'] = [];
+      try {
+        const statusQuery = `
+          query getAllowedStatuses($fullPath: ID!) {
+            namespace(fullPath: $fullPath) {
+              workItemTypes(name: ISSUE) {
+                nodes {
+                  widgetDefinitions {
+                    type
+                    ... on WorkItemWidgetDefinitionStatus {
+                      allowedStatuses {
+                        id
+                        name
+                        color
+                        position
+                        category
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `;
+        const statusResult = await this.graphqlClient.query<{
+          namespace?: {
+            workItemTypes?: {
+              nodes?: Array<{
+                widgetDefinitions?: Array<{
+                  type: string;
+                  allowedStatuses?: Array<{
+                    id: string;
+                    name: string;
+                    color: string;
+                    position: number;
+                    category: string;
+                  }>;
+                }>;
+              }>;
+            };
+          };
+        }>(statusQuery, { fullPath });
+
+        const widgetDefs =
+          statusResult?.namespace?.workItemTypes?.nodes?.[0]?.widgetDefinitions;
+        const statusDef = widgetDefs?.find(
+          (w) => w.type === 'STATUS' && w.allowedStatuses,
+        );
+        statuses = statusDef?.allowedStatuses || [];
+      } catch (error) {
+        // Status widget may not be available (requires Premium/Ultimate)
+        console.warn(
+          '[GitLabGraphQLProvider] Failed to fetch allowed statuses (may require Premium):',
+          error,
+        );
+      }
+
+      return { members, labels, milestones, iterations, statuses };
     } catch (error) {
       console.error(
         '[GitLabGraphQLProvider] Failed to fetch filter options:',
@@ -650,6 +709,15 @@ export class GitLabGraphQLProvider {
                 }
                 ... on WorkItemWidgetWeight {
                   weight
+                }
+                ... on WorkItemWidgetStatus {
+                  status {
+                    id
+                    name
+                    color
+                    position
+                    category
+                  }
                 }
                 ... on WorkItemWidgetMilestone {
                   milestone {
@@ -1727,6 +1795,198 @@ export class GitLabGraphQLProvider {
   }
 
   /**
+   * Fetch a limited number of closed work items for Kanban status lists.
+   *
+   * Main getData() only fetches open issues for performance. This method
+   * supplements it with recent closed issues so that status lists with
+   * Done/Canceled categories (which map to CLOSED state) have content.
+   *
+   * @param limit - Maximum number of closed items to fetch (default 50)
+   * @param signal - Optional AbortSignal for cancellation
+   * @returns Array of ITask for closed work items
+   */
+  async fetchClosedWorkItems(
+    limit: number = 50,
+    signal?: AbortSignal,
+  ): Promise<{ tasks: ITask[]; totalCount: number }> {
+    // Use a simplified query — no server-side filters, just closed state with limit.
+    // The "first" parameter caps at 100 per page; for limit <= 100, one page suffices.
+    const pageSize = Math.min(limit, 100);
+    const query = `
+      query getClosedWorkItems($fullPath: ID!, $after: String) {
+        ${this.config.type}(fullPath: $fullPath) {
+          workItems(
+            types: [ISSUE, TASK],
+            state: closed,
+            first: ${pageSize},
+            after: $after,
+            sort: UPDATED_DESC
+          ) {
+            count
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              id
+              iid
+              title
+              createdAt
+              closedAt
+              state
+              webUrl
+              workItemType {
+                name
+              }
+              widgets {
+                __typename
+                ... on WorkItemWidgetDescription {
+                  description
+                }
+                ... on WorkItemWidgetStartAndDueDate {
+                  startDate
+                  dueDate
+                }
+                ... on WorkItemWidgetAssignees {
+                  assignees {
+                    nodes {
+                      id
+                      name
+                      username
+                    }
+                  }
+                }
+                ... on WorkItemWidgetLabels {
+                  labels {
+                    nodes {
+                      id
+                      title
+                    }
+                  }
+                }
+                ... on WorkItemWidgetWeight {
+                  weight
+                }
+                ... on WorkItemWidgetStatus {
+                  status {
+                    id
+                    name
+                    color
+                    position
+                    category
+                  }
+                }
+                ... on WorkItemWidgetMilestone {
+                  milestone {
+                    id
+                    iid
+                    title
+                    description
+                    state
+                    dueDate
+                    startDate
+                    webPath
+                    createdAt
+                  }
+                }
+                ... on WorkItemWidgetIteration {
+                  iteration {
+                    id
+                    iid
+                    title
+                    startDate
+                    dueDate
+                    iterationCadence {
+                      id
+                      title
+                    }
+                  }
+                }
+                ... on WorkItemWidgetHierarchy {
+                  parent {
+                    id
+                    iid
+                    title
+                    workItemType {
+                      name
+                    }
+                  }
+                  children {
+                    nodes {
+                      id
+                      iid
+                    }
+                  }
+                }
+                ... on WorkItemWidgetLinkedItems {
+                  linkedItems {
+                    nodes {
+                      linkId
+                      linkType
+                      linkCreatedAt
+                      linkUpdatedAt
+                      workItem {
+                        id
+                        iid
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const allWorkItems: any[] = [];
+    let hasNextPage = true;
+    let endCursor: string | null = null;
+    // Total count from the first page response (available without fetching all items)
+    let totalCount = 0;
+
+    while (hasNextPage && allWorkItems.length < limit) {
+      if (signal?.aborted) break;
+
+      const result = await this.graphqlClient.query<any>(
+        query,
+        { fullPath: this.getFullPath(), after: endCursor },
+        signal,
+      );
+
+      const workItemsData =
+        this.config.type === 'group'
+          ? result.group?.workItems
+          : result.project?.workItems;
+
+      if (workItemsData) {
+        // count is available on the first page and reflects the total, not per-page
+        if (allWorkItems.length === 0 && workItemsData.count != null) {
+          totalCount = workItemsData.count;
+        }
+        allWorkItems.push(...workItemsData.nodes);
+        hasNextPage = workItemsData.pageInfo?.hasNextPage || false;
+        endCursor = workItemsData.pageInfo?.endCursor || null;
+      } else {
+        hasNextPage = false;
+      }
+    }
+
+    // Trim to limit
+    const trimmed = allWorkItems.slice(0, limit);
+
+    console.log(
+      `[GitLabGraphQL] Fetched ${trimmed.length}/${totalCount} closed work items for Kanban`,
+    );
+
+    // Convert to ITask using the same conversion as getData
+    return {
+      tasks: trimmed.map((wi) => this.convertWorkItemToTask(wi)),
+      totalCount,
+    };
+  }
+
+  /**
    * Convert GitLab Milestone to Gantt Task
    * @param milestone - The milestone data from GraphQL or REST API
    * @param isGroupMilestone - Whether this is a Group Milestone (for API endpoint selection)
@@ -1842,6 +2102,19 @@ export class GitLabGraphQLProvider {
     );
     const labelsWidget = workItem.widgets.find((w) => w.labels !== undefined);
     const weightWidget = workItem.widgets.find((w) => w.weight !== undefined);
+    const statusWidget = workItem.widgets.find(
+      (w: any) => w.__typename === 'WorkItemWidgetStatus' && w.status,
+    ) as
+      | {
+          status?: {
+            id: string;
+            name: string;
+            color: string;
+            position: number;
+            category: string;
+          };
+        }
+      | undefined;
     const milestoneWidget = workItem.widgets.find(
       (w) => w.milestone !== undefined,
     ) as { milestone?: { id: string; iid: string; title: string } } | undefined;
@@ -1886,8 +2159,12 @@ export class GitLabGraphQLProvider {
       duration = Math.max(1, days);
     }
 
+    // Normalize state to lowercase for consistent comparison across codebase.
+    // GraphQL returns uppercase ("OPEN", "CLOSED") but all checks use lowercase.
+    const normalizedState = workItem.state?.toLowerCase() || 'open';
+
     // Calculate progress based on state
-    const progress = workItem.state === 'closed' ? 1 : 0;
+    const progress = normalizedState === 'closed' ? 1 : 0;
 
     // Extract assignees - display names for Gantt column
     const assignees =
@@ -2020,7 +2297,7 @@ export class GitLabGraphQLProvider {
       epic: epicTitle || '',
       assigned: assignees || '',
       weight: weightWidget?.weight ?? 0,
-      state: workItem.state,
+      state: normalizedState,
       web_url: workItem.webUrl,
       $isIssue: isIssue, // Custom flag: true for GitLab Issue, false for GitLab Task
       $custom:
@@ -2030,7 +2307,7 @@ export class GitLabGraphQLProvider {
       _gitlab: {
         id: workItem.id, // Global ID
         iid: Number(workItem.iid),
-        state: workItem.state,
+        state: normalizedState,
         workItemType: workItem.workItemType?.name,
         createdAt: workItem.createdAt, // Created timestamp for sorting
         startDate: dateWidget?.startDate, // Track if task has explicit start date
@@ -2056,6 +2333,16 @@ export class GitLabGraphQLProvider {
         // relativePosition for Kanban sorting (from Issue API, only for root-level Issues)
         relativePosition:
           isIssue && !parentIid ? relativePositionMap.get(iid) : undefined,
+        // GitLab work item status (custom status widget)
+        status: statusWidget?.status
+          ? {
+              id: statusWidget.status.id,
+              name: statusWidget.status.name,
+              color: statusWidget.status.color,
+              position: statusWidget.status.position,
+              category: statusWidget.status.category,
+            }
+          : undefined,
       },
     };
 
@@ -2865,9 +3152,48 @@ export class GitLabGraphQLProvider {
       };
     }
 
-    // State
-    if (task.state !== undefined) {
+    // State and Status handling
+    // IMPORTANT: GitLab does not allow stateEvent and statusWidget in the same mutation.
+    // When both are needed (e.g., dragging from Done/closed to Triage), we must run
+    // the state change as a separate mutation first, then update status in the main mutation.
+    const needsStateChange = task.state !== undefined;
+    const needsStatusChange = (task as any)._statusId !== undefined;
+
+    if (needsStateChange && needsStatusChange) {
+      // Split: run stateEvent as a separate mutation first
+      const stateMutation = `
+        mutation updateWorkItemState($input: WorkItemUpdateInput!) {
+          workItemUpdate(input: $input) {
+            workItem { id }
+            errors
+          }
+        }
+      `;
+      const stateResult = await this.graphqlClient.mutate<{
+        workItemUpdate: { workItem: { id: string }; errors: string[] };
+      }>(stateMutation, {
+        input: {
+          id: workItemId,
+          stateEvent: task.state === 'closed' ? 'CLOSE' : 'REOPEN',
+        },
+      });
+
+      if (stateResult.workItemUpdate.errors?.length > 0) {
+        throw new Error(
+          `Failed to update work item state: ${stateResult.workItemUpdate.errors.join(', ')}`,
+        );
+      }
+      // Status will be set in the main mutation below
+    } else if (needsStateChange) {
       input.stateEvent = task.state === 'closed' ? 'CLOSE' : 'REOPEN';
+    }
+
+    // Status (GitLab custom status widget)
+    // NOTE: statusWidget is not in WorkItemUpdateInput introspection but works at runtime (18.4+)
+    if (needsStatusChange) {
+      input.statusWidget = {
+        status: (task as any)._statusId,
+      };
     }
 
     // Labels - routing depends on work item type:

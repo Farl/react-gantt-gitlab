@@ -2,14 +2,25 @@
  * Issue Board (Kanban) Type Definitions
  */
 
+/** List grouping dimension */
+export type ListType = 'label' | 'status';
+
 /** 單一 Kanban List 的定義 */
 export interface IssueBoardList {
   /** UUID */
   id: string;
   /** 顯示名稱 */
   name: string;
-  /** 篩選的 label 名稱（AND 邏輯：issue 必須包含所有 labels） */
+  /** Grouping dimension — defaults to 'label' for backward compatibility */
+  type?: ListType;
+  /** Label mode: 篩選的 label 名稱（AND 邏輯：issue 必須包含所有 labels） */
   labels: string[];
+  /** Status mode: GitLab status GID */
+  statusId?: string;
+  /** Status mode: denormalized display name */
+  statusName?: string;
+  /** Status mode: denormalized color hex */
+  statusColor?: string;
   /** 排序欄位 */
   sortBy:
     | 'position'

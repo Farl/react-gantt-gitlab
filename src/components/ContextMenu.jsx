@@ -117,11 +117,28 @@ const ContextMenu = forwardRef(function ContextMenu(
       const action = ev.action;
       if (action) {
         const isAction = isHandledAction(defaultMenuOptions, action.id);
-        if (isAction) handleAction(api, action.id, activeIdRef.current, _);
+        if (isAction) {
+          // Workaround: gantt-store's handleAction calls api.getHistory() for
+          // batch operations (multi-select), which requires the Pro undo/redo module.
+          // Without it, getHistory is undefined and crashes. For multi-select
+          // destructive actions, bypass handleAction entirely and use api.exec directly.
+          const selected = rSelectedVal || [];
+          const isBatchDelete = selected.length > 1 &&
+            action.id === 'delete-task' && !api.getHistory;
+
+          if (isBatchDelete) {
+            // Delete each selected task individually via api.exec
+            [...selected].reverse().forEach((id) => {
+              api.exec('delete-task', { id });
+            });
+          } else {
+            handleAction(api, action.id, activeIdRef.current, _);
+          }
+        }
         onClick && onClick(ev);
       }
     },
-    [api, _, onClick],
+    [api, _, onClick, rSelectedVal],
   );
 
   const filterMenu = useCallback(

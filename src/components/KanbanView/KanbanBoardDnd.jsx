@@ -50,13 +50,19 @@ function customCollisionDetection(args) {
  */
 function getListInfo(listId, board) {
   if (listId === '__others__') {
-    return { type: 'others', labels: [] };
+    return { type: 'others', labels: [], listType: 'label' };
   }
   if (listId === '__closed__') {
-    return { type: 'closed', labels: [] };
+    return { type: 'closed', labels: [], listType: 'label' };
   }
   const list = board?.lists?.find((l) => l.id === listId);
-  return { type: 'regular', labels: list?.labels || [] };
+  return {
+    type: 'regular',
+    labels: list?.labels || [],
+    listType: list?.type || 'label',
+    statusId: list?.statusId || null,
+    statusName: list?.statusName || null,
+  };
 }
 
 /**
@@ -70,18 +76,29 @@ function findTaskListId(taskId, board, tasks) {
   const task = tasks.find((t) => t.id === taskId);
   if (!task) return null;
 
-  // Check if closed
-  if (task.state === 'closed' || task._gitlab?.state === 'closed') {
-    return '__closed__';
-  }
-
+  const isClosed = task.state === 'closed' || task._gitlab?.state === 'closed';
   const taskLabels = task.labels ? task.labels.split(', ').filter(Boolean) : [];
 
-  // Check each regular list (uses AND logic - task must have ALL list labels)
+  // Check each regular list — both label and status types
+  // Status lists match from ALL tasks (including closed), so check them first
+  // before falling through to the closed check.
   for (const list of board?.lists || []) {
-    if (list.labels.every((label) => taskLabels.includes(label))) {
-      return list.id;
+    const listType = list.type || 'label';
+    if (listType === 'status') {
+      if (task._gitlab?.status?.id === list.statusId) {
+        return list.id;
+      }
+    } else {
+      // Label lists only match open tasks
+      if (!isClosed && list.labels.every((label) => taskLabels.includes(label))) {
+        return list.id;
+      }
     }
+  }
+
+  // If closed and not matched by any status list, it belongs to Closed
+  if (isClosed) {
+    return '__closed__';
   }
 
   // Default to Others if no list matches
@@ -124,6 +141,8 @@ export function KanbanBoardDnd({
   onCardDoubleClick,
   onSameListReorder,
   onCrossListDrag,
+  closedTotalCount = 0,
+  closedFetchLimit = 50,
 }) {
   // Configure sensors with activation constraint
   // Require 5px of movement before drag starts, allowing clicks to work
@@ -224,9 +243,8 @@ export function KanbanBoardDnd({
         if (onCrossListDrag) {
           await onCrossListDrag(
             active.id,
-            sourceList.labels,
-            targetList.labels,
-            targetList.type,
+            sourceList,
+            targetList,
           );
         }
       }
@@ -262,6 +280,8 @@ export function KanbanBoardDnd({
         overListId={overListId}
         sortOverrides={sortOverrides}
         onSortOverridesChange={setSortOverrides}
+        closedTotalCount={closedTotalCount}
+        closedFetchLimit={closedFetchLimit}
       />
 
       {/* Drag overlay - shows card preview during drag */}

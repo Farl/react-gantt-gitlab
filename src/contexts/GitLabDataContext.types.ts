@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import type { ITask, ILink } from '@svar-ui/gantt-store';
 import type {
   GitLabMilestone,
@@ -10,12 +11,19 @@ import type { GitLabDataProvider } from '../providers/GitLabDataProvider';
 import type { GitLabGraphQLProvider } from '../providers/GitLabGraphQLProvider';
 import type { HolidayEntry } from '../providers/GitLabSnippetApi';
 
-/** Server filter options from GitLab (labels, milestones, iterations, members) */
+/** Server filter options from GitLab (labels, milestones, iterations, members, statuses) */
 export interface ServerFilterOptions {
   labels?: Array<{ name: string; color: string }>;
   milestones?: Array<{ id: number; title: string; iid: number }>;
   iterations?: Array<{ title: string }>;
   members?: Array<{ id: number; username: string; name: string }>;
+  statuses?: Array<{
+    id: string;
+    name: string;
+    color: string;
+    position: number;
+    category: string;
+  }>;
 }
 
 /** GitLab project/group configuration */
@@ -51,6 +59,7 @@ export interface GitLabDataContextValue {
   syncState: SyncState;
   sync: (options?: GitLabSyncOptions) => Promise<void>;
   syncTask: (id: number | string, updates: Partial<ITask>) => Promise<void>;
+  externalTasksRef: MutableRefObject<ITask[]>;
   reorderTaskLocal: (
     taskId: number | string,
     targetTaskId: number | string,

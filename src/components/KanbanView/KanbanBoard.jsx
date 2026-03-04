@@ -17,7 +17,7 @@ import './KanbanBoard.css';
  * @param {string[]} listLabels - Labels the issue must have (all of them)
  * @returns {boolean}
  */
-function issueMatchesList(task, listLabels) {
+function issueMatchesLabels(task, listLabels) {
   if (!listLabels || listLabels.length === 0) return false;
 
   const taskLabels = task.labels ? task.labels.split(', ').filter(Boolean) : [];
@@ -25,10 +25,21 @@ function issueMatchesList(task, listLabels) {
 }
 
 /**
+ * Check if a task matches a list based on list type (label or status)
+ */
+function taskMatchesList(task, list) {
+  const listType = list.type || 'label';
+  if (listType === 'status') {
+    return task._gitlab?.status?.id === list.statusId;
+  }
+  return issueMatchesLabels(task, list.labels);
+}
+
+/**
  * Check if an issue is "Others" (doesn't match any list)
  */
 function isOthersIssue(task, lists) {
-  return !lists.some((list) => issueMatchesList(task, list.labels));
+  return !lists.some((list) => taskMatchesList(task, list));
 }
 
 /**
@@ -51,6 +62,8 @@ export function KanbanBoard({
   // Temporary sort overrides - managed by parent (KanbanBoardDnd) for drag logic access
   sortOverrides = {},
   onSortOverridesChange,
+  closedTotalCount = 0,
+  closedFetchLimit = 50,
 }) {
 
   // Handle sort change from list header UI (temporary, not persisted)
@@ -152,9 +165,13 @@ export function KanbanBoard({
 
     // Regular lists
     for (const list of board.lists) {
-      const listTasks = openTasks.filter((task) =>
-        issueMatchesList(task, list.labels),
-      );
+      const listType = list.type || 'label';
+      // NOTE: Status lists match from ALL tasks (open + closed), because statuses
+      // like "Done" or "Won't do" correspond to CLOSED state. If we only checked
+      // open tasks, those items would never appear in their status list.
+      // Label lists continue to match only open tasks (existing behavior).
+      const sourcePool = listType === 'status' ? tasks : openTasks;
+      const listTasks = sourcePool.filter((task) => taskMatchesList(task, list));
       const defaultSortBy = list.sortBy || 'position';
       const defaultSortOrder = list.sortOrder || 'asc';
       const override = sortOverrides[list.id];
@@ -173,14 +190,26 @@ export function KanbanBoard({
     }
 
     // Closed list (last position if enabled)
+    // Exclude closed issues already matched by a status list to avoid duplicates.
+    // Status lists (e.g. "Done", "Won't do") match from all tasks including closed,
+    // so without this exclusion, those issues would appear in both the status list
+    // and the Closed list.
     if (board.showClosed) {
+      const statusListIds = new Set(
+        board.lists
+          .filter((l) => (l.type || 'label') === 'status' && l.statusId)
+          .map((l) => l.statusId),
+      );
+      const closedNotInStatusList = statusListIds.size > 0
+        ? closedTasks.filter((t) => !statusListIds.has(t._gitlab?.status?.id))
+        : closedTasks;
       const defaultSortBy = board.closedSortBy || 'position';
       const defaultSortOrder = board.closedSortOrder || 'asc';
       const override = sortOverrides['__closed__'];
       result.push({
         id: '__closed__',
         name: 'Closed',
-        tasks: closedTasks,
+        tasks: closedNotInStatusList,
         // Current sort (may be overridden temporarily)
         sortBy: override?.sortBy ?? defaultSortBy,
         sortOrder: override?.sortOrder ?? defaultSortOrder,
@@ -228,6 +257,12 @@ export function KanbanBoard({
           sortOrder={list.sortOrder}
           defaultSortBy={list.defaultSortBy}
           defaultSortOrder={list.defaultSortOrder}
+          listType={list.type || 'label'}
+          listColor={
+            (list.type || 'label') === 'status'
+              ? (list.statusColor || null)
+              : (list.labels?.[0] ? (labelColorMap?.get(list.labels[0]) || null) : null)
+          }
           labelColorMap={labelColorMap}
           specialType={list.specialType}
           onCardDoubleClick={onCardDoubleClick}
@@ -235,6 +270,8 @@ export function KanbanBoard({
           activeTaskId={activeTaskId}
           isOver={overListId === list.id}
           isDragEnabled={(list.sortBy || 'position') === 'position'}
+          closedTotalCount={list.specialType === 'closed' ? closedTotalCount : undefined}
+          closedFetchLimit={list.specialType === 'closed' ? closedFetchLimit : undefined}
         />
       ))}
     </div>

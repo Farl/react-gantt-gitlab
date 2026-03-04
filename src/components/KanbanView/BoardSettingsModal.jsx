@@ -246,9 +246,20 @@ export function BoardSettingsModal({
               <div className="list-item-info">
                 <span className="list-item-name">{list.name}</span>
                 <span className="list-item-labels">
-                  {list.labels.length > 0
-                    ? `Labels: ${list.labels.join(', ')}`
-                    : 'No labels'}
+                  {list.type === 'status'
+                    ? <>
+                        Status:{' '}
+                        {list.statusColor && (
+                          <span
+                            className="list-item-status-dot"
+                            style={{ backgroundColor: list.statusColor }}
+                          />
+                        )}
+                        {list.statusName || 'Unknown'}
+                      </>
+                    : list.labels.length > 0
+                      ? `Labels: ${list.labels.join(', ')}`
+                      : 'No labels'}
                 </span>
               </div>
               <div className="list-item-actions">
