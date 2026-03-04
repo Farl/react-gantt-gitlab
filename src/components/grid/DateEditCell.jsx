@@ -20,7 +20,7 @@ import './DateEditCell.css';
  *
  * @param {Object} props
  * @param {Object} props.row - Task row data
- * @param {Object} props.column - Column configuration (id: 'start' | 'end')
+ * @param {Object} props.column - Column configuration (id: 'startSort' | 'endSort')
  * @param {boolean} props.readonly - If true, disable editing
  * @param {Function} props.onDateChange - Callback when date changes: (rowId, columnId, value) => void
  */
@@ -32,9 +32,13 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
   const isMilestone = isMilestoneTask(row);
   const isFolder = isFolderTask(row);
 
+  // Map sort column IDs (startSort/endSort) back to task/gitlab field names
+  const isStartCol = column.id === 'startSort';
+  const gitlabFieldName = isStartCol ? 'startDate' : 'dueDate';
+  const taskFieldName = isStartCol ? 'start' : 'end';
+
   // Always use _gitlab.startDate/_gitlab.dueDate as the source of truth
   // This ensures we show "None" when GitLab has no date, regardless of what svar gantt does
-  const gitlabFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
   const gitlabDateValue = row._gitlab?.[gitlabFieldName]; // string like "2026-01-27" or null/undefined
 
   // For milestones: always show the date (milestones always have dates in GitLab)
@@ -42,7 +46,7 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
   let date = null;
   if (isMilestone) {
     // Milestones always have dates
-    date = row[column.id];
+    date = row[taskFieldName];
   } else if (gitlabDateValue) {
     // GitLab has a date - parse it
     date = new Date(gitlabDateValue + 'T00:00:00');
@@ -55,24 +59,24 @@ function DateEditCell({ row, column, readonly = false, onDateChange }) {
     setShowPicker(true);
   }, [readonly]);
 
-  // Handle date selection
+  // Handle date selection — pass original field name (start/end) to callback
   const handleDateSelect = useCallback(
     (newDate) => {
       if (onDateChange) {
-        onDateChange(row.id, column.id, newDate);
+        onDateChange(row.id, taskFieldName, newDate);
       }
       setShowPicker(false);
     },
-    [row.id, column.id, onDateChange]
+    [row.id, taskFieldName, onDateChange]
   );
 
   // Handle clear button click
   const handleClear = useCallback(() => {
     if (onDateChange) {
-      onDateChange(row.id, column.id, null);
+      onDateChange(row.id, taskFieldName, null);
     }
     setShowPicker(false);
-  }, [row.id, column.id, onDateChange]);
+  }, [row.id, taskFieldName, onDateChange]);
 
   // Close picker when clicking outside
   useEffect(() => {

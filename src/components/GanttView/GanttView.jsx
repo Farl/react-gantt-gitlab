@@ -542,8 +542,12 @@ export function GanttView({
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [serverFilterOptions?.members]);
 
-  // Add workdays and labelPriority to tasks for sorting support
+  // Add workdays, labelPriority, and sort-friendly dates to tasks.
+  // startSort/endSort use a far-future sentinel so tasks without real dates sort last
+  // in SVAR Gantt (which sorts by task[columnId] using Date.getTime() comparison).
   const tasksWithWorkdays = useMemo(() => {
+    const FAR_FUTURE = new Date('9999-12-31T23:59:59');
+
     return allTasks.map(task => {
       // Parse labels and find highest priority (lowest number)
       const taskLabels = task.labels ? task.labels.split(', ').filter(Boolean) : [];
@@ -556,10 +560,15 @@ export function GanttView({
         }
       });
 
+      const hasRealStart = isMilestoneTask(task) || !!task._gitlab?.startDate;
+      const hasRealEnd = isMilestoneTask(task) || !!task._gitlab?.dueDate;
+
       return {
         ...task,
         workdays: task.start && task.end ? countWorkdays(task.start, task.end) : 0,
         labelPriority,
+        startSort: hasRealStart ? task.start : FAR_FUTURE,
+        endSort: hasRealEnd ? task.end : FAR_FUTURE,
       };
     });
   }, [allTasks, countWorkdays, labelPriorityMap]);
@@ -2088,6 +2097,10 @@ export function GanttView({
   // For milestones: Always show the date (milestones always have dates in GitLab)
   const DateCell = useCallback(({ row, column }) => {
     const isMilestone = isMilestoneTask(row);
+    // Map sort column IDs back to task/gitlab field names
+    const isStartCol = column.id === 'startSort';
+    const gitlabFieldName = isStartCol ? 'startDate' : 'dueDate';
+    const taskFieldName = isStartCol ? 'start' : 'end';
 
     // Folders have no dates
     if (isFolderTask(row)) {
@@ -2097,7 +2110,6 @@ export function GanttView({
     // Milestones always have dates, so skip the _gitlab check for them
     if (!isMilestone) {
       // For regular tasks, check if GitLab actually has the date
-      const gitlabFieldName = column.id === 'start' ? 'startDate' : 'dueDate';
       const hasGitLabDate = row._gitlab?.[gitlabFieldName];
 
       if (!hasGitLabDate) {
@@ -2105,7 +2117,7 @@ export function GanttView({
       }
     }
 
-    const date = row[column.id];
+    const date = row[taskFieldName];
     if (!date) return <span style={{ color: 'var(--wx-color-secondary, #6e6e73)' }}>None</span>;
 
     const d = date instanceof Date ? date : new Date(date);

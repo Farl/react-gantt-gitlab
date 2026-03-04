@@ -19,8 +19,8 @@ const ALL_COLUMNS = [
   { key: 'epic', label: 'Epic', defaultVisible: false },
   { key: 'weight', label: 'Weight', defaultVisible: false },
   { key: 'labels', label: 'Labels', defaultVisible: false },
-  { key: 'start', label: 'Start', defaultVisible: true },
-  { key: 'end', label: 'Due', defaultVisible: true },
+  { key: 'startSort', label: 'Start', defaultVisible: true },
+  { key: 'endSort', label: 'Due', defaultVisible: true },
   { key: 'workdays', label: 'Workdays', defaultVisible: true },
 ];
 
@@ -51,6 +51,12 @@ export function useColumnSettings() {
             })),
           };
         }
+        // Migrate renamed column keys (start→startSort, end→endSort)
+        parsed.columns = parsed.columns.map(c => {
+          if (c.key === 'start') return { ...c, key: 'startSort' };
+          if (c.key === 'end') return { ...c, key: 'endSort' };
+          return c;
+        });
         // Ensure all columns exist (for forward compatibility)
         const existingKeys = new Set(parsed.columns.map(c => c.key));
         const mergedColumns = [...parsed.columns];
@@ -270,6 +276,7 @@ export function ColumnSettingsDropdown({
  * - iteration: '' (empty string)
  * - epic: '' (empty string, title of parent Epic if exists)
  * - workdays: calculated in GitLabGantt tasksWithWorkdays
+ * - startSort/endSort: Date with far-future sentinel for tasks without real dates (sorts last)
  */
 export const AssigneeCell = ({ row }) => {
   if (!row.assigned) return null;
@@ -585,13 +592,13 @@ export const COLUMN_CONFIGS = {
     width: 150,
     // cell is injected by buildColumnsFromSettings with labelColorMap
   },
-  start: {
-    id: 'start',
+  startSort: {
+    id: 'startSort',
     header: 'Start',
     width: 110,
   },
-  end: {
-    id: 'end',
+  endSort: {
+    id: 'endSort',
     header: 'Due',
     width: 110,
   },
@@ -625,7 +632,7 @@ export function buildColumnsFromSettings(columnSettings, cellComponents) {
     .map(col => {
       const config = { ...COLUMN_CONFIGS[col.key] };
       // Inject external cell components
-      if (col.key === 'start' || col.key === 'end') {
+      if (col.key === 'startSort' || col.key === 'endSort') {
         // Use DateEditCell when editable, otherwise use DateCell (readonly)
         if (dateEditable && DateEditCell) {
           config.cell = (props) => (
