@@ -51,10 +51,10 @@ export default function GanttMinScaleUnit({ skinSettings }) {
 
   const allScales = useMemo(
     () => [
-      { unit: 'month', step: 1, format: 'MMMM yyy' },
+      { unit: 'month', step: 1, format: '%F %Y' },
       { unit: 'sprint', step: 1, format: sprintFormat },
-      { unit: 'week', step: 1, format: 'w' },
-      { unit: 'day', step: 1, format: 'd' },
+      { unit: 'week', step: 1, format: '%w' },
+      { unit: 'day', step: 1, format: '%j' },
     ],
     [],
   );

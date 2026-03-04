@@ -74,9 +74,9 @@ export default function GanttScaleUnit(props) {
       tasks={data.tasks}
       links={data.links}
       scales={[
-        { unit: 'month', step: 1, format: 'MMMM yyy' },
+        { unit: 'month', step: 1, format: '%F %Y' },
         { unit: 'sprint', step: 1, format: sprintFormat },
-        { unit: 'day', step: 1, format: 'd' },
+        { unit: 'day', step: 1, format: '%j' },
       ]}
       zoom={true}
       start={new Date(2024, 3, 1)}

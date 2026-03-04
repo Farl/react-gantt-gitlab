@@ -10,12 +10,16 @@ import {
 // core widgets lib
 import { Locale } from '@svar-ui/react-core';
 import { en } from '@svar-ui/gantt-locales';
+import { en as coreEn } from '@svar-ui/core-locales';
+
+// locale helpers
+import { locale as createLocale } from '@svar-ui/lib-dom';
 
 // stores
 import { EventBusRouter } from '@svar-ui/lib-state';
-import { DataStore, defaultColumns, defaultTaskTypes, format as dateFnsFormat } from '@svar-ui/gantt-store';
+import { DataStore, defaultColumns, defaultTaskTypes, format as dateFnsFormat, normalizeZoom } from '@svar-ui/gantt-store';
 
-// context 
+// context
 import StoreContext from '../context';
 
 // store factory
@@ -23,6 +27,9 @@ import { writable } from '@svar-ui/lib-react';
 
 // ui
 import Layout from './Layout.jsx';
+
+// config preparation helpers (format string processing, zoom normalization)
+import { prepareScales, prepareFormats, prepareZoom } from '../helpers/prepareConfig.js';
 
 
 const camelize = (s) =>
@@ -74,9 +81,45 @@ const Gantt = forwardRef(function Gantt(
   const restPropsRef = useRef();
   restPropsRef.current = restProps;
 
-
   // init stores
   const dataStore = useMemo(() => new DataStore(writable), []);
+
+  // Build locale and extract calendar for format string processing.
+  // This enables %-style format strings (e.g. '%F %Y') in scale/zoom configs
+  // to be converted to formatter functions via dateToString.
+  const calendarLocale = useMemo(() => {
+    const words = { ...coreEn, ...en };
+    const l = createLocale(words);
+    return l.getRaw().calendar;
+  }, []);
+
+  // Translation helper for unit format labels (e.g. "Week", "Q")
+  const ganttTranslate = useMemo(() => {
+    const ganttWords = en.gantt || {};
+    return (key) => ganttWords[key] || key;
+  }, []);
+
+  // Normalize config: process format strings in scales/zoom, run normalizeZoom
+  const normalizedConfig = useMemo(() => {
+    const config = {
+      zoom: prepareZoom(zoom, calendarLocale),
+      scales: prepareScales(scales, calendarLocale),
+      cellWidth,
+    };
+    // normalizeZoom generates auto zoom levels when zoom=true (no custom levels),
+    // and validates/enhances custom zoom configs
+    if (config.zoom) {
+      const unitFormats = prepareFormats(calendarLocale, ganttTranslate);
+      const normalized = normalizeZoom(
+        config.zoom,
+        unitFormats,
+        config.scales,
+        cellWidth,
+      );
+      return { ...config, ...normalized };
+    }
+    return config;
+  }, [zoom, scales, cellWidth, calendarLocale, ganttTranslate]);
   const firstInRoute = useMemo(() => dataStore.in, [dataStore]);
 
   const lastInRouteRef = useRef(null);
@@ -145,12 +188,12 @@ const Gantt = forwardRef(function Gantt(
         columns,
         end,
         lengthUnit,
-        cellWidth,
+        cellWidth: normalizedConfig.cellWidth,
         cellHeight,
         scaleHeight,
-        scales,
+        scales: normalizedConfig.scales,
         taskTypes,
-        zoom,
+        zoom: normalizedConfig.zoom,
         selected,
         activeTask,
         baselines,
@@ -184,12 +227,10 @@ const Gantt = forwardRef(function Gantt(
     columns,
     end,
     lengthUnit,
-    cellWidth,
+    normalizedConfig,
     cellHeight,
     scaleHeight,
-    scales,
     taskTypes,
-    zoom,
     selected,
     activeTask,
     baselines,
@@ -207,12 +248,12 @@ const Gantt = forwardRef(function Gantt(
       columns,
       end,
       lengthUnit,
-      cellWidth,
+      cellWidth: normalizedConfig.cellWidth,
       cellHeight,
       scaleHeight,
-      scales,
+      scales: normalizedConfig.scales,
       taskTypes,
-      zoom,
+      zoom: normalizedConfig.zoom,
       selected,
       activeTask,
       baselines,

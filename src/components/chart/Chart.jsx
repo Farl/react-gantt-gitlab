@@ -40,7 +40,7 @@ function Chart(props) {
   const cellHeight = useStore(api, "cellHeight");
   const cellWidth = useStore(api, "cellWidth");
   const scales = useStore(api, "_scales");
-  const markers = useStore(api, "_markers");
+  const rawMarkers = useStore(api, "markers");
   const rScrollTask = useStore(api, "_scrollTask");
   const zoom = useStore(api, "zoom");
 
@@ -192,12 +192,69 @@ function Chart(props) {
   }
 
   const holidays = useMemo(() => {
-    return scales &&
-      (scales.minUnit === 'hour' || scales.minUnit === 'day') &&
-      highlightTime
-      ? scales.rows[scales.rows.length - 1].cells.map(getHoliday)
-      : null;
-  }, [scales, highlightTime]);
+    if (!scales || !highlightTime) return null;
+    if (scales.minUnit !== 'hour' && scales.minUnit !== 'day') return null;
+
+    const finestRow = scales.rows[scales.rows.length - 1];
+    const finestStep = finestRow.cells.length > 1
+      ? Math.round((finestRow.cells[1].date - finestRow.cells[0].date) / (1000 * 60 * 60 * 24))
+      : 1;
+
+    // When finest scale cells are individual days (step=1), use them directly
+    if (finestStep <= 1) {
+      return finestRow.cells.map(getHoliday);
+    }
+
+    // When scale cells span multiple days (e.g. week-level with step=7),
+    // generate individual day-level holiday cells using cellWidth (px per day).
+    // The CellGrid still renders day-level grid lines, so holidays should match.
+    const dayWidth = cellWidth;
+    const timelineStart = new Date(scales.start);
+    const totalDays = Math.ceil(scales.width / dayWidth);
+    const result = [];
+    for (let i = 0; i < totalDays; i++) {
+      const date = new Date(timelineStart);
+      date.setDate(date.getDate() + i);
+      const style = highlightTime(date, 'day');
+      if (style) {
+        result.push({ css: style, left: i * dayWidth, width: dayWidth });
+      } else {
+        result.push(null);
+      }
+    }
+    return result;
+  }, [scales, highlightTime, cellWidth]);
+
+  // Compute marker pixel positions from raw markers + _scales
+  // SVAR v2.5 moved _markers processing to pro-only, so we calculate it ourselves.
+  const markers = useMemo(() => {
+    if (!rawMarkers || !rawMarkers.length || !scales || !scales.start) return null;
+
+    const lengthUnit = api?.getState?.().lengthUnit || 'day';
+    const unitWidth = scales.lengthUnitWidth || cellWidth;
+    const timelineStart = new Date(scales.start);
+
+    return rawMarkers.map((m) => {
+      const markerDate = m.start instanceof Date ? m.start : new Date(m.start);
+      let unitsDiff;
+      switch (lengthUnit) {
+        case 'hour': {
+          unitsDiff = (markerDate - timelineStart) / (1000 * 60 * 60);
+          break;
+        }
+        case 'day':
+        default: {
+          unitsDiff = (markerDate - timelineStart) / (1000 * 60 * 60 * 24);
+          break;
+        }
+      }
+      return {
+        left: unitsDiff * unitWidth,
+        css: m.css || '',
+        text: m.text || '',
+      };
+    });
+  }, [rawMarkers, scales, cellWidth, api]);
 
   function handleHotkey(ev) {
     ev.eventSource = 'chart';
@@ -288,7 +345,7 @@ function Chart(props) {
                   className={'wx-mR7v2Xag ' + holiday.css}
                   style={{
                     width: `${holiday.width}px`,
-                    left: `${i * holiday.width}px`,
+                    left: `${holiday.left != null ? holiday.left : i * holiday.width}px`,
                   }}
                 />
               ) : null,

@@ -62,6 +62,26 @@
   color: var(--wx-gitlab-control-value);
 }
 
+.zoom-indicator {
+  font-weight: 600;
+  color: var(--wx-gitlab-control-value);
+}
+
+.btn-zoom-reset {
+  padding: 1px 6px;
+  border: 1px solid var(--wx-gitlab-button-border);
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--wx-gitlab-button-background);
+  color: var(--wx-gitlab-button-text);
+  cursor: pointer;
+}
+
+.btn-zoom-reset:hover {
+  border-color: var(--wx-gitlab-button-hover-text);
+  background: var(--wx-gitlab-button-hover-background, #f0f0f0);
+}
+
 .unit-select {
   padding: 2px 6px;
   border: 1px solid var(--wx-gitlab-button-border);
@@ -533,6 +553,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  outline: none; /* Suppress focus ring from tabIndex used for Ctrl+Wheel zoom */
 }
 
 /* Make task bars semi-transparent to see grid and holidays */

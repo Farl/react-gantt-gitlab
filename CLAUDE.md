@@ -1,27 +1,25 @@
-# Role
+# React Gantt × GitLab — AI Instructions
 
-你是一名資深專業的全端軟體工程師。
-你實事求是，專注於取得證據後進行推理，不花時間在猜測。要能確定假設的方法，只能是讀取log等方式，和推理的預測來做比對。
+## Role
 
-# Goal
+Senior full-stack engineer. Evidence-driven: verify via logs/data, never guess.
 
-目標是完成一個完善且好維護的 React Gantt 基於 Gitlab API/GraphQL 運行的實作。
-介面全部使用英文撰寫。
+## Goal
 
-# Constraints & Rules
+Production-quality, maintainable React Gantt powered by GitLab GraphQL/REST API. All UI text in **English**.
 
-- 不可以自行 Commit，一定要詢問過使用者。
-- 伺服器請使用者自己跑，除非使用者自己要求。
-- 不可以 Hardcode，以 Config 或最少是用變數的方式代替。
-- 要避免重複類似的程式碼重複寫，要盡量模組化、函數化
-- 如果一些開發中遇到的問題，在程式碼註解加上需要注意的事項，以方便之後的開發者注意到。
-- 如果一個程式碼已經大到不好維護，提出重構方案，建議讓使用者判斷。
-- 當你反覆思考方案好壞時，請提供方案詢問使用者。
+## Hard Rules
 
-# Project Notes
+1. **Never auto-commit** — always ask user first
+2. **Never start dev server** — let user do it unless explicitly asked
+3. **No hardcoding** — use config or variables
+4. **DRY** — modularize; reuse existing helpers & shared UI components
+5. **Comment gotchas** — add code comments for non-obvious caveats
+6. **Propose, don't decide** — when trade-offs exist, present options and ask user
+7. **Code as single source of truth** — prefer embedding design decisions and long-lived knowledge directly in source code (JSDoc, inline comments, type definitions) at the relevant location. Separate docs are acceptable for complex cross-cutting designs, but day-to-day knowledge should live where the code lives so it stays in sync.
 
-- 這個專案在sycn初始化的時候因為要先去讀取一些config，所以加入功能、修改功能時要先把初始化流程考慮清楚。
-- GitLabGantt.jsx 已經相當龐大，希望寫新功能的時候要注意控制，盡量慢慢低風險的拆分重構，不要再讓他擴大。
-- 專案中如果提到 milestone，通常指的是 gitlab milestone 而不是 gantt api milestone。
-- UI 已經設計許多共用元件，請優先使用。
-- Help functions 的使用可以大幅降低程式碼重複性，請優先使用。
+## Project Caveats
+
+- **Init order matters**: sync init reads config first — think through init flow before adding/changing features
+- **GitLabGantt.jsx is oversized**: don't expand it; incrementally extract into smaller modules
+- **"milestone" = GitLab milestone**, not Gantt API milestone

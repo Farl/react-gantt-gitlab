@@ -7,10 +7,10 @@ function GanttHolidays({ skinSettings }) {
 
   const scales = useMemo(
     () => [
-      { unit: 'year', step: 1, format: 'yyyy' },
-      { unit: 'month', step: 2, format: 'MMMM yyy' },
-      { unit: 'week', step: 1, format: 'wo' },
-      { unit: 'day', step: 1, format: 'd, EEEE' /* , css: dayStyle */ }
+      { unit: 'year', step: 1, format: '%Y' },
+      { unit: 'month', step: 2, format: '%F %Y' },
+      { unit: 'week', step: 1, format: '%w' },
+      { unit: 'day', step: 1, format: '%j, %l' /* , css: dayStyle */ }
     ],
     [],
   );

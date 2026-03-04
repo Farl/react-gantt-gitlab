@@ -10,55 +10,50 @@ import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
 import './WorkloadChart.css';
 import './shared/TodayMarker.css';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Get the multiplier to convert day-based positions to the given lengthUnit.
+ */
+function getUnitMultiplier(lengthUnit) {
+  switch (lengthUnit) {
+    case 'hour': return 24;
+    case 'week': return 1 / 7;
+    case 'month': return 1 / 30;
+    case 'quarter': return 1 / 90;
+    default: return 1;
+  }
+}
+
+/**
+ * Resolve a task's effective end date.
+ * Tasks without an explicit end date get a fallback duration:
+ * - 7 days if using created date as start (no _gitlab.startDate)
+ * - 1 day otherwise
+ */
+function resolveTaskEnd(task) {
+  const taskStart = task.start instanceof Date ? task.start : new Date(task.start);
+  if (task.end) {
+    const end = task.end instanceof Date ? task.end : new Date(task.end);
+    return end >= taskStart ? end : new Date(taskStart.getTime() + MS_PER_DAY);
+  }
+  const fallbackDays = task._gitlab?.startDate ? 1 : 7;
+  return new Date(taskStart.getTime() + fallbackDays * MS_PER_DAY);
+}
+
 /**
  * Calculate task position and width based on dates and scale
  */
 function calculateTaskPosition(task, startDate, cellWidth, lengthUnit) {
   const taskStart = task.start instanceof Date ? task.start : new Date(task.start);
+  const taskEnd = resolveTaskEnd(task);
 
-  // Determine task end date with proper fallback for tasks without end dates
-  let taskEnd;
-  if (task.end) {
-    taskEnd = task.end instanceof Date ? task.end : new Date(task.end);
-  } else {
-    // If no end date, check if this is using created date as start
-    // (tasks without startDate use createdAt, and should have a default 7-day duration)
-    const isUsingCreatedDate = !task._gitlab?.startDate;
-    if (isUsingCreatedDate) {
-      // Default to 7 days for tasks using created date
-      taskEnd = new Date(taskStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-    } else {
-      // For tasks with explicit start but no end, use 1 day duration
-      taskEnd = new Date(taskStart.getTime() + 24 * 60 * 60 * 1000);
-    }
-  }
+  const startDiff = (taskStart - startDate) / MS_PER_DAY;
+  const duration = Math.max(1, (taskEnd - taskStart) / MS_PER_DAY);
 
-  // Calculate days from chart start
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const startDiff = (taskStart - startDate) / msPerDay;
-  const duration = Math.max(1, (taskEnd - taskStart) / msPerDay);
-
-  // Adjust for different length units
-  let unitMultiplier = 1;
-  switch (lengthUnit) {
-    case 'hour':
-      unitMultiplier = 24; // 24 cells per day
-      break;
-    case 'week':
-      unitMultiplier = 1 / 7;
-      break;
-    case 'month':
-      unitMultiplier = 1 / 30;
-      break;
-    case 'quarter':
-      unitMultiplier = 1 / 90;
-      break;
-    default:
-      unitMultiplier = 1;
-  }
-
-  const x = startDiff * cellWidth * unitMultiplier;
-  const width = Math.max(cellWidth * 0.5, duration * cellWidth * unitMultiplier);
+  const m = getUnitMultiplier(lengthUnit);
+  const x = startDiff * cellWidth * m;
+  const width = Math.max(cellWidth * 0.5, duration * cellWidth * m);
 
   return { x, width };
 }
@@ -81,25 +76,7 @@ function assignTasksToRows(tasks) {
 
   for (const task of sorted) {
     const taskStart = task.start instanceof Date ? task.start : new Date(task.start);
-
-    // Determine task end date with proper fallback for tasks without end dates
-    let taskEnd;
-    if (task.end) {
-      taskEnd = task.end instanceof Date ? task.end : new Date(task.end);
-    } else {
-      // If no end date, check if this is using created date as start
-      // (tasks without startDate use createdAt, and should have a default 7-day duration)
-      const isUsingCreatedDate = !task._gitlab?.startDate;
-      if (isUsingCreatedDate) {
-        // Default to 7 days for tasks using created date
-        taskEnd = new Date(taskStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-      } else {
-        // For tasks with explicit start but no end, use 1 day duration
-        taskEnd = new Date(taskStart.getTime() + 24 * 60 * 60 * 1000);
-      }
-    }
-
-    const effectiveEnd = taskEnd >= taskStart ? taskEnd : new Date(taskStart.getTime() + 86400000);
+    const effectiveEnd = resolveTaskEnd(task);
 
     // Find first row where this task doesn't overlap
     let rowIndex = -1;
@@ -221,6 +198,7 @@ export function WorkloadChart({
   onTaskDrag,
   onGroupChange,
   showOthers = false,
+  scaleLevelName = 'day',
 }) {
   const containerRef = useRef(null);
   const chartScrollRef = useRef(null);
@@ -312,19 +290,9 @@ export function WorkloadChart({
 
   // Calculate chart dimensions
   const chartDimensions = useMemo(() => {
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const totalDays = Math.ceil((endDate - startDate) / msPerDay);
-
-    let unitMultiplier = 1;
-    switch (lengthUnit) {
-      case 'hour': unitMultiplier = 24; break;
-      case 'week': unitMultiplier = 1 / 7; break;
-      case 'month': unitMultiplier = 1 / 30; break;
-      case 'quarter': unitMultiplier = 1 / 90; break;
-      default: unitMultiplier = 1;
-    }
-
-    const width = totalDays * cellWidth * unitMultiplier;
+    const totalDays = Math.ceil((endDate - startDate) / MS_PER_DAY);
+    const m = getUnitMultiplier(lengthUnit);
+    const width = totalDays * cellWidth * m;
 
     // Calculate total height (task rows + spacing between groups)
     let totalRows = 0;
@@ -381,19 +349,10 @@ export function WorkloadChart({
 
     const handleMouseMove = (e) => {
       const dx = e.clientX - dragState.startX;
-      const msPerDay = 24 * 60 * 60 * 1000;
+      const m = getUnitMultiplier(lengthUnit);
 
-      let unitMultiplier = 1;
-      switch (lengthUnit) {
-        case 'hour': unitMultiplier = 24; break;
-        case 'week': unitMultiplier = 1 / 7; break;
-        case 'month': unitMultiplier = 1 / 30; break;
-        case 'quarter': unitMultiplier = 1 / 90; break;
-        default: unitMultiplier = 1;
-      }
-
-      const daysDelta = Math.round(dx / (cellWidth * unitMultiplier));
-      const msDelta = daysDelta * msPerDay;
+      const daysDelta = Math.round(dx / (cellWidth * m));
+      const msDelta = daysDelta * MS_PER_DAY;
 
       let newStart = dragState.originalStart;
       let newEnd = dragState.originalEnd;
@@ -422,12 +381,12 @@ export function WorkloadChart({
       } else if (dragState.mode === 'start') {
         newStart = new Date(dragState.originalStart.getTime() + msDelta);
         if (newStart >= newEnd) {
-          newStart = new Date(newEnd.getTime() - msPerDay);
+          newStart = new Date(newEnd.getTime() - MS_PER_DAY);
         }
       } else if (dragState.mode === 'end') {
         newEnd = new Date(dragState.originalEnd.getTime() + msDelta);
         if (newEnd <= newStart) {
-          newEnd = new Date(newStart.getTime() + msPerDay);
+          newEnd = new Date(newStart.getTime() + MS_PER_DAY);
         }
       }
 
@@ -552,6 +511,7 @@ export function WorkloadChart({
         style={{
           left: `${x}px`,
           width: `${width}px`,
+          height: `${Math.max(16, cellHeight - 14)}px`,
           backgroundColor: barColor,
         }}
         onMouseDown={(e) => handleTaskMouseDown(e, task, group)}
@@ -565,10 +525,10 @@ export function WorkloadChart({
     );
   };
 
-  // Note: renderedContent is no longer used - sidebar and chart are now synced separately
-
-  // Generate time scale with months
-  const { timeScaleCells, monthHeaders } = useMemo(() => {
+  // Generate time scale cells and multi-level header data.
+  // Day-level cells are always computed (for bar positioning accuracy).
+  // Additional headers (week, year, quarter) are derived for adaptive scale display.
+  const { timeScaleCells, monthHeaders, weekHeaders, yearHeaders, quarterHeaders } = useMemo(() => {
     const cells = [];
     const months = [];
     const current = new Date(startDate);
@@ -588,7 +548,6 @@ export function WorkloadChart({
           const monthDate = new Date(cells[monthStartIdx].date);
           const isJanuary = monthDate.getMonth() === 0;
           const year = monthDate.getFullYear();
-          // Show year on January or if it's the first month and year changed
           const showYear = isJanuary || (months.length === 0 && year !== lastYear);
           months.push({
             key: currentMonth,
@@ -629,23 +588,104 @@ export function WorkloadChart({
       });
     }
 
-    return { timeScaleCells: cells, monthHeaders: months };
+    // --- Build week headers (7-day chunks from timeline start) ---
+    // Matches SVAR Gantt's { unit: 'day', step: 7 } behavior:
+    // groups every 7 days starting from the timeline start date,
+    // NOT aligned to any particular weekday (ISO Monday etc.).
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      const chunkEnd = Math.min(i + 7, cells.length);
+      const firstCell = cells[i].date;
+      const lastCell = cells[chunkEnd - 1].date;
+      weeks.push({
+        key: `week-${i}`,
+        label: `${firstCell.getDate()}-${lastCell.getDate()}`,
+        startIdx: i,
+        days: chunkEnd - i,
+      });
+    }
+
+    // --- Build year headers ---
+    const years = [];
+    let yearStartIdx = 0;
+    let currentYearKey = null;
+    for (let i = 0; i < cells.length; i++) {
+      const yearKey = String(cells[i].date.getFullYear());
+      if (yearKey !== currentYearKey) {
+        if (currentYearKey !== null) {
+          years.push({
+            key: currentYearKey,
+            label: currentYearKey,
+            startIdx: yearStartIdx,
+            days: i - yearStartIdx,
+          });
+        }
+        currentYearKey = yearKey;
+        yearStartIdx = i;
+      }
+    }
+    if (currentYearKey !== null && cells.length > yearStartIdx) {
+      years.push({
+        key: currentYearKey,
+        label: currentYearKey,
+        startIdx: yearStartIdx,
+        days: cells.length - yearStartIdx,
+      });
+    }
+
+    // --- Build quarter headers ---
+    const quarters = [];
+    let qStartIdx = 0;
+    let currentQKey = null;
+    for (let i = 0; i < cells.length; i++) {
+      const d = cells[i].date;
+      const q = Math.floor(d.getMonth() / 3) + 1;
+      const qKey = `${d.getFullYear()}-Q${q}`;
+      if (qKey !== currentQKey) {
+        if (currentQKey !== null) {
+          quarters.push({
+            key: currentQKey,
+            label: `Q${currentQKey.split('-Q')[1]}`,
+            startIdx: qStartIdx,
+            days: i - qStartIdx,
+          });
+        }
+        currentQKey = qKey;
+        qStartIdx = i;
+      }
+    }
+    if (currentQKey !== null && cells.length > qStartIdx) {
+      quarters.push({
+        key: currentQKey,
+        label: `Q${currentQKey.split('-Q')[1]}`,
+        startIdx: qStartIdx,
+        days: cells.length - qStartIdx,
+      });
+    }
+
+    return {
+      timeScaleCells: cells,
+      monthHeaders: months,
+      weekHeaders: weeks,
+      yearHeaders: years,
+      quarterHeaders: quarters,
+    };
   }, [startDate, endDate, highlightTime]);
 
   // Refs for syncing scroll (must be declared before any conditional returns)
-  const timeScaleMonthRef = useRef(null);
-  const timeScaleDayRef = useRef(null);
+  const timeScaleTopRef = useRef(null);
+  const timeScaleBottomRef = useRef(null);
   const sidebarRef = useRef(null);
   // Note: chartScrollRef is declared earlier in the component
 
   // Handle chart scroll - sync with time scale and sidebar
   const handleChartScroll = useCallback((e) => {
     // Sync time scale horizontal scrolls
-    if (timeScaleMonthRef.current) {
-      timeScaleMonthRef.current.scrollLeft = e.target.scrollLeft;
+    if (timeScaleTopRef.current) {
+      timeScaleTopRef.current.scrollLeft = e.target.scrollLeft;
     }
-    if (timeScaleDayRef.current) {
-      timeScaleDayRef.current.scrollLeft = e.target.scrollLeft;
+    if (timeScaleBottomRef.current) {
+      timeScaleBottomRef.current.scrollLeft = e.target.scrollLeft;
     }
     // Sync sidebar vertical scroll
     if (sidebarRef.current) {
@@ -666,29 +706,18 @@ export function WorkloadChart({
     today.setHours(0, 0, 0, 0);
 
     if (today >= startDate && today <= endDate && chartScrollRef.current) {
-      const msPerDay = 24 * 60 * 60 * 1000;
-      const daysDiff = (today - startDate) / msPerDay;
-
-      let unitMultiplier = 1;
-      switch (lengthUnit) {
-        case 'hour': unitMultiplier = 24; break;
-        case 'week': unitMultiplier = 1 / 7; break;
-        case 'month': unitMultiplier = 1 / 30; break;
-        case 'quarter': unitMultiplier = 1 / 90; break;
-        default: unitMultiplier = 1;
-      }
-
-      const todayPosition = daysDiff * cellWidth * unitMultiplier;
+      const daysDiff = (today - startDate) / MS_PER_DAY;
+      const todayPosition = daysDiff * cellWidth * getUnitMultiplier(lengthUnit);
       // Scroll to position today at the left edge of the view
       const scrollLeft = Math.max(0, todayPosition);
 
       chartScrollRef.current.scrollLeft = scrollLeft;
       // Also sync time scale
-      if (timeScaleMonthRef.current) {
-        timeScaleMonthRef.current.scrollLeft = scrollLeft;
+      if (timeScaleTopRef.current) {
+        timeScaleTopRef.current.scrollLeft = scrollLeft;
       }
-      if (timeScaleDayRef.current) {
-        timeScaleDayRef.current.scrollLeft = scrollLeft;
+      if (timeScaleBottomRef.current) {
+        timeScaleBottomRef.current.scrollLeft = scrollLeft;
       }
     }
   }, [startDate, endDate, cellWidth, lengthUnit]); // Run once when dates/scale change
@@ -705,39 +734,68 @@ export function WorkloadChart({
 
   return (
     <div className="workload-chart-container" ref={containerRef}>
-      {/* Time scale header */}
+      {/* Time scale header — adapts to scaleLevelName (day/week/month/quarter) */}
       <div className="workload-time-scale">
-        {/* Month row */}
+        {/* Top row */}
         <div className="time-scale-row">
-          <div className="time-scale-spacer">Year / Month</div>
-          <div className="time-scale-scroll" ref={timeScaleMonthRef}>
+          <div className="time-scale-spacer">
+            {scaleLevelName === 'day' ? 'Year / Month'
+              : scaleLevelName === 'week' ? 'Month'
+              : 'Year'}
+          </div>
+          <div className="time-scale-scroll" ref={timeScaleTopRef}>
             <div className="time-scale-months" style={{ width: `${chartDimensions.width}px` }}>
-              {monthHeaders.map((month) => (
+              {(scaleLevelName === 'day' || scaleLevelName === 'week'
+                ? monthHeaders
+                : yearHeaders
+              ).map((header) => (
                 <div
-                  key={month.key}
+                  key={header.key}
                   className="time-scale-month"
-                  style={{ width: `${month.days * cellWidth}px` }}
+                  style={{ width: `${header.days * cellWidth}px` }}
                 >
-                  {month.label}
+                  {header.label}
                 </div>
               ))}
             </div>
           </div>
         </div>
-        {/* Day row */}
+        {/* Bottom row */}
         <div className="time-scale-row">
-          <div className="time-scale-spacer">Day</div>
-          <div className="time-scale-scroll" ref={timeScaleDayRef}>
+          <div className="time-scale-spacer">
+            {scaleLevelName === 'day' ? 'Day'
+              : scaleLevelName === 'week' ? 'Week'
+              : scaleLevelName === 'month' ? 'Month'
+              : 'Quarter'}
+          </div>
+          <div className="time-scale-scroll" ref={timeScaleBottomRef}>
             <div className="time-scale-content" style={{ width: `${chartDimensions.width}px` }}>
-              {timeScaleCells.map((cell, idx) => (
-                <div
-                  key={idx}
-                  className={`time-scale-cell ${cell.isWeekend ? 'weekend' : ''}`}
-                  style={{ width: `${cellWidth}px` }}
-                >
-                  {cell.label}
-                </div>
-              ))}
+              {scaleLevelName === 'day' ? (
+                // Day-level: individual day cells
+                timeScaleCells.map((cell, idx) => (
+                  <div
+                    key={idx}
+                    className={`time-scale-cell ${cell.isWeekend ? 'weekend' : ''}`}
+                    style={{ width: `${cellWidth}px` }}
+                  >
+                    {cell.label}
+                  </div>
+                ))
+              ) : (
+                // Week / Month / Quarter: grouped cells
+                (scaleLevelName === 'week' ? weekHeaders
+                  : scaleLevelName === 'month' ? monthHeaders
+                  : quarterHeaders
+                ).map((header) => (
+                  <div
+                    key={header.key}
+                    className="time-scale-cell time-scale-grouped-cell"
+                    style={{ width: `${header.days * cellWidth}px` }}
+                  >
+                    {header.label}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -801,19 +859,38 @@ export function WorkloadChart({
               height: `${chartDimensions.height}px`,
             }}
           >
-            {/* Grid background */}
-            <div className="workload-grid-bg">
-              {timeScaleCells.map((cell, idx) => (
-                <div
-                  key={idx}
-                  className={`grid-column ${cell.isWeekend ? 'weekend' : ''}`}
-                  style={{
-                    left: `${idx * cellWidth}px`,
-                    width: `${cellWidth}px`,
-                    height: `${chartDimensions.height}px`,
-                  }}
-                />
-              ))}
+            {/* Grid background — at coarser scale levels, only boundary lines are visible */}
+            <div className={`workload-grid-bg scale-${scaleLevelName}`}>
+              {timeScaleCells.map((cell, idx) => {
+                // Determine if this cell is a grid-line boundary at the current scale level.
+                // Since grid lines use border-right, the boundary must be on the LAST day
+                // before each header group starts, so the right edge aligns with the header.
+                const nextCell = timeScaleCells[idx + 1];
+                let isBoundary = true; // default: every cell is a boundary (day level)
+                if (scaleLevelName === 'week') {
+                  // Last day of each 7-day chunk
+                  isBoundary = idx % 7 === 6;
+                } else if (scaleLevelName === 'month') {
+                  // Last day before the 1st of next month
+                  isBoundary = nextCell ? nextCell.date.getDate() === 1 : true;
+                } else if (scaleLevelName === 'quarter') {
+                  // Last day before the 1st of a quarter-start month (Jan/Apr/Jul/Oct)
+                  isBoundary = nextCell
+                    ? (nextCell.date.getDate() === 1 && nextCell.date.getMonth() % 3 === 0)
+                    : true;
+                }
+                return (
+                  <div
+                    key={idx}
+                    className={`grid-column ${cell.isWeekend ? 'weekend' : ''} ${isBoundary ? 'grid-boundary' : 'grid-minor'}`}
+                    style={{
+                      left: `${idx * cellWidth}px`,
+                      width: `${cellWidth}px`,
+                      height: `${chartDimensions.height}px`,
+                    }}
+                  />
+                );
+              })}
             </div>
 
             {/* Task bars */}
@@ -849,8 +926,7 @@ export function WorkloadChart({
               const today = new Date();
               today.setHours(0, 0, 0, 0);
               if (today >= startDate && today <= endDate) {
-                const msPerDay = 24 * 60 * 60 * 1000;
-                const daysDiff = (today - startDate) / msPerDay;
+                const daysDiff = (today - startDate) / MS_PER_DAY;
                 return (
                   <div
                     className="today-marker"

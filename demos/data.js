@@ -14,16 +14,16 @@ export const dayStyle = (a) => {
 };
 
 export const complexScales = [
-  { unit: 'year', step: 1, format: 'yyyy' },
-  { unit: 'month', step: 2, format: 'MMMM yyy' },
-  { unit: 'week', step: 1, format: 'w' },
-  { unit: 'day', step: 1, format: 'd', css: dayStyle },
+  { unit: 'year', step: 1, format: '%Y' },
+  { unit: 'month', step: 2, format: '%F %Y' },
+  { unit: 'week', step: 1, format: '%w' },
+  { unit: 'day', step: 1, format: '%j', css: dayStyle },
 ];
 
 export const bigScales = [
-  { unit: 'year', step: 1, format: 'yyyy' },
-  { unit: 'quarter', step: 1, format: 'QQQQ yyyy' },
-  { unit: 'month', step: 1, format: 'MMMM yyy' },
+  { unit: 'year', step: 1, format: '%Y' },
+  { unit: 'quarter', step: 1, format: '%Q %Y' },
+  { unit: 'month', step: 1, format: '%F %Y' },
   { unit: 'week', step: 1, format: weekScaleAltTemplate },
 ];
 
@@ -375,8 +375,8 @@ const links = [
 ];
 
 const scales = [
-  { unit: 'month', step: 1, format: 'MMMM yyy' },
-  { unit: 'day', step: 1, format: 'd', css: dayStyle },
+  { unit: 'month', step: 1, format: '%F %Y' },
+  { unit: 'day', step: 1, format: '%j', css: dayStyle },
 ];
 
 export function getGeneratedData(prefix, maxSize, maxYears) {
@@ -525,8 +525,8 @@ const linksHour = [
 ];
 
 const scalesHour = [
-  { unit: 'day', step: 1, format: 'MMM d' },
-  { unit: 'hour', step: 1, format: 'HH:mm' },
+  { unit: 'day', step: 1, format: '%M %j' },
+  { unit: 'hour', step: 1, format: '%H:%i' },
 ];
 
 export const users = [
@@ -581,57 +581,60 @@ export function getTypedData() {
 function hoursTemplate(a, b) {
   return `${format(a, 'HH:mm')} - ${format(b, 'HH:mm')}`;
 }
+// Zoom config uses %-style format strings (processed by prepareScales in Gantt.jsx).
+// Format reference: %Y=year, %Q=quarter, %F=month full name, %M=month short,
+// %W=ISO week, %j=day of month, %H=hours 24h, %i=minutes
 export const zoomConfig = {
   level: 3,
   levels: [
     {
       minCellWidth: 200,
       maxCellWidth: 400,
-      scales: [{ unit: 'year', step: 1, format: 'yyyy' }],
+      scales: [{ unit: 'year', step: 1, format: '%Y' }],
     },
     {
       minCellWidth: 150,
       maxCellWidth: 400,
       scales: [
-        { unit: 'year', step: 1, format: 'yyyy' },
-        { unit: 'quarter', step: 1, format: 'QQQQ' },
+        { unit: 'year', step: 1, format: '%Y' },
+        { unit: 'quarter', step: 1, format: '%Q' },
       ],
     },
     {
       minCellWidth: 250,
       maxCellWidth: 350,
       scales: [
-        { unit: 'quarter', step: 1, format: 'QQQQ' },
-        { unit: 'month', step: 1, format: 'MMMM yyy' },
+        { unit: 'quarter', step: 1, format: '%Q' },
+        { unit: 'month', step: 1, format: '%F %Y' },
       ],
     },
     {
       minCellWidth: 100,
       scales: [
-        { unit: 'month', step: 1, format: 'MMMM yyy' },
-        { unit: 'week', step: 1, format: "'week' w" },
+        { unit: 'month', step: 1, format: '%F %Y' },
+        { unit: 'week', step: 1, format: 'Week %W' },
       ],
     },
     {
       maxCellWidth: 200,
       scales: [
-        { unit: 'month', step: 1, format: 'MMMM yyy' },
-        { unit: 'day', step: 1, format: 'd', css: dayStyle },
+        { unit: 'month', step: 1, format: '%F %Y' },
+        { unit: 'day', step: 1, format: '%j', css: dayStyle },
       ],
     },
     {
       minCellWidth: 25,
       maxCellWidth: 100,
       scales: [
-        { unit: 'day', step: 1, format: 'MMM d', css: dayStyle },
+        { unit: 'day', step: 1, format: '%M %j', css: dayStyle },
         { unit: 'hour', step: 6, format: hoursTemplate },
       ],
     },
     {
       maxCellWidth: 120,
       scales: [
-        { unit: 'day', step: 1, format: 'MMM d', css: dayStyle },
-        { unit: 'hour', step: 1, format: 'HH:mm' },
+        { unit: 'day', step: 1, format: '%M %j', css: dayStyle },
+        { unit: 'hour', step: 1, format: '%H:%i' },
       ],
     },
   ],

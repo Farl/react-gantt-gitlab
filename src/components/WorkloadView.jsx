@@ -15,6 +15,8 @@ import { useFilterPresets } from '../hooks/useFilterPresets.ts';
 import { useGitLabHolidays } from '../hooks/useGitLabHolidays.ts';
 import { useDateRangePreset } from '../hooks/useDateRangePreset.ts';
 import { useHighlightTime } from '../hooks/useHighlightTime.ts';
+import { useCtrlWheelZoom } from '../hooks/useCtrlWheelZoom.ts';
+import { useAdaptiveScales } from '../hooks/useAdaptiveScales.ts';
 import { GitLabFilters, toGitLabServerFilters } from '../utils/GitLabFilters.ts';
 import {
   getUniqueAssignees,
@@ -71,6 +73,16 @@ export function WorkloadView({ initialConfigId }) {
   const [canEdit, setCanEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showViewOptions, setShowViewOptions] = useState(false);
+
+  // Ctrl+Wheel visual zoom (scales cellWidth without changing time granularity)
+  // Uses callback ref so the listener attaches even when the container renders conditionally
+  const { zoomedCellWidth, zoomMultiplier, resetZoom, zoomLabel, setContainerRef: setWorkloadWrapperRef } = useCtrlWheelZoom({
+    baseCellWidth: effectiveCellWidth,
+    storagePrefix: 'workload',
+  });
+
+  // Adaptive scales: header granularity changes based on zoom level (Wrike-style)
+  const { levelName: scaleLevelName } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
 
   // Show "Others" category for uncategorized tasks
   const [showOthers, setShowOthers] = useState(() => {
@@ -497,9 +509,17 @@ export function WorkloadView({ initialConfigId }) {
               disabled={lengthUnit !== 'day'}
             />
             <span className="control-value">
-              {lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}
+              {zoomMultiplier !== 1 ? zoomedCellWidth : (lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth)}
             </span>
           </label>
+          {zoomMultiplier !== 1 && (
+            <label className="control-label zoom-indicator">
+              Zoom: {zoomLabel}
+              <button onClick={resetZoom} className="btn-zoom-reset" title="Reset zoom (Ctrl+0)">
+                Reset
+              </button>
+            </label>
+          )}
           <label className="control-label">
             Height:
             <input
@@ -578,7 +598,7 @@ export function WorkloadView({ initialConfigId }) {
           onLabelsChange={setSelectedLabels}
         />
 
-        <div className="workload-gantt-wrapper">
+        <div className="workload-gantt-wrapper" ref={setWorkloadWrapperRef} tabIndex={-1}>
           {syncState.isLoading || filteredTasks.length === 0 ? (
             <div className="loading-message">
               <p>{syncState.isLoading ? 'Loading GitLab data...' : 'No tasks match the current filters.'}</p>
@@ -594,16 +614,17 @@ export function WorkloadView({ initialConfigId }) {
             </div>
           ) : (
             <WorkloadChart
-              key={`workload-${lengthUnit}-${effectiveCellWidth}`}
+              key={`workload-${lengthUnit}`}
               tasks={filteredTasks}
               selectedAssignees={selectedAssignees}
               selectedLabels={selectedLabels}
               startDate={dateRange.start}
               endDate={dateRange.end}
-              cellWidth={effectiveCellWidth}
+              cellWidth={zoomedCellWidth}
               cellHeight={cellHeight}
               lengthUnit={lengthUnit}
               highlightTime={highlightTime}
+              scaleLevelName={scaleLevelName}
               onTaskDrag={handleTaskDrag}
               onGroupChange={handleGroupChange}
               showOthers={showOthers}

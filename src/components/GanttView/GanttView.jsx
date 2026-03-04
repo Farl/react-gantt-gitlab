@@ -37,8 +37,10 @@ import { SaveBlueprintModal } from '../SaveBlueprintModal.jsx';
 import { ApplyBlueprintModal } from '../ApplyBlueprintModal.jsx';
 import { BlueprintManager } from '../BlueprintManager.jsx';
 import { useBlueprint } from '../../hooks/useBlueprint.ts';
+import { useCtrlWheelZoom } from '../../hooks/useCtrlWheelZoom.ts';
+import { useAdaptiveScales } from '../../hooks/useAdaptiveScales.ts';
 import { applyBlueprint as applyBlueprintService } from '../../providers/BlueprintService.ts';
-import { defaultMenuOptions, format as dateFnsFormat } from '@svar-ui/gantt-store';
+import { defaultMenuOptions } from '@svar-ui/gantt-store';
 import { ConfirmDialog } from '../shared/dialogs/ConfirmDialog';
 import { CreateItemDialog } from '../shared/dialogs/CreateItemDialog';
 import { DeleteDialog } from '../shared/dialogs/DeleteDialog';
@@ -350,6 +352,13 @@ export function GanttView({
     }
   }, [lengthUnit, cellWidth]);
 
+  // Ctrl+Wheel visual zoom (scales cellWidth without changing time granularity)
+  // Uses callback ref so the listener attaches even when the container renders conditionally
+  const { zoomedCellWidth, zoomMultiplier, resetZoom, zoomLabel, setContainerRef: setGanttChartRef } = useCtrlWheelZoom({
+    baseCellWidth: effectiveCellWidth,
+    storagePrefix: 'gantt',
+  });
+
   // Save cell width to localStorage
   useEffect(() => {
     localStorage.setItem('gantt-cell-width', cellWidth.toString());
@@ -571,46 +580,10 @@ export function GanttView({
     return GitLabFilters.calculateStats(filteredTasks);
   }, [filteredTasks]);
 
-  // Dynamic scales based on lengthUnit (lengthUnit = the smallest time unit to display)
-  // v2.5 breaking change: scale format strings are no longer processed through date-fns.
-  // String values are used literally. Must use format functions instead.
-  const fmt = useCallback((pattern) => (d) => dateFnsFormat(d, pattern), []);
-  const scales = useMemo(() => {
-    switch (lengthUnit) {
-      case 'hour':
-        return [
-          { unit: 'day', step: 1, format: fmt('MMM d') },
-          { unit: 'hour', step: 2, format: fmt('HH:mm') }, // Show every 2 hours to reduce cells
-        ];
-      case 'day':
-        return [
-          { unit: 'year', step: 1, format: fmt('yyyy') },
-          { unit: 'month', step: 1, format: fmt('MMMM') },
-          { unit: 'day', step: 1, format: fmt('d') },
-        ];
-      case 'week':
-        return [
-          { unit: 'month', step: 1, format: fmt('MMM') },
-          { unit: 'week', step: 1, format: fmt('w') },
-        ];
-      case 'month':
-        return [
-          { unit: 'year', step: 1, format: fmt('yyyy') },
-          { unit: 'month', step: 1, format: fmt('MMM') },
-        ];
-      case 'quarter':
-        return [
-          { unit: 'year', step: 1, format: fmt('yyyy') },
-          { unit: 'quarter', step: 1, format: (d) => 'Q' + (Math.floor(d.getMonth() / 3) + 1) },
-        ];
-      default:
-        return [
-          { unit: 'year', step: 1, format: fmt('yyyy') },
-          { unit: 'month', step: 1, format: fmt('MMMM') },
-          { unit: 'day', step: 1, format: fmt('d') },
-        ];
-    }
-  }, [lengthUnit, fmt]);
+  // Adaptive scales: header granularity changes based on zoom level (Wrike-style).
+  // When lengthUnit='day' and user zooms out, headers switch: day → week → month → quarter.
+  // lengthUnit itself never changes — only the visual scale headers adapt.
+  const { svarScales: scales } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
 
   // Track pending editor changes (for Save button)
   const pendingEditorChangesRef = useRef(new Map());
@@ -987,18 +960,16 @@ export function GanttView({
       const attemptScroll = (_attempt = 1) => {
         try {
           const state = ganttApi.getState();
-          const cellWidth = state.cellWidth || 40;
-          // eslint-disable-next-line no-unused-vars
-          const _scales = state._scales || [];
+          const scales = state._scales;
           const start = state.start;
 
-
-          if (start) {
-            // Calculate days from timeline start to today
+          if (start && scales) {
+            // Use lengthUnitWidth (actual px per day) instead of cellWidth,
+            // because cellWidth may be multiplied for coarser scale units (week=7x, month=30x).
+            const pxPerDay = scales.lengthUnitWidth || state.cellWidth || 40;
             const daysDiff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-            const scrollLeft = Math.max(0, daysDiff * cellWidth);
+            const scrollLeft = Math.max(0, daysDiff * pxPerDay);
 
-            // Use scroll-chart command to set scroll position
             ganttApi.exec('scroll-chart', { left: scrollLeft });
             return true;
           }
@@ -2395,8 +2366,16 @@ export function GanttView({
                 className="slider"
                 disabled={lengthUnit !== 'day'}
               />
-              <span className="control-value">{lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth}</span>
+              <span className="control-value">{zoomMultiplier !== 1 ? zoomedCellWidth : (lengthUnit === 'day' ? cellWidthDisplay : effectiveCellWidth)}</span>
             </label>
+            {zoomMultiplier !== 1 && (
+              <label className="control-label zoom-indicator">
+                Zoom: {zoomLabel}
+                <button onClick={resetZoom} className="btn-zoom-reset" title="Reset zoom (Ctrl+0)">
+                  Reset
+                </button>
+              </label>
+            )}
             <label className="control-label">
               Height:
               <input
@@ -2632,7 +2611,7 @@ export function GanttView({
           />
           <Toolbar api={api} onAddMilestone={handleAddMilestone} onOpenBlueprints={() => setShowBlueprintManager(true)} />
         </div>
-        <div className="gantt-chart-container">
+        <div className="gantt-chart-container" ref={setGanttChartRef} tabIndex={-1}>
           {syncState.isLoading ? (
             <div className="loading-message">
               <p>Loading GitLab data...</p>
@@ -2703,7 +2682,7 @@ export function GanttView({
                 try {
                   return (
                     <Gantt
-                    key={`gantt-${lengthUnit}-${effectiveCellWidth}`}
+                    key={`gantt-${lengthUnit}`}
                     init={(api) => {
                       try {
                         const result = init(api);
@@ -2724,7 +2703,7 @@ export function GanttView({
               start={dateRange.start}
               end={dateRange.end}
               columns={columns}
-              cellWidth={effectiveCellWidth}
+              cellWidth={zoomedCellWidth}
               cellHeight={cellHeight}
               highlightTime={highlightTime}
               countWorkdays={countWorkdays}

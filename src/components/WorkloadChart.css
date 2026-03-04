@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   border-bottom: var(--wx-gantt-border, 1px solid #e1e4e8);
-  background: var(--wx-background-alt, #f6f8fa);
+  background: var(--wx-background, #fff);
   flex-shrink: 0;
 }
 
@@ -61,7 +61,6 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--wx-timescale-font-color, #333);
-  background: var(--wx-background-alt, #f6f8fa);
   flex-shrink: 0;
 }
 
@@ -214,6 +213,34 @@
   background: var(--wx-gantt-holiday-background, #f0f6fa);
 }
 
+/* Adaptive grid lines: at coarser scale levels, hide minor grid lines */
+.workload-grid-bg.scale-week .grid-column.grid-minor,
+.workload-grid-bg.scale-month .grid-column.grid-minor,
+.workload-grid-bg.scale-quarter .grid-column.grid-minor {
+  border-right-color: transparent;
+}
+
+/* At coarser levels, hide weekend background to reduce visual noise */
+.workload-grid-bg.scale-month .grid-column.weekend,
+.workload-grid-bg.scale-quarter .grid-column.weekend {
+  background: transparent;
+}
+
+/* Grid boundary lines at coarser levels */
+.workload-grid-bg.scale-week .grid-column.grid-boundary,
+.workload-grid-bg.scale-month .grid-column.grid-boundary,
+.workload-grid-bg.scale-quarter .grid-column.grid-boundary {
+  border-right: var(--wx-gantt-border, 1px solid #e1e4e8);
+}
+
+/* Grouped header cells (week/month/quarter in bottom row) */
+.time-scale-grouped-cell {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Chart rows */
 .chart-group {
   position: relative;
@@ -311,73 +338,13 @@
   opacity: 0.5;
 }
 
-/* Old group row styles (kept for reference) */
-.workload-group-row,
-.workload-task-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  border-bottom: 1px solid var(--wx-border-color, #e1e4e8);
-}
-
-.workload-group-header-cell {
-  width: 200px;
-  min-width: 200px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: var(--wx-background-alt, #f6f8fa);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.workload-row-label {
-  width: 200px;
-  min-width: 200px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px 0 24px;
-  font-size: 12px;
-  color: var(--wx-color-secondary, #586069);
-}
-
-.empty-row {
-  font-style: italic;
-  opacity: 0.6;
-}
-
-.workload-row-bars {
-  flex: 1;
-  position: relative;
-}
-
-.group-icon {
-  display: flex;
-  align-items: center;
-}
-
-.group-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-count {
-  font-size: 11px;
-  font-weight: normal;
-  color: var(--wx-color-secondary, #6a737d);
-  margin-left: auto;
-}
-
 /* Dark theme - uses CSS variables from theme, requires full border definitions */
 .wx-dark-theme .workload-chart-container {
   background: var(--wx-background);
 }
 
 .wx-dark-theme .workload-time-scale {
-  background: var(--wx-background-alt);
+  background: var(--wx-background);
   border-bottom: 1px solid var(--wx-gantt-border-color);
 }
 
@@ -392,7 +359,6 @@
 
 .wx-dark-theme .time-scale-month {
   border-right: 1px solid var(--wx-gantt-border-color);
-  background: var(--wx-background-alt);
   color: var(--wx-timescale-font-color);
 }
 
@@ -426,6 +392,16 @@
   border-right: 1px solid var(--wx-gantt-border-color);
 }
 
+.wx-dark-theme .workload-grid-bg.scale-week .grid-column.grid-boundary,
+.wx-dark-theme .workload-grid-bg.scale-month .grid-column.grid-boundary,
+.wx-dark-theme .workload-grid-bg.scale-quarter .grid-column.grid-boundary {
+  border-right: 1px solid var(--wx-gantt-border-color);
+}
+
+.wx-dark-theme .time-scale-grouped-cell {
+  color: var(--wx-timescale-font-color);
+}
+
 /* Weekend grid uses same variable as Gantt - no override needed */
 
 .wx-dark-theme .chart-row {
@@ -434,27 +410,6 @@
 
 .wx-dark-theme .workload-task-bar {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* Old group row styles - dark theme */
-.wx-dark-theme .workload-group-row,
-.wx-dark-theme .workload-task-row {
-  border-bottom: 1px solid var(--wx-gantt-border-color);
-}
-
-.wx-dark-theme .workload-group-header-cell {
-  background: var(--wx-background-alt);
-  color: var(--wx-color-font);
-}
-
-.wx-dark-theme .workload-row-label {
-  color: var(--wx-color-font);
-  opacity: 0.8;
-}
-
-.wx-dark-theme .group-count {
-  color: var(--wx-color-font);
-  opacity: 0.7;
 }
 
 .wx-dark-theme .workload-chart-empty {
