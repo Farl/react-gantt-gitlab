@@ -592,7 +592,10 @@ export function GanttView({
   // Adaptive scales: header granularity changes based on zoom level (Wrike-style).
   // When lengthUnit='day' and user zooms out, headers switch: day → week → month → quarter.
   // lengthUnit itself never changes — only the visual scale headers adapt.
-  const { svarScales: scales } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
+  const { svarScales: scales, cellWidthMultiplier } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
+  // SVAR interprets cellWidth as px-per-minUnit. When adaptive scales switch
+  // to month/quarter level, we must scale up so SVAR renders correct widths.
+  const svarCellWidth = Math.round(zoomedCellWidth * cellWidthMultiplier);
 
   // Track pending editor changes (for Save button)
   const pendingEditorChangesRef = useRef(new Map());
@@ -2715,7 +2718,7 @@ export function GanttView({
               start={dateRange.start}
               end={dateRange.end}
               columns={columns}
-              cellWidth={zoomedCellWidth}
+              cellWidth={svarCellWidth}
               cellHeight={cellHeight}
               highlightTime={highlightTime}
               countWorkdays={countWorkdays}

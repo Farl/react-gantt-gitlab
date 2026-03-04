@@ -44,8 +44,12 @@ function calculateDateRange(
   // Handle custom range
   if (preset === 'custom') {
     if (customStart && customEnd) {
-      start = new Date(customStart);
-      end = new Date(customEnd);
+      const rawStart = new Date(customStart);
+      const rawEnd = new Date(customEnd);
+      // Snap to month boundaries so that month-level scale cells at the edges
+      // are never clipped to a partial month (which makes the cell too narrow).
+      start = new Date(rawStart.getFullYear(), rawStart.getMonth(), 1);
+      end = new Date(rawEnd.getFullYear(), rawEnd.getMonth() + 1, 0);
     } else {
       // Default to 6 months if custom dates not set
       start = new Date(now.getFullYear(), now.getMonth() - 3, 1);

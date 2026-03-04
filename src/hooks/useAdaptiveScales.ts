@@ -5,7 +5,7 @@
  * zoomed cell width. As the user zooms out (cellWidth shrinks), the headers
  * seamlessly switch to coarser granularity:
  *
- *   Day (≥22px) → Week (12–22px) → Month (4–12px) → Quarter (<4px)
+ *   Day (≥22px) → Week (12–22px) → Month (4–12px) → Quarter (1.5–4px) → Year (<1.5px)
  *
  * This is a purely visual change — `lengthUnit` is never modified, so bar
  * positioning accuracy stays the same.
@@ -13,7 +13,7 @@
  * Only applies when `lengthUnit='day'`. For other units the hook returns the
  * same static scales that the views already use.
  *
- * Includes a hysteresis band (2px) to prevent flickering at threshold boundaries.
+ * Includes a proportional hysteresis band (20%) to prevent flickering at threshold boundaries.
  *
  * Returns a reference-stable result: the same object is reused when the computed
  * level hasn't changed, so downstream SVAR DataStore.init() only fires on actual
@@ -40,26 +40,43 @@ export interface ScaleConfig {
 }
 
 export interface AdaptiveScaleInfo {
-  /** Numeric level 0-3 (day/week/month/quarter), or -1 for non-day units */
+  /** Numeric level 0-4 (day/week/month/quarter/year), or -1 for non-day units */
   level: number;
   /** Human-readable level name */
   levelName: string;
   /** SVAR-compatible scales array to pass to <Gantt scales={...}> */
   svarScales: ScaleConfig[];
+  /**
+   * Multiply zoomedCellWidth by this before passing to SVAR's cellWidth prop.
+   * SVAR interprets cellWidth as px-per-minUnit. Day/week levels use 'day' as
+   * minUnit so multiplier=1. Month uses ~30×, quarter ~91×, year ~365×.
+   */
+  cellWidthMultiplier: number;
 }
 
 // ---------------------------------------------------------------------------
 // Thresholds (zoomedCellWidth in px, when lengthUnit='day')
 // ---------------------------------------------------------------------------
 
-const THRESHOLDS = {
-  DAY_TO_WEEK: 22,
-  WEEK_TO_MONTH: 12,
-  MONTH_TO_QUARTER: 4,
-};
+/**
+ * Ordered thresholds: if zoomedCellWidth >= threshold, that level is used.
+ * Ordered finest-first (day → quarter). Year (level 4) is the fallback.
+ */
+const SCALE_LEVELS: Array<{ level: number; threshold: number }> = [
+  { level: 0, threshold: 22 }, // day
+  { level: 1, threshold: 12 }, // week
+  { level: 2, threshold: 4 }, // month
+  { level: 3, threshold: 1.5 }, // quarter
+  // year (level 4) is the fallback when nothing else matches
+];
 
-/** Hysteresis band — going UP (finer) requires exceeding threshold + this */
-const HYSTERESIS_PX = 2;
+/**
+ * Hysteresis band — when zooming IN (finer), zoomedCellWidth must exceed
+ * threshold + HYSTERESIS to transition. Prevents flickering at boundaries.
+ * Proportional (20% of threshold) so the band is sensible at both large
+ * thresholds (22px → +4.4) and small ones (1.5px → +0.3).
+ */
+const HYSTERESIS_RATIO = 0.2;
 
 // ---------------------------------------------------------------------------
 // Scale builders
@@ -121,6 +138,16 @@ function buildQuarterScales(): ScaleConfig[] {
   ];
 }
 
+function buildYearScales(): ScaleConfig[] {
+  return [
+    {
+      unit: 'year',
+      step: 1,
+      format: fmt('yyyy'),
+    },
+  ];
+}
+
 /** Standard ISO week scales (for when user selects "Week" from the Unit dropdown) */
 function buildIsoWeekScales(): ScaleConfig[] {
   return [
@@ -157,8 +184,16 @@ const LEVEL_BUILDERS = [
   buildWeekScales,
   buildMonthScales,
   buildQuarterScales,
+  buildYearScales,
 ];
-const LEVEL_NAMES = ['day', 'week', 'month', 'quarter'];
+const LEVEL_NAMES = ['day', 'week', 'month', 'quarter', 'year'];
+/**
+ * SVAR interprets cellWidth as px-per-minUnit. Day/week levels keep minUnit='day'
+ * so multiplier=1. Month/quarter levels have minUnit='month'/'quarter', so we must
+ * convert from px-per-day to px-per-month (~30.44) or px-per-quarter (~91.31).
+ * Year level uses 'year' as minUnit, so ~365.25× to convert px-per-day → px-per-year.
+ */
+const LEVEL_CELL_WIDTH_MULTIPLIERS = [1, 1, 30.44, 91.31, 365.25];
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -186,6 +221,7 @@ export function useAdaptiveScales(
         level: -1,
         levelName: lengthUnit,
         svarScales: getStaticScales(lengthUnit),
+        cellWidthMultiplier: 1,
       };
       cachedRef.current = result;
       cachedLevelRef.current = -1;
@@ -197,32 +233,32 @@ export function useAdaptiveScales(
     // --- Day lengthUnit: compute adaptive level with hysteresis ---
 
     const prev = prevLevelRef.current;
-    let newLevel: number;
 
-    // Downward thresholds (zooming out) vs upward thresholds (zooming in)
-    if (prev === 0) {
-      newLevel = zoomedCellWidth < THRESHOLDS.DAY_TO_WEEK ? 1 : 0;
-    } else if (prev === 1) {
-      if (zoomedCellWidth >= THRESHOLDS.DAY_TO_WEEK + HYSTERESIS_PX) {
-        newLevel = 0;
-      } else if (zoomedCellWidth < THRESHOLDS.WEEK_TO_MONTH) {
-        newLevel = 2;
-      } else {
-        newLevel = 1;
+    // Determine target level from raw thresholds.
+    // Direct computation (not stepping) so large jumps land correctly.
+    let target = SCALE_LEVELS.length; // fallback = year (highest level)
+    for (const { level, threshold } of SCALE_LEVELS) {
+      if (zoomedCellWidth >= threshold) {
+        target = level;
+        break;
       }
-    } else if (prev === 2) {
-      if (zoomedCellWidth >= THRESHOLDS.WEEK_TO_MONTH + HYSTERESIS_PX) {
-        newLevel = 1;
-      } else if (zoomedCellWidth < THRESHOLDS.MONTH_TO_QUARTER) {
-        newLevel = 3;
-      } else {
-        newLevel = 2;
-      }
-    } else {
-      // prev === 3
-      newLevel =
-        zoomedCellWidth >= THRESHOLDS.MONTH_TO_QUARTER + HYSTERESIS_PX ? 2 : 3;
     }
+
+    // Hysteresis: when zooming IN (finer, target < prev), require exceeding
+    // threshold + proportional band to prevent flickering at boundaries.
+    if (target < prev) {
+      for (const { level, threshold } of SCALE_LEVELS) {
+        if (level <= target) continue; // only check boundaries we'd cross
+        if (
+          prev >= level &&
+          zoomedCellWidth < threshold * (1 + HYSTERESIS_RATIO)
+        ) {
+          target = level;
+        }
+      }
+    }
+
+    const newLevel = target;
 
     prevLevelRef.current = newLevel;
 
@@ -239,6 +275,7 @@ export function useAdaptiveScales(
       level: newLevel,
       levelName: LEVEL_NAMES[newLevel],
       svarScales: LEVEL_BUILDERS[newLevel](),
+      cellWidthMultiplier: LEVEL_CELL_WIDTH_MULTIPLIERS[newLevel],
     };
 
     cachedRef.current = result;

@@ -44,18 +44,18 @@ function getLabelOffset(cellWidth) {
  * Parent task baseline 括號組件
  * 形成向下包覆子任務的形狀：/────────\
  */
-const ParentBaselineBracket = ({ task, isMilestone, cellWidth }) => {
+const ParentBaselineBracket = ({ task, isMilestone }) => {
   const { GAP, ARM_LENGTH, DROP_HEIGHT, STROKE_WIDTH } = BRACKET_CONFIG;
 
   const x = task.$x_base;
   const width = task.$w_base;
   const bracketTop = task.$y + task.$h + GAP;
 
-  // 窄寬度時等比縮小斜邊長度
-  const minWidth = cellWidth || 40;
-  const armLength = width < minWidth ? width / 2 : ARM_LENGTH;
+  // Scale arm length proportionally when bracket is too narrow for full arms.
+  // Without this, the two diagonal arms overlap and form a /\ triangle shape.
+  const armLength = width < ARM_LENGTH * 2 ? width / 2 : ARM_LENGTH;
 
-  // 點位：左下 -> 左上 -> 右上 -> 右下
+  // Points: bottom-left → top-left → top-right → bottom-right
   const points = `0,${DROP_HEIGHT} ${armLength},0 ${width - armLength},0 ${width},${DROP_HEIGHT}`;
 
   return (
@@ -673,7 +673,6 @@ function Bars(props) {
                 <ParentBaselineBracket
                   task={task}
                   isMilestone={task.type === 'milestone' || isMilestoneTask(task)}
-                  cellWidth={cellWidthValue}
                 />
               ) : (
                 // Non-parent tasks: 保持原有 bar 形式 baseline

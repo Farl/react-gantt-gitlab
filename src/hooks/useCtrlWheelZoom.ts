@@ -55,10 +55,14 @@ export interface UseCtrlWheelZoomReturn {
 }
 
 /** Zoom multiplier bounds */
-const MIN_MULTIPLIER = 0.1;
+const MIN_MULTIPLIER = 0.005;
 const MAX_MULTIPLIER = 10.0;
-/** Resulting cellWidth bounds (px) */
-const MIN_CELL_WIDTH = 8;
+/**
+ * Resulting cellWidth bounds (px-per-day when lengthUnit='day').
+ * Set to 1px to allow deep zoom-out — the adaptive scale system
+ * (useAdaptiveScales) ensures SVAR cells remain well-sized via its multiplier.
+ */
+const MIN_CELL_WIDTH = 1;
 const MAX_CELL_WIDTH = 400;
 /** Geometric scale factor per wheel tick */
 const ZOOM_FACTOR = 1.15;
