@@ -68,7 +68,11 @@ export function RedeemSessionCode({ initialGitlabUrl = '', onSuccess, onClose })
         token: fetchedPat,
       });
       if (!test.success) {
-        setError(`Connection failed: ${test.error}`);
+        // Truncate HTML-heavy errors (e.g. Cloudflare error pages) to keep UI usable
+        const msg = test.error?.length > 200
+          ? test.error.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) + '…'
+          : test.error;
+        setError(`Connection failed: ${msg}`);
         return;
       }
       const cred = gitlabCredentialManager.addSessionCredential({
@@ -177,7 +181,7 @@ export function RedeemSessionCode({ initialGitlabUrl = '', onSuccess, onClose })
         )}
 
         {error && (
-          <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '16px', maxHeight: '80px', overflowY: 'auto', wordBreak: 'break-word' }}>
             {error}
           </p>
         )}

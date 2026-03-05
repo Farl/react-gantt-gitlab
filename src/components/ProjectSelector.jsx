@@ -1654,7 +1654,7 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
         <RedeemSessionCode
           // Pre-fill from first persistent credential if available.
           // getAllCredentials() excludes session_ credentials, so credentials[0] is always a real saved credential.
-          initialGitlabUrl={credentials[0]?.gitlabUrl ?? ''}
+          initialGitlabUrl={credentials[0]?.gitlabUrl ?? import.meta.env.VITE_GITLAB_URL ?? ''}
           onSuccess={(cred) => {
             setShowRedeemCode(false);
             loadCredentials();
