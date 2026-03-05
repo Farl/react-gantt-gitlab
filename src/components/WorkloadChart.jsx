@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useMiddleMouseDrag } from '../hooks/useMiddleMouseDrag';
 import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
+import { WEEK_START_DAY, isWeekStart, isWeekEnd } from '../utils/dateUtils';
 import { LabelBadge } from './shared/LabelBadge.jsx';
 import './shared/LabelBadge.css';
 import './WorkloadChart.css';
@@ -591,20 +592,34 @@ export function WorkloadChart({
       });
     }
 
-    // --- Build week headers (7-day chunks from timeline start) ---
-    // Matches SVAR Gantt's { unit: 'day', step: 7 } behavior:
-    // groups every 7 days starting from the timeline start date,
-    // NOT aligned to any particular weekday (ISO Monday etc.).
+    // --- Build week headers aligned to WEEK_START_DAY ---
+    // Week boundaries are driven by WEEK_START_DAY from dateUtils config.
+    // The first/last groups may be partial if the range doesn't start/end on a boundary.
     const weeks = [];
-    for (let i = 0; i < cells.length; i += 7) {
-      const chunkEnd = Math.min(i + 7, cells.length);
-      const firstCell = cells[i].date;
-      const lastCell = cells[chunkEnd - 1].date;
+    let weekStartIdx = 0;
+    for (let i = 0; i < cells.length; i++) {
+      // A new week starts on WEEK_START_DAY — flush the previous group
+      if (isWeekStart(cells[i].date) && i > weekStartIdx) {
+        const firstCell = cells[weekStartIdx].date;
+        const lastCell = cells[i - 1].date;
+        weeks.push({
+          key: `week-${weekStartIdx}`,
+          label: `${firstCell.getDate()}-${lastCell.getDate()}`,
+          startIdx: weekStartIdx,
+          days: i - weekStartIdx,
+        });
+        weekStartIdx = i;
+      }
+    }
+    // Push the last (possibly partial) week
+    if (weekStartIdx < cells.length) {
+      const firstCell = cells[weekStartIdx].date;
+      const lastCell = cells[cells.length - 1].date;
       weeks.push({
-        key: `week-${i}`,
+        key: `week-${weekStartIdx}`,
         label: `${firstCell.getDate()}-${lastCell.getDate()}`,
-        startIdx: i,
-        days: chunkEnd - i,
+        startIdx: weekStartIdx,
+        days: cells.length - weekStartIdx,
       });
     }
 
@@ -875,8 +890,9 @@ export function WorkloadChart({
                 const nextCell = timeScaleCells[idx + 1];
                 let isBoundary = true; // default: every cell is a boundary (day level)
                 if (scaleLevelName === 'week') {
-                  // Last day of each 7-day chunk
-                  isBoundary = idx % 7 === 6;
+                  // The last day of the week (WEEK_END_DAY) gets the border-right,
+                  // so grid lines align with the week header boundaries.
+                  isBoundary = isWeekEnd(cell.date);
                 } else if (scaleLevelName === 'month') {
                   // Last day before the 1st of next month
                   isBoundary = nextCell ? nextCell.date.getDate() === 1 : true;

@@ -22,7 +22,7 @@ import { useSharedEditor } from '../../contexts/SharedEditorContext';
 import { SharedEditor } from '../SharedEditor/SharedEditor';
 import { useDateRangePreset } from '../../hooks/useDateRangePreset.ts';
 import { GitLabFilters } from '../../utils/GitLabFilters.ts';
-import { formatDateToLocalString, createStartDate, createEndDate } from '../../utils/dateUtils.js';
+import { formatDateToLocalString, createStartDate, createEndDate, snapToWeekStart } from '../../utils/dateUtils.js';
 import { ProjectSelector } from '../ProjectSelector.jsx';
 import { SyncButton } from '../SyncButton.jsx';
 import { FilterPanel } from '../FilterPanel.jsx';
@@ -647,10 +647,17 @@ export function GanttView({
   // Adaptive scales: header granularity changes based on zoom level (Wrike-style).
   // When lengthUnit='day' and user zooms out, headers switch: day → week → month → quarter.
   // lengthUnit itself never changes — only the visual scale headers adapt.
-  const { svarScales: scales, cellWidthMultiplier } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
+  const { svarScales: scales, cellWidthMultiplier, snapStartToWeek } = useAdaptiveScales(zoomedCellWidth, lengthUnit);
   // SVAR interprets cellWidth as px-per-minUnit. When adaptive scales switch
   // to month/quarter level, we must scale up so SVAR renders correct widths.
   const svarCellWidth = Math.round(zoomedCellWidth * cellWidthMultiplier);
+
+  // At week adaptive level, snap start date to the preceding week start day
+  // so that unit:'day' step:7 boundaries align to calendar weeks (e.g. Sun-Sat).
+  const ganttStart = useMemo(() => {
+    if (!snapStartToWeek || !dateRange.start) return dateRange.start;
+    return snapToWeekStart(dateRange.start);
+  }, [snapStartToWeek, dateRange.start]);
 
   // Track pending editor changes (for Save button)
   const pendingEditorChangesRef = useRef(new Map());
@@ -2709,7 +2716,7 @@ export function GanttView({
               markers={markers}
               scales={scales}
               lengthUnit={lengthUnit}
-              start={dateRange.start}
+              start={ganttStart}
               end={dateRange.end}
               columns={columns}
               cellWidth={svarCellWidth}

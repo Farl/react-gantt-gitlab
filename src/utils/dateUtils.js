@@ -2,6 +2,56 @@
  * Date utility functions shared across components
  */
 
+// ---------------------------------------------------------------------------
+// Week start day config
+// ---------------------------------------------------------------------------
+
+/**
+ * Day the week starts on (0=Sunday, 1=Monday, ..., 6=Saturday).
+ * Used by Workload grid boundaries, week headers, and Gantt adaptive scales.
+ * Change this single value to switch the whole app's week alignment.
+ */
+export const WEEK_START_DAY = 0; // Sunday
+
+/**
+ * The last day of the week (the day before WEEK_START_DAY).
+ * Grid boundary lines should appear on the right edge of this day.
+ */
+export const WEEK_END_DAY = (WEEK_START_DAY + 6) % 7;
+
+/**
+ * Check if a date is the first day of a week (i.e. getDay() === WEEK_START_DAY).
+ * @param {Date} date
+ * @returns {boolean}
+ */
+export function isWeekStart(date) {
+  return date.getDay() === WEEK_START_DAY;
+}
+
+/**
+ * Check if a date is the last day of a week (i.e. getDay() === WEEK_END_DAY).
+ * Useful for grid boundary placement (border-right on this day aligns with week header).
+ * @param {Date} date
+ * @returns {boolean}
+ */
+export function isWeekEnd(date) {
+  return date.getDay() === WEEK_END_DAY;
+}
+
+/**
+ * Return the preceding WEEK_START_DAY (inclusive).
+ * If `date` already falls on WEEK_START_DAY, returns `date` unchanged.
+ * @param {Date} date
+ * @returns {Date}
+ */
+export function snapToWeekStart(date) {
+  const offset = (date.getDay() - WEEK_START_DAY + 7) % 7;
+  if (offset === 0) return date;
+  const d = new Date(date);
+  d.setDate(d.getDate() - offset);
+  return d;
+}
+
 /**
  * Format date for display in YY/MM/DD format
  * @param {Date|null} d - Date to format

@@ -19,6 +19,8 @@ import { locale as createLocale } from '@svar-ui/lib-dom';
 import { EventBusRouter } from '@svar-ui/lib-state';
 import { DataStore, defaultColumns, defaultTaskTypes, format as dateFnsFormat, normalizeZoom } from '@svar-ui/gantt-store';
 
+import { WEEK_START_DAY } from '../utils/dateUtils';
+
 // context
 import StoreContext from '../context';
 
@@ -261,6 +263,9 @@ const Gantt = forwardRef(function Gantt(
       unscheduledTasks,
       markers,
       durationUnit,
+      // Tells SVAR which day starts a week (0=Sun). Affects unit:'week' header
+      // alignment and the static "Week" unit dropdown scales.
+      _weekStart: WEEK_START_DAY,
     });
     // v2.5: DataStore.init() forcefully disables pro features. Re-apply via setState.
     dataStore.setState({ baselines, markers, unscheduledTasks });

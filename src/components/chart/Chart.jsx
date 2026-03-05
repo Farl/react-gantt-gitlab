@@ -19,6 +19,48 @@ import { useMiddleMouseDrag } from '../../hooks/useMiddleMouseDrag';
 import { useScrollSync } from '../../hooks/useScrollSync';
 import './Chart.css';
 
+/**
+ * Compute a marker's pixel offset by walking the finest scale row's cells.
+ *
+ * LESSON: SVAR gives every coarse-level cell (month, quarter, year) the SAME
+ * pixel width regardless of how many days it contains (e.g. Feb 28d and Mar 31d
+ * both get 122px at month level). A naïve `daysDiff * pxPerDay` formula uses
+ * an *average* px-per-day which drifts further from SVAR's bar positions the
+ * farther the date is from the timeline start (~41px error over 2 years at
+ * month level). This function matches SVAR's own positioning by summing full
+ * cell widths and interpolating within the target cell.
+ *
+ * @param {Date} date - The marker date to position
+ * @param {Array} cells - scales.rows[lastRow].cells (finest scale row)
+ * @returns {number} Pixel offset from timeline start
+ */
+function computeMarkerLeftFromCells(date, cells) {
+  let left = 0;
+  for (let i = 0; i < cells.length; i++) {
+    const cellStart = cells[i].date;
+    const cellEnd = i + 1 < cells.length ? cells[i + 1].date : null;
+    const w = cells[i].width;
+
+    if (cellEnd && date >= cellEnd) {
+      left += w;
+      continue;
+    }
+    // date falls within this cell — interpolate by time fraction
+    const cellMs = cellEnd
+      ? cellEnd - cellStart
+      : 30 * 24 * 60 * 60 * 1000; // fallback for last cell
+    left += (Math.max(0, date - cellStart) / cellMs) * w;
+    return left;
+  }
+  // date is past all cells — extrapolate from the last cell
+  if (cells.length > 0) {
+    const last = cells[cells.length - 1];
+    const cellMs = 30 * 24 * 60 * 60 * 1000;
+    left += (Math.max(0, date - last.date) / cellMs) * last.width;
+  }
+  return left;
+}
+
 function Chart(props) {
   const {
     readonly,
@@ -225,34 +267,37 @@ function Chart(props) {
     return result;
   }, [scales, highlightTime, cellWidth]);
 
-  // Compute marker pixel positions from raw markers + _scales
-  // SVAR v2.5 moved _markers processing to pro-only, so we calculate it ourselves.
+  // Compute marker pixel positions from raw markers + _scales.
+  // SVAR v2.5 moved _markers processing to pro-only, so we calculate ourselves.
+  // See computeMarkerLeftFromCells() above for the coarse-level gotcha.
   const markers = useMemo(() => {
     if (!rawMarkers || !rawMarkers.length || !scales || !scales.start) return null;
 
-    const lengthUnit = api?.getState?.().lengthUnit || 'day';
-    const unitWidth = scales.lengthUnitWidth || cellWidth;
-    const timelineStart = new Date(scales.start);
+    const { minUnit } = scales;
+    // Coarse minUnits (month/quarter/year) need cell-based interpolation
+    // because cells have uniform width but non-uniform day counts.
+    const finestCells =
+      minUnit !== 'day' && minUnit !== 'hour' && scales.rows?.length > 0
+        ? scales.rows[scales.rows.length - 1].cells
+        : null;
+
+    // Linear-calc values — only needed for day/hour where cells are uniform
+    const timelineStart = finestCells ? null : new Date(scales.start);
+    const unitWidth = finestCells ? 0 : scales.lengthUnitWidth || cellWidth;
+    const lengthUnit = finestCells ? null : api?.getState?.().lengthUnit || 'day';
 
     return rawMarkers.map((m) => {
       const markerDate = m.start instanceof Date ? m.start : new Date(m.start);
-      let unitsDiff;
-      switch (lengthUnit) {
-        case 'hour': {
-          unitsDiff = (markerDate - timelineStart) / (1000 * 60 * 60);
-          break;
-        }
-        case 'day':
-        default: {
-          unitsDiff = (markerDate - timelineStart) / (1000 * 60 * 60 * 24);
-          break;
-        }
+
+      let left;
+      if (finestCells) {
+        left = computeMarkerLeftFromCells(markerDate, finestCells);
+      } else {
+        const msPerUnit = lengthUnit === 'hour' ? 3_600_000 : 86_400_000;
+        left = ((markerDate - timelineStart) / msPerUnit) * unitWidth;
       }
-      return {
-        left: unitsDiff * unitWidth,
-        css: m.css || '',
-        text: m.text || '',
-      };
+
+      return { left, css: m.css || '', text: m.text || '' };
     });
   }, [rawMarkers, scales, cellWidth, api]);
 

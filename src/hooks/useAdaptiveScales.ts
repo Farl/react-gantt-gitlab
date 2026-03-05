@@ -19,10 +19,9 @@
  * level hasn't changed, so downstream SVAR DataStore.init() only fires on actual
  * level transitions (not on every wheel tick).
  *
- * NOTE: Custom registerScaleUnit('monthWeek') was removed because SVAR's internal
- * diff-counting function map (`lt`) is not updated by registerScaleUnit, causing
- * "lt[i] is not a function" crashes. Instead we use the built-in 'week' unit with
- * a custom format function that shows date ranges (e.g. "3-9 Mar").
+ * WARNING: Do not use registerScaleUnit() to add custom time units — SVAR's
+ * internal diff-counting map (`lt`) is not updated, causing runtime crashes.
+ * Also avoid SVAR's built-in unit:'week' for adaptive zoom — see buildWeekScales.
  */
 
 import { useMemo, useRef } from 'react';
@@ -52,6 +51,12 @@ export interface AdaptiveScaleInfo {
    * minUnit so multiplier=1. Month uses ~30×, quarter ~91×, year ~365×.
    */
   cellWidthMultiplier: number;
+  /**
+   * When true, the caller should snap `dateRange.start` to the preceding
+   * WEEK_START_DAY so that unit:'day' step:7 week boundaries align to
+   * calendar weeks. Only true at the adaptive week level.
+   */
+  snapStartToWeek: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,13 +100,22 @@ function buildDayScales(): ScaleConfig[] {
 }
 
 /**
- * Week-level header using unit:'day' step:7.
+ * Week-level header for adaptive zoom.
  *
- * IMPORTANT: We use unit:'day' (not 'week') so SVAR's minUnit stays 'day'.
- * This keeps cellWidth = px-per-day, month gridlines aligned to actual dates,
- * and bar positioning unchanged. Only the header labels change.
+ * Uses unit:'day' step:7 so that minUnit stays 'day'. This preserves:
+ * - Day-accurate month header widths (no misalignment with week cells)
+ * - Holiday/weekend rendering capability (day-level grid)
+ * - Accurate today-line positioning at all zoom levels
  *
- * SVAR passes (cellStart, nextCellStart) to the format function.
+ * Week boundary alignment to calendar weeks (e.g. Sun-Sat) is achieved by
+ * snapping dateRange.start to the preceding WEEK_START_DAY in GanttView.
+ * The hook signals this via snapStartToWeek=true in the result.
+ *
+ * WARNING: Do NOT switch to SVAR's built-in unit:'week'. It changes minUnit
+ * from 'day' to 'week', which breaks month header proportional widths,
+ * today-line positioning, and holiday rendering. Similarly, avoid custom
+ * units via registerScaleUnit — SVAR's internal diff-counting map is not
+ * updated by it, causing "lt[i] is not a function" crashes.
  */
 function weekRangeFormat(d: Date, next?: Date): string {
   const startDay = d.getDate();
@@ -148,8 +162,12 @@ function buildYearScales(): ScaleConfig[] {
   ];
 }
 
-/** Standard ISO week scales (for when user selects "Week" from the Unit dropdown) */
-function buildIsoWeekScales(): ScaleConfig[] {
+/**
+ * Week scales for when user selects "Week" from the Unit dropdown.
+ * Uses SVAR's built-in unit:'week' which respects _weekStart (set to
+ * WEEK_START_DAY from dateUtils config, currently Sunday).
+ */
+function buildStaticWeekScales(): ScaleConfig[] {
   return [
     { unit: 'month', step: 1, format: fmt('MMM') },
     { unit: 'week', step: 1, format: fmt('w') },
@@ -165,7 +183,7 @@ function getStaticScales(lengthUnit: string): ScaleConfig[] {
         { unit: 'hour', step: 2, format: fmt('HH:mm') },
       ];
     case 'week':
-      return buildIsoWeekScales();
+      return buildStaticWeekScales();
     case 'month':
       return buildMonthScales();
     case 'quarter':
@@ -222,6 +240,7 @@ export function useAdaptiveScales(
         levelName: lengthUnit,
         svarScales: getStaticScales(lengthUnit),
         cellWidthMultiplier: 1,
+        snapStartToWeek: false,
       };
       cachedRef.current = result;
       cachedLevelRef.current = -1;
@@ -276,6 +295,7 @@ export function useAdaptiveScales(
       levelName: LEVEL_NAMES[newLevel],
       svarScales: LEVEL_BUILDERS[newLevel](),
       cellWidthMultiplier: LEVEL_CELL_WIDTH_MULTIPLIERS[newLevel],
+      snapStartToWeek: newLevel === 1, // week level uses unit:'day' step:7
     };
 
     cachedRef.current = result;
