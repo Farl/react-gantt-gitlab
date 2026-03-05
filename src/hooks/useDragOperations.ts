@@ -199,6 +199,12 @@ export function useDragOperations({
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return false;
 
+      // Extract _gitlab metadata once — used for optimistic state/status updates.
+      // Must update _gitlab alongside top-level fields because findTaskListId
+      // in KanbanBoardDnd checks both (e.g., task.state AND task._gitlab.state).
+      const gitlab = (task as any)._gitlab || {};
+      const isClosed = task.state === 'closed' || gitlab.state === 'closed';
+
       // Parse current labels from task
       // NOTE: task.labels is a comma-separated string in this codebase
       const currentLabels = task.labels
@@ -210,35 +216,38 @@ export function useDragOperations({
         // GitLab requires state and status to be consistent — a closed issue should
         // have a status in the "done" or "canceled" category.
         if (targetList.type === 'closed') {
-          const closedUpdates: Record<string, unknown> = { state: 'closed' };
+          const gitlabUpdates: Record<string, unknown> = {
+            ...gitlab,
+            state: 'closed',
+          };
+          const closedUpdates: Record<string, unknown> = {
+            state: 'closed',
+          };
           // Find default closed status (first status with "done" category, or "canceled")
           const defaultClosedStatus =
             availableStatuses.find((s) => s.category === 'done') ||
             availableStatuses.find((s) => s.category === 'canceled');
           if (defaultClosedStatus) {
             closedUpdates._statusId = defaultClosedStatus.id;
-            const currentGitlab = (task as any)._gitlab || {};
-            closedUpdates._gitlab = {
-              ...currentGitlab,
-              status: {
-                ...currentGitlab.status,
-                id: defaultClosedStatus.id,
-                name: defaultClosedStatus.name,
-              },
+            gitlabUpdates.status = {
+              ...gitlab.status,
+              id: defaultClosedStatus.id,
+              name: defaultClosedStatus.name,
             };
           }
+          closedUpdates._gitlab = gitlabUpdates;
           await syncTask(taskId, closedUpdates);
           return true;
         }
 
         const updates: Record<string, unknown> = {};
+        // Accumulate _gitlab field overrides; merged into updates._gitlab at the end
+        let gitlabOverrides: Record<string, unknown> | null = null;
 
         // If was closed, reopen
-        if (
-          task.state === 'closed' ||
-          (task as any)._gitlab?.state === 'closed'
-        ) {
+        if (isClosed) {
           updates.state = 'opened';
+          gitlabOverrides = { state: 'opened' };
         }
 
         // Handle label changes — only when source or target is a label list
@@ -260,10 +269,11 @@ export function useDragOperations({
           // Label → Status: only update status, don't touch labels
         } else if (
           sourceList.type === 'others' ||
+          sourceList.type === 'closed' ||
           (sourceList.type === 'regular' && sourceList.listType !== 'label')
         ) {
           if (targetList.listType === 'label') {
-            // Others/Status → Label: add target labels
+            // Others/Closed/Status → Label: add target labels
             const newLabels = currentLabels.concat(targetList.labels);
             updates.labels = [...new Set(newLabels)].join(', ');
           }
@@ -272,16 +282,19 @@ export function useDragOperations({
         // Handle status changes
         if (targetList.listType === 'status' && targetList.statusId) {
           updates._statusId = targetList.statusId;
-          // Optimistic update: update _gitlab.status so the card moves immediately
-          const currentGitlab = (task as any)._gitlab || {};
-          updates._gitlab = {
-            ...currentGitlab,
+          gitlabOverrides = {
+            ...gitlabOverrides,
             status: {
-              ...currentGitlab.status,
+              ...gitlab.status,
               id: targetList.statusId,
               name: targetList.statusName || '',
             },
           };
+        }
+
+        // Merge _gitlab overrides into updates
+        if (gitlabOverrides) {
+          updates._gitlab = { ...gitlab, ...gitlabOverrides };
         }
 
         // Only sync if there are actual updates

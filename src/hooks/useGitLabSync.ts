@@ -35,7 +35,11 @@ export interface GitLabSyncResult {
   epics: GitLabEpic[];
   syncState: SyncState;
   sync: (options?: GitLabSyncOptions) => Promise<void>;
-  syncTask: (id: number | string, updates: Partial<ITask>) => Promise<void>;
+  syncTask: (
+    id: number | string,
+    updates: Partial<ITask>,
+    onExternalTaskUpdated?: (id: number | string) => void,
+  ) => Promise<void>;
   /**
    * Ref for registering external tasks (e.g., closed issues from KanbanView).
    * syncTask uses this as a fallback lookup when a task isn't in the main list.
@@ -204,7 +208,11 @@ export function useGitLabSync(
    * On failure, reverts local state and throws error.
    */
   const syncTask = useCallback(
-    async (id: number | string, updates: Partial<ITask>) => {
+    async (
+      id: number | string,
+      updates: Partial<ITask>,
+      onExternalTaskUpdated?: (id: number | string) => void,
+    ) => {
       if (!provider) {
         throw new Error('GitLab provider not initialized');
       }
@@ -214,15 +222,24 @@ export function useGitLabSync(
       let taskIndex = previousTasks.findIndex((t) => t.id === id);
 
       // Fallback: check externalTasksRef for tasks not in main list (e.g., closed issues
-      // managed by KanbanView). If found, use the external task directly for the API call
-      // but skip optimistic update on the main list (the caller manages its own state).
+      // managed by KanbanView). Optimistically move the task into the main tasks list so
+      // the Kanban board re-renders immediately. The caller's onExternalTaskUpdated callback
+      // removes it from its own local state (e.g., closedTasks). On failure, we roll back
+      // both the main tasks list and notify the caller to restore its local state.
       if (taskIndex === -1) {
         const externalTask = externalTasksRef.current.find((t) => t.id === id);
         if (!externalTask) {
           throw new Error(`Task ${id} not found`);
         }
 
-        // For external tasks: just call the API, no optimistic update on main list
+        // Optimistic update: merge updates into external task and add to main tasks list
+        const updatedExternalTask = { ...externalTask, ...updates };
+        const optimisticTasks = [...previousTasks, updatedExternalTask];
+        setTasks(optimisticTasks);
+        tasksRef.current = optimisticTasks;
+        // Notify caller to remove from its local state (e.g., KanbanView removes from closedTasks)
+        onExternalTaskUpdated?.(id);
+
         try {
           if (provider instanceof GitLabGraphQLProvider) {
             const needsMeta =
@@ -241,6 +258,9 @@ export function useGitLabSync(
           }
         } catch (error) {
           console.error('Failed to sync external task update:', error);
+          // Rollback: restore main tasks to before optimistic update
+          setTasks(previousTasks);
+          tasksRef.current = previousTasks;
           throw error;
         }
         return;

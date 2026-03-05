@@ -58,7 +58,11 @@ export interface GitLabDataContextValue {
   // === Sync State & Actions ===
   syncState: SyncState;
   sync: (options?: GitLabSyncOptions) => Promise<void>;
-  syncTask: (id: number | string, updates: Partial<ITask>) => Promise<void>;
+  syncTask: (
+    id: number | string,
+    updates: Partial<ITask>,
+    onExternalTaskUpdated?: (id: number | string) => void,
+  ) => Promise<void>;
   externalTasksRef: MutableRefObject<ITask[]>;
   reorderTaskLocal: (
     taskId: number | string,

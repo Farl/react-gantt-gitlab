@@ -302,10 +302,21 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     [provider, filteredTasks, reorderTaskLocal]
   );
 
+  // Wrap syncTask to handle optimistic updates for closed issues.
+  // useGitLabSync will move the updated task into the main tasks list immediately.
+  // This callback removes it from closedTasks so it doesn't appear in both lists.
+  const syncTaskWithClosedUpdate = useCallback(
+    (id, updates) =>
+      syncTask(id, updates, (updatedId) => {
+        setClosedTasks((prev) => prev.filter((t) => t.id !== updatedId));
+      }),
+    [syncTask]
+  );
+
   // Get drag operation handlers from hook
   const { handleSameListReorder, handleCrossListDrag } = useDragOperations({
     tasks: filteredTasks,
-    syncTask,
+    syncTask: syncTaskWithClosedUpdate,
     reorderTask,
     showToast,
     refreshTasks: sync,
