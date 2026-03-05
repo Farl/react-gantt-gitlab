@@ -269,6 +269,58 @@ git remote -v
 
 ---
 
+## Session Code Worker (Optional)
+
+The Session Code Worker enables one-time login codes for sharing credentials across devices (e.g. meeting room computers) without typing a PAT manually. This is an **optional** feature — if `VITE_SESSION_WORKER_URL` is not set, the feature is completely hidden in the UI.
+
+### Setup
+
+1. **Create a KV namespace:**
+
+   ```bash
+   wrangler kv:namespace create SESSION_KV
+   ```
+
+   Copy the returned `id`.
+
+2. **Create `wrangler.toml`** in the project root (or add to existing):
+
+   ```toml
+   name = "gitlab-gantt-session"
+   main = "worker/session-worker.js"
+   compatibility_date = "2024-01-01"
+
+   [[kv_namespaces]]
+   binding = "SESSION_KV"
+   id = "<paste-id-here>"
+   ```
+
+3. **Deploy:**
+
+   ```bash
+   wrangler deploy
+   ```
+
+4. **Set the env var** in `.env.local` (or your CI environment):
+   ```
+   VITE_SESSION_WORKER_URL=https://gitlab-gantt-session.<your-account>.workers.dev
+   ```
+
+### Local testing
+
+```bash
+wrangler dev worker/session-worker.js --local
+# Then set VITE_SESSION_WORKER_URL=http://localhost:8787 in .env.local
+```
+
+### How it works
+
+- **Generate (your machine):** Settings → Credentials → "Get Login Code" → 6-char code shown with 30-min countdown
+- **Redeem (meeting room):** Open app → ProjectSelector → "Use Login Code" → enter code → session-only credential loaded, cleared on tab close
+- Codes are one-time use and deleted from KV immediately on redemption
+
+---
+
 ## Additional Resources
 
 - [Vite Deployment Guide](https://vitejs.dev/guide/static-deploy.html)

@@ -15,6 +15,7 @@ export class GitLabCredentialManager {
 
   constructor() {
     this.loadFromStorage();
+    this.loadSessionCredential();
   }
 
   /**
@@ -39,7 +40,11 @@ export class GitLabCredentialManager {
    */
   private saveToStorage(): void {
     try {
-      const credentials = Array.from(this.credentials.values());
+      // Exclude session-only credentials (id starts with 'session_') from
+      // localStorage — they live in sessionStorage only and must not persist
+      const credentials = Array.from(this.credentials.values()).filter(
+        (c) => !c.id.startsWith('session_'),
+      );
       localStorage.setItem(
         CREDENTIALS_STORAGE_KEY,
         JSON.stringify(credentials),
@@ -53,7 +58,7 @@ export class GitLabCredentialManager {
    * Generate unique ID for credential
    */
   private generateId(): string {
-    return `cred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `cred_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**
@@ -149,8 +154,72 @@ export class GitLabCredentialManager {
 
   /**
    * Get all credentials
+   * NOTE: Session-only credentials (id starts with 'session_') are excluded
+   * from this list to avoid polluting the persistent credential UI.
+   * Use gitlabCredentialManager.getCredential(id) to access them directly.
    */
   getAllCredentials(): GitLabCredential[] {
+    return Array.from(this.credentials.values()).filter(
+      (c) => !c.id.startsWith('session_'),
+    );
+  }
+
+  // ---- Session-only credential (meeting room / shared computer) ----
+  // Stored in sessionStorage, cleared automatically when the tab closes.
+  // Not included in getAllCredentials() to avoid polluting the persistent list.
+
+  private static SESSION_KEY = 'gitlab_gantt_session_credential';
+
+  /** Load session credential into the in-memory map (called from constructor). */
+  private loadSessionCredential(): void {
+    try {
+      const stored = sessionStorage.getItem(
+        GitLabCredentialManager.SESSION_KEY,
+      );
+      if (stored) {
+        const cred: GitLabCredential = JSON.parse(stored);
+        // id starts with 'session_' by convention — used to identify session creds
+        this.credentials.set(cred.id, cred);
+      }
+    } catch {
+      // Ignore — sessionStorage may be unavailable in some contexts
+    }
+  }
+
+  /** Save a credential to sessionStorage only (not localStorage). */
+  addSessionCredential(
+    credential: Omit<GitLabCredential, 'id' | 'createdAt'>,
+  ): GitLabCredential {
+    const id = `session_${Date.now()}`;
+    const cred: GitLabCredential = {
+      ...credential,
+      gitlabUrl: GitLabCredentialManager.normalizeGitLabUrl(
+        credential.gitlabUrl,
+      ),
+      id,
+      createdAt: Date.now(),
+    };
+    try {
+      sessionStorage.setItem(
+        GitLabCredentialManager.SESSION_KEY,
+        JSON.stringify(cred),
+      );
+    } catch {
+      // Ignore
+    }
+    this.credentials.set(id, cred);
+    return cred;
+  }
+
+  /** True if a session credential is currently active. */
+  hasSessionCredential(): boolean {
+    return Array.from(this.credentials.keys()).some((id) =>
+      id.startsWith('session_'),
+    );
+  }
+
+  /** All credentials including session-only ones (use sparingly — prefer getAllCredentials()). */
+  getAllCredentialsIncludingSession(): GitLabCredential[] {
     return Array.from(this.credentials.values());
   }
 

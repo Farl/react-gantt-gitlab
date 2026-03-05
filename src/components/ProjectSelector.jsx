@@ -20,6 +20,8 @@ import {
 import { CredentialManager } from './CredentialManager';
 import { ProjectBrowser } from './ProjectBrowser';
 import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
+import { isSessionWorkerEnabled } from '../utils/sessionWorkerClient';
+import { RedeemSessionCode } from './session/RedeemSessionCode';
 
 export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsChange }) {
   const [configs, setConfigs] = useState([]);
@@ -47,6 +49,9 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
 
   // Credential manager modal
   const [showCredentialManager, setShowCredentialManager] = useState(false);
+
+  // Session code redeem modal (Use Login Code)
+  const [showRedeemCode, setShowRedeemCode] = useState(false);
 
   // New wizard flow states
   const [wizardStep, setWizardStep] = useState(1); // 1: type, 2: credential, 3: browse, 4: confirm
@@ -523,9 +528,31 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
                   {selectedCredentialId && (
                     <div className="selected-info">
                       {(() => {
-                        const cred = credentials.find((c) => c.id === selectedCredentialId);
+                        // Fall back to getCredential() to handle session_ creds excluded from `credentials` state
+                        const cred = credentials.find((c) => c.id === selectedCredentialId)
+                          ?? gitlabCredentialManager.getCredential(selectedCredentialId);
                         return cred ? `Selected: ${cred.name} (${cred.gitlabUrl})` : '';
                       })()}
+                    </div>
+                  )}
+
+                  {isSessionWorkerEnabled() && (
+                    <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowRedeemCode(true)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '13px',
+                          color: '#3b82f6',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0,
+                        }}
+                      >
+                        Use Login Code
+                      </button>
                     </div>
                   )}
                 </>
@@ -622,6 +649,19 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
         // Project/Group browser with manual input option
         return (
           <div className="wizard-content">
+            {selectedCredentialId?.startsWith('session_') && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '8px 12px',
+                background: '#fef3c7',
+                border: '1px solid #fcd34d',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#92400e',
+              }}>
+                Signed in with a temporary session. Settings will not be saved after this tab is closed.
+              </div>
+            )}
             <div className="form-group">
               <div className="select-mode-toggle">
                 <label>Select {formData.type === 'project' ? 'Project' : 'Group'} *</label>
@@ -687,6 +727,19 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
         // Confirmation
         return (
           <div className="wizard-content">
+            {selectedCredentialId?.startsWith('session_') && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '8px 12px',
+                background: '#fef3c7',
+                border: '1px solid #fcd34d',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#92400e',
+              }}>
+                Signed in with a temporary session. Settings will not be saved after this tab is closed.
+              </div>
+            )}
             <div className="form-group">
               <label>Configuration Name *</label>
               <input
@@ -707,7 +760,9 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
                 <span className="summary-label">Credential:</span>
                 <span className="summary-value">
                   {(() => {
-                    const cred = credentials.find((c) => c.id === selectedCredentialId);
+                    // Fall back to getCredential() to handle session_ creds excluded from `credentials` state
+                    const cred = credentials.find((c) => c.id === selectedCredentialId)
+                      ?? gitlabCredentialManager.getCredential(selectedCredentialId);
                     return cred ? `${cred.name} (${cred.gitlabUrl})` : '-';
                   })()}
                 </span>
@@ -1593,6 +1648,22 @@ export function ProjectSelector({ onProjectChange, currentConfigId, onConfigsCha
         onClose={handleCredentialManagerClose}
         onCredentialsChange={loadCredentials}
       />
+
+      {/* Session Code Redeem Modal */}
+      {showRedeemCode && (
+        <RedeemSessionCode
+          // Pre-fill from first persistent credential if available.
+          // getAllCredentials() excludes session_ credentials, so credentials[0] is always a real saved credential.
+          initialGitlabUrl={credentials[0]?.gitlabUrl ?? ''}
+          onSuccess={(cred) => {
+            setShowRedeemCode(false);
+            loadCredentials();
+            setSelectedCredentialId(cred.id);
+            setWizardStep(3);
+          }}
+          onClose={() => setShowRedeemCode(false)}
+        />
+      )}
     </div>
   );
 }

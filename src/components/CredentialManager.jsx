@@ -17,6 +17,11 @@ import {
 } from '../config/GitLabCredentialManager';
 import { gitlabConfigManager } from '../config/GitLabConfigManager';
 import { ConfirmDialog } from './shared/dialogs/ConfirmDialog';
+import {
+  isSessionWorkerEnabled,
+  createSessionCode,
+} from '../utils/sessionWorkerClient';
+import { SessionCodeDisplay } from './session/SessionCodeDisplay';
 
 /**
  * @param {Object} props
@@ -41,7 +46,14 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
   const [deleteCredentialId, setDeleteCredentialId] = useState(null);
   const [deleteWarningMessage, setDeleteWarningMessage] = useState('');
 
+  // Session code states
+  const [generatingCodeFor, setGeneratingCodeFor] = useState(null); // credentialId
+  const [sessionCode, setSessionCode] = useState(null); // { code, expiresAt, credentialName }
+  const [codeGenError, setCodeGenError] = useState(null); // inline error for Get Code failures
+
   const loadCredentials = useCallback(() => {
+    // getAllCredentials() excludes session_ creds (they're tab-scoped and don't need editing/deleting).
+    // The session credential is shown separately via hasSessionCredential().
     const allCredentials = gitlabCredentialManager.getAllCredentials();
     setCredentials(allCredentials);
   }, []);
@@ -60,6 +72,25 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
       loadCredentials();
     }
   }, [isOpen, loadCredentials]);
+
+  // ============ Session Code Actions ============
+
+  const handleGenerateCode = async (credential) => {
+    setGeneratingCodeFor(credential.id);
+    setCodeGenError(null);
+    try {
+      const result = await createSessionCode(credential.token);
+      setSessionCode({
+        code: result.code,
+        expiresAt: Date.now() + result.expiresInSeconds * 1000,
+        credentialName: credential.name,
+      });
+    } catch (err) {
+      setCodeGenError(`Failed to generate code: ${err.message}`);
+    } finally {
+      setGeneratingCodeFor(null);
+    }
+  };
 
   // ============ List View Actions ============
 
@@ -237,7 +268,26 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
           {!showForm ? (
             // ============ List View ============
             <div className="credential-list">
-              {credentials.length === 0 ? (
+              {/* Active session credential (tab-scoped, not editable) */}
+              {gitlabCredentialManager.hasSessionCredential() && (() => {
+                const sessionCred = Array.from(
+                  gitlabCredentialManager.getAllCredentialsIncludingSession()
+                ).find((c) => c.id.startsWith('session_'));
+                return sessionCred ? (
+                  <div key={sessionCred.id} className="credential-item">
+                    <div className="credential-info">
+                      <div className="credential-name">
+                        {sessionCred.name}
+                        <span className="credential-session-badge">Session only</span>
+                      </div>
+                      <div className="credential-url">{sessionCred.gitlabUrl}</div>
+                      <div className="credential-usage">Active for this tab — cleared on close</div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {credentials.length === 0 && !gitlabCredentialManager.hasSessionCredential() ? (
                 <div className="empty-state">
                   <p>No credentials yet</p>
                   <p>Click the button below to add your first GitLab credential</p>
@@ -257,6 +307,16 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
                         </div>
                       </div>
                       <div className="credential-actions">
+                        {isSessionWorkerEnabled() && (
+                          <button
+                            onClick={() => handleGenerateCode(credential)}
+                            disabled={generatingCodeFor === credential.id}
+                            className="btn-get-code"
+                            title="Generate a one-time login code for use on another device"
+                          >
+                            {generatingCodeFor === credential.id ? 'Generating…' : 'Get Code'}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(credential)}
                           className="btn-edit"
@@ -275,6 +335,12 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
                     </div>
                   );
                 })
+              )}
+
+              {codeGenError && (
+                <div className="connection-status error" style={{ marginTop: '8px' }}>
+                  {codeGenError}
+                </div>
               )}
             </div>
           ) : (
@@ -501,8 +567,21 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
         }
 
         /* Button Styles */
+        .credential-session-badge {
+          display: inline-block;
+          margin-left: 8px;
+          padding: 1px 8px;
+          background: #fef3c7;
+          color: #92400e;
+          border-radius: 9999px;
+          font-size: 11px;
+          font-weight: 500;
+          vertical-align: middle;
+        }
+
         .credential-manager-modal .btn-edit,
-        .credential-manager-modal .btn-delete {
+        .credential-manager-modal .btn-delete,
+        .credential-manager-modal .btn-get-code {
           padding: 4px 10px;
           border: none;
           border-radius: 4px;
@@ -520,6 +599,20 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
           font-size: 14px;
           cursor: pointer;
           transition: background 0.2s;
+        }
+
+        .credential-manager-modal .btn-get-code {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .credential-manager-modal .btn-get-code:hover:not(:disabled) {
+          background: #2563eb;
+        }
+
+        .credential-manager-modal .btn-get-code:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .credential-manager-modal .btn-edit {
@@ -592,6 +685,16 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
           border: 1px solid #f5c6cb;
         }
       `}</style>
+
+      {/* Session Code Display */}
+      {sessionCode && (
+        <SessionCodeDisplay
+          code={sessionCode.code}
+          expiresAt={sessionCode.expiresAt}
+          credentialName={sessionCode.credentialName}
+          onClose={() => setSessionCode(null)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
