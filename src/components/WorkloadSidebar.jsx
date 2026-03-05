@@ -10,6 +10,7 @@ import { FilterMultiSelect } from './FilterMultiSelect.jsx';
 export function WorkloadSidebar({
   assignees = [],
   labels = [],
+  labelColorMap,
   selectedAssignees = [],
   selectedLabels = [],
   onAssigneesChange,
@@ -25,14 +26,15 @@ export function WorkloadSidebar({
     [assignees],
   );
 
-  // Convert labels to FilterMultiSelect options format
+  // Convert labels to FilterMultiSelect options format (include color for badge rendering)
   const labelOptions = useMemo(
     () =>
       labels.map((label) => ({
         value: label,
         label: label,
+        color: labelColorMap?.get(label) || null,
       })),
-    [labels],
+    [labels, labelColorMap],
   );
 
   return (

@@ -1,0 +1,14 @@
+/**
+ * LabelBadge shared styles
+ * color is set inline via getLabelStyle() in LabelBadge.jsx
+ */
+.label-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}

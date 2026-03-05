@@ -141,6 +141,22 @@
   flex-shrink: 0;
 }
 
+.group-icon-assignee {
+  color: var(--wx-color-font-alt, #6b7280);
+}
+.group-icon-label {
+  color: var(--wx-color-font-alt, #6b7280);
+}
+.group-icon-others {
+  color: var(--wx-color-font-alt, #6b7280);
+}
+
+.wx-willow-dark-theme .group-icon-assignee,
+.wx-willow-dark-theme .group-icon-label,
+.wx-willow-dark-theme .group-icon-others {
+  color: var(--wx-color-font-alt, #9fa1ae);
+}
+
 .sidebar-row .group-name {
   overflow: hidden;
   text-overflow: ellipsis;

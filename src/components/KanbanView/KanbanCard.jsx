@@ -18,6 +18,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { openGitLabLink } from '../../utils/GitLabLinkUtils';
 import { isGitLabTask, TASK_COLORS } from '../../utils/TaskTypeUtils';
+import { LabelBadge } from '../shared/LabelBadge.jsx';
+import '../shared/LabelBadge.css';
 import './KanbanCard.css';
 
 /**
@@ -239,15 +241,7 @@ export function KanbanCard({
           <i className="fas fa-tag kanban-card-icon" />
           <span className="kanban-card-labels-list">
             {visibleLabels.map((label) => (
-              <span
-                key={label}
-                className="kanban-card-label"
-                style={{
-                  backgroundColor: labelColorMap?.get(label) || '#6b7280',
-                }}
-              >
-                {label}
-              </span>
+              <LabelBadge key={label} name={label} color={labelColorMap?.get(label)} />
             ))}
             {overflowLabels > 0 && (
               <span className="kanban-card-overflow">+{overflowLabels}</span>

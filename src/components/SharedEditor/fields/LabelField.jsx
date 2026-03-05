@@ -7,11 +7,13 @@
  * Saves immediately on any change.
  *
  * `task.labels` is a comma-separated string, e.g., "bug, enhancement".
- * `serverFilterOptions.labels` has `{name, color}` for all project labels.
+ * `serverFilterOptions.labels` has `{title, color}` for all project labels.
  */
 import { useState, useCallback, useMemo, useRef } from 'react';
 import FilterMultiSelect from '../../FilterMultiSelect';
 import { useGitLabData } from '../../../contexts/GitLabDataContext';
+import { LabelBadge } from '../../shared/LabelBadge.jsx';
+import '../../shared/LabelBadge.css';
 import './LabelField.css';
 
 export function LabelField({ task }) {
@@ -83,12 +85,7 @@ export function LabelField({ task }) {
           <span className="label-field-empty">No labels</span>
         )}
         {selectedLabels.map((label) => (
-          <span
-            key={label}
-            className="label-field-tag"
-            style={{ backgroundColor: colorMap.get(label) || '#6b7280' }}
-          >
-            {label}
+          <LabelBadge key={label} name={label} color={colorMap.get(label)}>
             <button
               type="button"
               className="label-field-tag-remove"
@@ -96,7 +93,7 @@ export function LabelField({ task }) {
               title={`Remove ${label}`}
               disabled={saving}
             >×</button>
-          </span>
+          </LabelBadge>
         ))}
       </div>
       {labelOptions.length > 0 && (

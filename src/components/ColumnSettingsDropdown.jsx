@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { getGitLabLinkInfo } from '../utils/GitLabLinkUtils';
+import { LabelBadge } from './shared/LabelBadge.jsx';
+import './shared/LabelBadge.css';
 
 const STORAGE_KEY = 'gantt-column-settings';
 
@@ -447,7 +449,6 @@ export const LabelCell = ({ row, labelColorMap, labelPriorityMap }) => {
 
   const displayLabels = labelTitles.slice(0, visibleCount);
   const hiddenCount = labelTitles.length - visibleCount;
-  const defaultColor = '#6b7280';
 
   return (
     <div
@@ -457,13 +458,7 @@ export const LabelCell = ({ row, labelColorMap, labelPriorityMap }) => {
       onMouseLeave={() => setShowTooltip(false)}
     >
       {displayLabels.map((title, index) => (
-        <span
-          key={index}
-          className="label-cell-tag"
-          style={{ backgroundColor: labelColorMap?.get(title) || defaultColor }}
-        >
-          {title}
-        </span>
+        <LabelBadge key={index} name={title} color={labelColorMap?.get(title)} />
       ))}
 
       {hiddenCount > 0 && (
@@ -487,7 +482,6 @@ export const LabelCell = ({ row, labelColorMap, labelPriorityMap }) => {
  */
 const LabelTooltip = ({ anchorRef, labels, colorMap }) => {
   const tooltipRef = useRef(null);
-  const defaultColor = '#6b7280';
 
   // Position the tooltip after render using requestAnimationFrame
   // to ensure accurate height measurement for flip logic
@@ -532,13 +526,7 @@ const LabelTooltip = ({ anchorRef, labels, colorMap }) => {
       className="label-cell-tooltip-portal"
     >
       {labels.map((title, index) => (
-        <span
-          key={index}
-          className="label-cell-tooltip-tag"
-          style={{ backgroundColor: colorMap?.get(title) || defaultColor }}
-        >
-          {title}
-        </span>
+        <LabelBadge key={index} name={title} color={colorMap?.get(title)} />
       ))}
     </div>,
     document.body

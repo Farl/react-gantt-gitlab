@@ -143,15 +143,6 @@
   overflow: hidden;
 }
 
-.kanban-card-label {
-  display: inline-block;
-  padding: 1px 4px;
-  border-radius: 2px;
-  font-size: 10px;
-  color: white;
-  white-space: nowrap;
-}
-
 .kanban-card-overflow {
   color: #9ca3af;
   font-size: 10px;

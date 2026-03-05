@@ -215,6 +215,15 @@ export function WorkloadView({ initialConfigId }) {
     return Array.from(combined).sort();
   }, [projectLabels, taskLabels]);
 
+  // Map label name → color from serverFilterOptions (for colored label badges in sidebar)
+  const labelColorMap = useMemo(() => {
+    const map = new Map();
+    (serverFilterOptions?.labels || []).forEach((l) => {
+      if (l.color) map.set(l.title, l.color);
+    });
+    return map;
+  }, [serverFilterOptions?.labels]);
+
   // Generate storage key for current project (for sidebar selection persistence)
   const filterStorageKey = useMemo(() => {
     if (!currentConfig) return null;
@@ -679,6 +688,7 @@ export function WorkloadView({ initialConfigId }) {
         <WorkloadSidebar
           assignees={availableAssignees}
           labels={availableLabels}
+          labelColorMap={labelColorMap}
           selectedAssignees={selectedAssignees}
           selectedLabels={selectedLabels}
           onAssigneesChange={setSelectedAssignees}
@@ -705,6 +715,7 @@ export function WorkloadView({ initialConfigId }) {
               tasks={filteredTasks}
               selectedAssignees={selectedAssignees}
               selectedLabels={selectedLabels}
+              labelColorMap={labelColorMap}
               startDate={dateRange.start}
               endDate={dateRange.end}
               cellWidth={zoomedCellWidth}

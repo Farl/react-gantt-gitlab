@@ -4,22 +4,8 @@
  */
 
 import { useState, useMemo } from 'react';
-
-/**
- * Returns '#fff' or '#000' based on background color luminance.
- * Ensures label text is readable regardless of label background color.
- */
-function getContrastColor(hex) {
-  if (!hex) return '#fff';
-  const color = hex.replace('#', '');
-  if (color.length !== 6) return '#fff';
-  const r = parseInt(color.slice(0, 2), 16);
-  const g = parseInt(color.slice(2, 4), 16);
-  const b = parseInt(color.slice(4, 6), 16);
-  // WCAG relative luminance formula
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? '#000' : '#fff';
-}
+import { LabelBadge } from './shared/LabelBadge.jsx';
+import './shared/LabelBadge.css';
 
 /**
  * @typedef {Object} FilterOption
@@ -188,12 +174,7 @@ export function FilterMultiSelect({
                 onChange={() => handleToggle(opt.value)}
               />
               {opt.color ? (
-                <span
-                  className="fms-label-tag"
-                  style={{ backgroundColor: opt.color, color: getContrastColor(opt.color) }}
-                >
-                  {opt.label}
-                </span>
+                <LabelBadge name={opt.label} color={opt.color} />
               ) : (
                 <span className="fms-option-text" title={opt.subtitle || opt.label}>
                   {opt.label}
@@ -356,16 +337,6 @@ export function FilterMultiSelect({
         }
 
         .fms-option-text {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .fms-label-tag {
-          padding: 1px 6px;
-          border-radius: 3px;
-          font-size: 11px;
-          /* Text color set inline via getContrastColor() */
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;

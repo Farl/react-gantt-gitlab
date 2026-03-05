@@ -7,6 +7,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useMiddleMouseDrag } from '../hooks/useMiddleMouseDrag';
 import { isMilestoneTask, isFolderTask } from '../utils/TaskTypeUtils';
+import { LabelBadge } from './shared/LabelBadge.jsx';
+import './shared/LabelBadge.css';
 import './WorkloadChart.css';
 import './shared/TodayMarker.css';
 
@@ -188,6 +190,7 @@ export function WorkloadChart({
   tasks = [],
   selectedAssignees = [],
   selectedLabels = [],
+  labelColorMap,
   startDate,
   endDate,
   cellWidth = 40,
@@ -827,14 +830,18 @@ export function WorkloadChart({
                       <>
                         <span className="group-icon">
                           {group.type === 'assignee' ? (
-                            <i className="fas fa-user" style={{ color: '#6b4fbb' }}></i>
+                            <i className="fas fa-user group-icon-assignee"></i>
                           ) : group.type === 'label' ? (
-                            <i className="fas fa-tag" style={{ color: '#fc6d26' }}></i>
+                            <i className="fas fa-tag group-icon-label"></i>
                           ) : (
-                            <i className="fas fa-folder-open" style={{ color: '#6c757d' }}></i>
+                            <i className="fas fa-folder-open group-icon-others"></i>
                           )}
                         </span>
-                        <span className="group-name">{group.name}</span>
+                        {group.type === 'label' && labelColorMap?.get(group.name) ? (
+                          <LabelBadge name={group.name} color={labelColorMap.get(group.name)} />
+                        ) : (
+                          <span className="group-name">{group.name}</span>
+                        )}
                         <span className="group-task-count">({group.taskCount})</span>
                       </>
                     ) : null}
