@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: page
+    environment: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,7 +42,9 @@ jobs:
         env:
           VITE_BASE_PATH: /react-gantt-gitlab/
           VITE_CORS_PROXY: ${{ vars.VITE_CORS_PROXY }}
+          VITE_GITLAB_URL: ${{ vars.VITE_GITLAB_URL }}
           VITE_REPO_URL: ${{ vars.VITE_REPO_URL }}
+          VITE_SESSION_WORKER_URL: ${{ vars.VITE_SESSION_WORKER_URL }}
 
       - name: Verify build output
         run: |
