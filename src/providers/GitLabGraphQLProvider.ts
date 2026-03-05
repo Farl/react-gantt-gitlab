@@ -3216,7 +3216,23 @@ export class GitLabGraphQLProvider {
       }
     }
 
-    // TODO: Handle assignees, milestone
+    // Assignees — resolve display names to global user IDs
+    if (task.assigned !== undefined) {
+      const assigneeNames = String(task.assigned || '')
+        .split(',')
+        .map((n) => n.trim())
+        .filter(Boolean);
+
+      // getUserIdsByUsernames matches both display names and @usernames
+      const userIdMap = await this.getUserIdsByUsernames(assigneeNames);
+      // Global IDs from GraphQL (format: "gid://gitlab/User/123")
+      // assigneesWidget expects full global IDs
+      const assigneeGlobalIds = assigneeNames
+        .map((n) => userIdMap.get(n))
+        .filter((gid): gid is string => !!gid);
+
+      input.assigneesWidget = { assigneeIds: assigneeGlobalIds };
+    }
 
     const mutation = `
       mutation updateWorkItem($input: WorkItemUpdateInput!) {

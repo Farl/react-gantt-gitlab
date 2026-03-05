@@ -26,6 +26,9 @@ import {
 import { SyncButton } from './SyncButton.jsx';
 import { ProjectSelector } from './ProjectSelector.jsx';
 import { FilterPanel } from './FilterPanel.jsx';
+import { GitLabDataContext } from '../contexts/GitLabDataContext.tsx';
+import { SharedEditorProvider, useSharedEditor } from '../contexts/SharedEditorContext.jsx';
+import { SharedEditor } from './SharedEditor/SharedEditor.jsx';
 import './WorkloadView.css';
 import './shared/modal-close-button.css';
 
@@ -138,9 +141,12 @@ export function WorkloadView({ initialConfigId }) {
   // Use shared GitLab data initialization hook
   const {
     tasks: allTasks,
+    links,
     syncState,
     sync,
     syncTask,
+    createLink,
+    deleteLink,
     serverFilterOptions,
     serverFilterOptionsLoading,
     activeServerFilters,
@@ -393,6 +399,82 @@ export function WorkloadView({ initialConfigId }) {
   // Use shared highlight time hook for weekend/holiday logic
   const { highlightTime } = useHighlightTime({ holidays, workdays });
 
+  // Ref to openEditor — set by WorkloadEditorSetup inside SharedEditorProvider
+  const openEditorRef = useRef(null);
+  // WorkloadChart passes the full task object to onTaskClick
+  const handleTaskClick = useCallback((taskOrId) => {
+    const id = typeof taskOrId === 'object' ? taskOrId?.id : taskOrId;
+    if (id != null) openEditorRef.current?.(id);
+  }, []);
+
+  // Build minimal GitLabDataContext bridge so SharedEditor fields can use useGitLabData().
+  // WorkloadView uses its own data hooks (not GitLabDataProvider), so we bridge the data here.
+  const dataContextBridge = useMemo(() => {
+    const noop = async () => {};
+    return {
+      tasks: allTasks,
+      links,
+      milestones: [],
+      epics: [],
+      syncState,
+      sync,
+      syncTask,
+      externalTasksRef: { current: [] },
+      reorderTaskLocal: () => ({ rollback: () => {} }),
+      createTask: noop,
+      createMilestone: noop,
+      deleteTask: noop,
+      createLink,
+      deleteLink,
+      currentConfig,
+      provider,
+      configs,
+      reloadConfigs,
+      handleConfigChange,
+      handleQuickSwitch,
+      projectPath,
+      proxyConfig,
+      configVersion,
+      filterOptions: {},
+      setFilterOptions: () => {},
+      serverFilterOptions,
+      serverFilterOptionsLoading,
+      activeServerFilters,
+      setActiveServerFilters,
+      filterPresets: filterPresets || [],
+      presetsLoading: presetsLoading || false,
+      presetsSaving: presetsSaving || false,
+      createNewPreset: noop,
+      updatePreset: noop,
+      renamePreset: noop,
+      deletePreset: noop,
+      lastUsedPresetId: null,
+      filterDirty: false,
+      handlePresetSelect: () => {},
+      handleFilterChange: () => {},
+      handleServerFilterApply: noop,
+      canEditHolidays: false,
+      holidays: holidays || [],
+      workdays: workdays || [],
+      colorRules: [],
+      holidaysText: '',
+      workdaysText: '',
+      holidaysLoading: false,
+      holidaysSaving: false,
+      holidaysError: null,
+      setHolidaysText: () => {},
+      setWorkdaysText: () => {},
+      setColorRules: () => {},
+      showToast: (msg, type) => console.warn(`[WorkloadView toast] ${type}: ${msg}`),
+      countWorkdays: () => 0,
+      calculateEndDateByWorkdays: (start) => start,
+      highlightTime,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTasks, links, syncState, sync, syncTask, createLink, deleteLink,
+      serverFilterOptions, serverFilterOptionsLoading, activeServerFilters,
+      currentConfig, provider, highlightTime]);
+
   // Show loading state
   if (syncState.isLoading && !currentConfig) {
     return (
@@ -422,6 +504,11 @@ export function WorkloadView({ initialConfigId }) {
     selectedAssignees.length > 0 || selectedLabels.length > 0;
 
   return (
+    <GitLabDataContext.Provider value={dataContextBridge}>
+      <SharedEditorProvider>
+        {/* Wire openEditor into our ref so handleTaskClick can call it without needing useSharedEditor here */}
+        <WorkloadEditorSetup openEditorRef={openEditorRef} />
+        <SharedEditor />
     <div className="workload-view-container">
       <div className="workload-view-header">
         <div className="project-switcher">
@@ -628,6 +715,7 @@ export function WorkloadView({ initialConfigId }) {
               onTaskDrag={handleTaskDrag}
               onGroupChange={handleGroupChange}
               showOthers={showOthers}
+              onTaskClick={handleTaskClick}
             />
           )}
         </div>
@@ -667,7 +755,22 @@ export function WorkloadView({ initialConfigId }) {
         </div>
       )}
     </div>
+      </SharedEditorProvider>
+    </GitLabDataContext.Provider>
   );
+}
+
+/**
+ * Registers WorkloadView's openEditor into a ref so the parent component can
+ * call it without needing to call useSharedEditor() before SharedEditorProvider is mounted.
+ */
+function WorkloadEditorSetup({ openEditorRef }) {
+  const { requestOpen } = useSharedEditor();
+  useEffect(() => {
+    openEditorRef.current = requestOpen;
+    return () => { openEditorRef.current = null; };
+  }, [requestOpen, openEditorRef]);
+  return null;
 }
 
 export default WorkloadView;

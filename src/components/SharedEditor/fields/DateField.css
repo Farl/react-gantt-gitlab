@@ -1,0 +1,28 @@
+/* src/components/SharedEditor/fields/DateField.css */
+.date-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.date-field-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-field-sublabel {
+  font-size: 11px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+}
+
+.date-field-saving {
+  font-size: 11px;
+  color: var(--wx-color-primary, #1976d2);
+}
+
+.date-field-workdays {
+  font-size: 11px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  margin-top: 4px;
+}

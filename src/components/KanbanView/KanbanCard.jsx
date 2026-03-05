@@ -75,6 +75,7 @@ export function KanbanCard({
   listId,
   isDragging = false,
   isDragOverlay = false,
+  onCardClick, // Called with taskId when card title/body is clicked (opens SharedEditor)
 }) {
   // Setup sortable hook for drag-and-drop
   // Note: We always enable dragging to support cross-list drag.
@@ -146,15 +147,24 @@ export function KanbanCard({
     e.stopPropagation();
   };
 
+  // Clicking anywhere on the card opens the editor.
+  // The dnd-kit listeners use pointer/touch events, so a plain onClick does not
+  // conflict with drag — a drag ends with pointerup, not click.
+  const handleCardClick = (e) => {
+    if (onCardClick) onCardClick(task.id);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{
         ...style,
         ...(showTypeIndicator ? { borderLeft: `3px solid ${typeBarColor}` } : {}),
+        ...(onCardClick ? { cursor: 'pointer' } : {}),
       }}
       className={classNames.join(' ')}
       data-task-id={task.id}
+      onClick={handleCardClick}
       {...attributes}
       {...listeners}
     >

@@ -116,7 +116,7 @@ export function KanbanList({
   listColor = null, // Resolved indicator color hex (status color or first label color)
   labelColorMap,
   specialType = null, // 'others' | 'closed'
-  onCardDoubleClick,
+  onCardClick, // Callback when a card is clicked: (taskId) => void
   onSortChange, // Callback when sort changes: (newSortBy, newSortOrder) => void
   activeTaskId = null, // ID of the currently dragged task
   isOver = false, // Whether a dragged item is over this list (from parent)
@@ -197,7 +197,7 @@ export function KanbanList({
                 parentTask={parentTaskMap?.get(task.id)}
                 viewMode={viewMode}
                 labelColorMap={labelColorMap}
-                onDoubleClick={onCardDoubleClick}
+                onCardClick={onCardClick}
                 isDragging={task.id === activeTaskId}
                 isDragDisabled={!isDragEnabled}
               />

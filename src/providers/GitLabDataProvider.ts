@@ -648,6 +648,7 @@ export class GitLabDataProvider {
       task.weight !== undefined ||
       task.parent !== undefined ||
       task.labels !== undefined ||
+      task.assigned !== undefined ||
       task.state !== undefined;
 
     if (hasOtherChanges) {
@@ -673,6 +674,32 @@ export class GitLabDataProvider {
       if (task.labels !== undefined) {
         payload.labels =
           typeof task.labels === 'string' ? task.labels : task.labels.join(',');
+      }
+
+      if (task.assigned !== undefined) {
+        // Resolve display names to numeric user IDs via REST user search
+        // GitLab REST API accepts assignee_ids ([] = unassign all)
+        const assigneeNames = String(task.assigned || '')
+          .split(',')
+          .map((n) => n.trim())
+          .filter(Boolean);
+        if (assigneeNames.length === 0) {
+          payload.assignee_ids = [];
+        } else {
+          const userIds: number[] = [];
+          for (const name of assigneeNames) {
+            try {
+              const users = await this.request<{ id: number; name: string }[]>(
+                `/users?search=${encodeURIComponent(name)}`,
+              );
+              const user = users?.find((u) => u.name === name);
+              if (user) userIds.push(user.id);
+            } catch {
+              // skip unresolvable names
+            }
+          }
+          payload.assignee_ids = userIds;
+        }
       }
 
       if (task.state !== undefined) {

@@ -43,8 +43,9 @@ import {
 
 /**
  * GitLabDataContext - React context for shared GitLab data
+ * Exported so WorkloadView can provide its own compatible value via Context.Provider.
  */
-const GitLabDataContext = createContext<GitLabDataContextValue | null>(null);
+export const GitLabDataContext = createContext<GitLabDataContextValue | null>(null);
 
 /**
  * Hook to access GitLab data context
@@ -762,5 +763,4 @@ export function GitLabDataProvider({
   );
 }
 
-export { GitLabDataContext };
 export type { GitLabDataContextValue };

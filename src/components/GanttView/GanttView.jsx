@@ -14,11 +14,12 @@ import '../shared/SettingsModal.css';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Gantt from '../Gantt.jsx';
-import Editor from '../Editor.jsx';
 import Toolbar from '../Toolbar.jsx';
 import ContextMenu from '../ContextMenu.jsx';
 import SmartTaskContent from '../SmartTaskContent.jsx';
 import { useGitLabData } from '../../contexts/GitLabDataContext';
+import { useSharedEditor } from '../../contexts/SharedEditorContext';
+import { SharedEditor } from '../SharedEditor/SharedEditor';
 import { useDateRangePreset } from '../../hooks/useDateRangePreset.ts';
 import { GitLabFilters } from '../../utils/GitLabFilters.ts';
 import { formatDateToLocalString, createStartDate, createEndDate } from '../../utils/dateUtils.js';
@@ -219,6 +220,8 @@ export function GanttView({
     highlightTime,
   } = useGitLabData();
 
+  const { requestOpen: openSharedEditor, activeTaskId: sharedEditorTaskId } = useSharedEditor();
+
   // === GanttView-specific State ===
   const [api, setApi] = useState(null);
   // Settings modal can be controlled externally (from GitLabWorkspace) or internally
@@ -379,6 +382,17 @@ export function GanttView({
     localStorage.setItem('gantt-show-folders', showFolders.toString());
   }, [showFolders]);
 
+  // Sync SharedEditor close back to SVAR store: when SharedEditor is closed
+  // (activeTaskId becomes null), clear SVAR's _activeTask via show-editor {id:null}
+  useEffect(() => {
+    if (!api) return;
+    if (sharedEditorTaskId == null) {
+      isEditorOpenRef.current = false;
+      currentEditingTaskRef.current = null;
+      api.exec('show-editor', { id: null });
+    }
+  }, [api, sharedEditorTaskId]);
+
   // Ref to store fold state before data updates
   const openStateRef = useRef(new Map());
 
@@ -450,6 +464,47 @@ export function GanttView({
   useEffect(() => {
     allTasksRef.current = allTasks;
   }, [allTasks]);
+
+  // Gantt sync bridge: when context tasks change (e.g., SharedEditor saves via syncTask),
+  // reflect those changes in the SVAR store without re-calling GitLab API (_skipApi flag).
+  // This keeps the Gantt grid/bars in sync with SharedEditor saves.
+  useEffect(() => {
+    if (!api || allTasks.length === 0) return;
+
+    const changedTasks = allTasks.filter((t) => {
+      let svarTask;
+      try { svarTask = api.getTask(t.id); } catch { return false; }
+      if (!svarTask) return false;
+
+      return (
+        svarTask.text !== t.text ||
+        svarTask.details !== t.details ||
+        svarTask.labels !== t.labels ||
+        svarTask.assigned !== t.assigned ||
+        svarTask.weight !== t.weight
+      );
+    });
+
+    changedTasks.forEach((t) => {
+      try {
+        api.exec('update-task', {
+          id: t.id,
+          task: {
+            text: t.text,
+            details: t.details,
+            labels: t.labels,
+            assigned: t.assigned,
+            weight: t.weight,
+            start: t.start,
+            end: t.end,
+          },
+          _skipApi: true,
+        });
+      } catch (err) {
+        // Task may not be in SVAR store (e.g., filtered out) — ignore
+      }
+    });
+  }, [allTasks, api]);
 
   // Update ref when links changes (to avoid stale closure in event handlers)
   useEffect(() => {
@@ -723,7 +778,8 @@ export function GanttView({
   const handleDiscardChangesConfirm = useCallback(() => {
     pendingEditorChangesRef.current.clear();
     if (api) {
-      api.exec('close-editor');
+      // Clear SVAR's _activeTask; there is no 'close-editor' in SVAR gantt store
+      api.exec('show-editor', { id: null });
       sync(); // Reload to revert local changes
     }
     setDiscardChangesDialogOpen(false);
@@ -1013,79 +1069,19 @@ export function GanttView({
         }
       });
 
-      // Track editor open
-      ganttApi.on('open-editor', (ev) => {
+      // Track editor open — SVAR gantt fires 'show-editor' (not 'open-editor') when the
+      // pencil button or double-click triggers the editor. id===null means close.
+      ganttApi.on('show-editor', (ev) => {
+        if (ev.id == null) return; // close handled below
         isEditorOpenRef.current = true;
         currentEditingTaskRef.current = ev.id;
         pendingEditorChangesRef.current.clear(); // Clear previous changes
-
-        // Disable browser extensions (like Grammarly) on editor inputs
-        setTimeout(() => {
-          const editorInputs = document.querySelectorAll('.wx-editor input, .wx-editor textarea');
-          editorInputs.forEach(input => {
-            input.setAttribute('data-gramm', 'false');
-            input.setAttribute('data-gramm_editor', 'false');
-            input.setAttribute('data-enable-grammarly', 'false');
-            input.setAttribute('spellcheck', 'false');
-          });
-        }, 100);
+        openSharedEditor(ev.id); // Open shared editor for this task
       });
 
-      // Handle editor button clicks
-      ganttApi.on('action', async (ev) => {
-        if (ev.action === 'save') {
-
-          // Sync pending changes
-          const taskId = currentEditingTaskRef.current;
-          const changes = pendingEditorChangesRef.current.get(taskId);
-
-          if (changes && Object.keys(changes).length > 0) {
-            try {
-              // Get _gitlab info from current task for proper ID resolution
-              // This is especially important for milestones which need internalId
-              const currentTask = ganttApi.getTask(taskId);
-              if (currentTask?._gitlab) {
-                changes._gitlab = currentTask._gitlab;
-              }
-
-              await syncTask(taskId, changes);
-              pendingEditorChangesRef.current.clear();
-
-              // Refresh from GitLab to update local state
-              await sync();
-
-              // Close editor after successful save
-              ganttApi.exec('close-editor');
-            } catch (error) {
-              console.error('Failed to sync task:', error);
-              showToast(`Failed to save changes: ${error.message}`, 'error');
-            }
-          } else {
-            // No changes, just close
-            ganttApi.exec('close-editor');
-          }
-        } else if (ev.action === 'close') {
-
-          // Check if there are unsaved changes
-          const taskId = currentEditingTaskRef.current;
-          const changes = pendingEditorChangesRef.current.get(taskId);
-
-          if (changes && Object.keys(changes).length > 0) {
-            // Show discard changes dialog instead of native confirm
-            setDiscardChangesDialogOpen(true);
-            // Dialog will handle the actual close via handleDiscardChangesConfirm
-          } else {
-            // No changes, just close
-            ganttApi.exec('close-editor');
-          }
-        }
-      });
-
-      // Track editor close
-      ganttApi.on('close-editor', () => {
-        isEditorOpenRef.current = false;
-        currentEditingTaskRef.current = null;
-      });
+      // SharedEditor handles save/close itself. No action handler needed here.
+      // When SharedEditor closes, it calls closeSharedEditor() from context,
+      // which triggers the effect below to clear SVAR's _activeTask.
 
 
       /**
@@ -1114,6 +1110,10 @@ export function GanttView({
 
       // Phase 1: Capture original workdays before Gantt updates the task
       ganttApi.intercept('update-task', (ev) => {
+        // Skip SharedEditor sync updates — just let SVAR store update, no GitLab call needed
+        if (ev._skipApi) {
+          return true;
+        }
         // Skip our own correction updates (prevents infinite loop)
         if (ev.skipWorkdaysAdjust) {
           return true;
@@ -1146,6 +1146,10 @@ export function GanttView({
 
       // Phase 2: After Gantt updates, calculate and apply end date correction
       ganttApi.on('update-task', (ev) => {
+        // Skip SharedEditor sync updates — SVAR store is already updated, no GitLab call needed
+        if (ev._skipApi) {
+          return;
+        }
         // Skip correction updates - they already have the correct end date
         if (ev.skipWorkdaysAdjust) {
           return;
@@ -1183,6 +1187,10 @@ export function GanttView({
 
       // Phase 3: GitLab sync handler - skip stale events, only sync correction
       ganttApi.on('update-task', (ev) => {
+        // Skip SharedEditor sync updates — already synced via syncTask()
+        if (ev._skipApi) {
+          return;
+        }
         const state = workdaysState.get(ev.id);
 
         if (state) {
@@ -2219,20 +2227,6 @@ export function GanttView({
     ];
   }, [DateCell, TaskTitleCell, WorkdaysCell, columnSettings, labelColorMap, labelPriorityMap, dateEditable, handleGridDateChange]);
 
-  // Editor items configuration - customized for GitLab
-  // Use 'nullable-date' comp type for date fields to support clearing dates to null
-  // (svar's default 'date' type always requires a value and doesn't support null)
-  const editorItems = useMemo(() => {
-    return [
-      { key: 'text', comp: 'text', label: 'Title' },
-      { key: 'details', comp: 'textarea', label: 'Description' },
-      { key: 'start', comp: 'nullable-date', label: 'Start Date' },
-      { key: 'end', comp: 'nullable-date', label: 'Due Date' },
-      { key: 'workdays', comp: 'workdays', label: 'Workdays' },
-      { key: 'links', comp: 'links', label: 'Links' },
-    ];
-  }, []);
-
   // Show loading state
   if (syncState.isLoading && !currentConfig) {
     return (
@@ -2740,15 +2734,7 @@ export function GanttView({
             </ContextMenu>
           )}
         </div>
-        {api && (
-          <Editor
-            api={api}
-            bottomBar={false}
-            autoSave={false}
-            items={editorItems}
-            workdaysHelpers={{ countWorkdays, calculateEndDateByWorkdays }}
-          />
-        )}
+        <SharedEditor />
       </div>
 
       {/* Move In Modal */}

@@ -138,7 +138,7 @@ export function KanbanBoardDnd({
   parentTaskMap,
   viewMode = 'issues',
   labelColorMap,
-  onCardDoubleClick,
+  onCardClick,
   onSameListReorder,
   onCrossListDrag,
   closedTotalCount = 0,
@@ -275,7 +275,7 @@ export function KanbanBoardDnd({
         parentTaskMap={parentTaskMap}
         viewMode={viewMode}
         labelColorMap={labelColorMap}
-        onCardDoubleClick={onCardDoubleClick}
+        onCardClick={onCardClick}
         activeTaskId={activeTask?.id}
         overListId={overListId}
         sortOverrides={sortOverrides}

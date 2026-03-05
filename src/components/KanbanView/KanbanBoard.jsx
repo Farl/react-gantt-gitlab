@@ -56,7 +56,7 @@ export function KanbanBoard({
   parentTaskMap,
   viewMode = 'issues',
   labelColorMap,
-  onCardDoubleClick,
+  onCardClick,
   activeTaskId = null,
   overListId = null,
   // Temporary sort overrides - managed by parent (KanbanBoardDnd) for drag logic access
@@ -265,7 +265,7 @@ export function KanbanBoard({
           }
           labelColorMap={labelColorMap}
           specialType={list.specialType}
-          onCardDoubleClick={onCardDoubleClick}
+          onCardClick={onCardClick}
           onSortChange={(newSortBy, newSortOrder) => handleListSortChange(list.id, newSortBy, newSortOrder)}
           activeTaskId={activeTaskId}
           isOver={overListId === list.id}

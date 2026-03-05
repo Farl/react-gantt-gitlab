@@ -1,0 +1,177 @@
+/* src/components/SharedEditor/SharedEditor.css */
+
+.shared-editor-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 520px;
+  height: 100%;
+  background: var(--wx-background, #fff);
+  border-left: 1px solid var(--wx-border, #dcdcde);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Slide in from right */
+  animation: shared-editor-slide-in 0.2s ease-out;
+}
+
+@keyframes shared-editor-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Drag-to-resize handle on the left edge */
+.shared-editor-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+  /* Subtle visual hint on hover */
+}
+
+.shared-editor-resize-handle:hover,
+.shared-editor-resize-handle:active {
+  background: var(--wx-color-primary, #1f75cb);
+  opacity: 0.3;
+}
+
+.shared-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--wx-border, #dcdcde);
+  flex-shrink: 0;
+}
+
+.shared-editor-header-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wx-color-font, #303030);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Reset h2 browser defaults */
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+}
+
+.shared-editor-header-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shared-editor-header-btn:hover {
+  background: var(--wx-background-alt, rgba(0, 0, 0, 0.05));
+  color: var(--wx-color-font, #303030);
+}
+
+.shared-editor-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shared-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shared-editor-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  letter-spacing: 0.04em;
+}
+
+/* Unsaved changes confirmation dialog */
+.shared-editor-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.shared-editor-confirm-dialog {
+  background: var(--wx-background, #fff);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 300px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.shared-editor-confirm-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--wx-color-font, #303030);
+  margin-bottom: 8px;
+}
+
+.shared-editor-confirm-body {
+  font-size: 13px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.shared-editor-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.shared-editor-confirm-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.shared-editor-confirm-cancel {
+  background: none;
+  border: 1px solid var(--wx-border, #dcdcde);
+  color: var(--wx-color-font, #303030);
+}
+
+.shared-editor-confirm-cancel:hover {
+  background: var(--wx-background-alt, rgba(0, 0, 0, 0.05));
+}
+
+.shared-editor-confirm-discard {
+  background: #e24329;
+  color: #fff;
+}
+
+.shared-editor-confirm-discard:hover {
+  opacity: 0.9;
+}

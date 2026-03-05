@@ -12,6 +12,7 @@
 
 import { useState, useCallback } from 'react';
 import { GitLabDataProvider } from '../../contexts/GitLabDataContext';
+import { SharedEditorProvider } from '../../contexts/SharedEditorContext';
 import { GanttView } from '../GanttView/GanttView';
 import { KanbanView } from '../KanbanView/KanbanView';
 import { SharedToolbar } from './SharedToolbar';
@@ -53,6 +54,7 @@ export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
 
   return (
     <GitLabDataProvider initialConfigId={initialConfigId} autoSync={autoSync}>
+      <SharedEditorProvider>
       <div className="gitlab-workspace">
         {/* Shared Toolbar */}
         <SharedToolbar
@@ -87,6 +89,7 @@ export function GitLabWorkspace({ initialConfigId, autoSync = false }) {
           )}
         </div>
       </div>
+      </SharedEditorProvider>
     </GitLabDataProvider>
   );
 }

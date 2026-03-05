@@ -19,6 +19,8 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useGitLabData } from '../../contexts/GitLabDataContext';
+import { useSharedEditor } from '../../contexts/SharedEditorContext';
+import { SharedEditor } from '../SharedEditor/SharedEditor';
 import { useIssueBoard } from '../../hooks/useIssueBoard';
 import { KanbanBoardDnd } from './KanbanBoardDnd';
 import { BoardSelector } from './BoardSelector';
@@ -310,17 +312,16 @@ export function KanbanView({ showSettings, onSettingsClose }) {
     availableStatuses,
   });
 
-  // Handle card double-click (open editor)
-  const handleCardDoubleClick = useCallback(
-    (task) => {
-      showToast(
-        `Opening editor for #${task._gitlab?.iid || task.id}...`,
-        'info'
-      );
-      // TODO: Implement editor integration
-    },
-    [showToast]
-  );
+  // SharedEditor integration
+  const { requestOpen } = useSharedEditor();
+
+  // Handle card click — open SharedEditor for the task.
+  // Uses requestOpen so unsaved changes prompt before switching tasks.
+  // Pass the task object so closed issues (not in global tasks list) can be shown.
+  const handleCardClick = useCallback((taskId) => {
+    const task = allTasksWithClosed.find((t) => t.id === taskId) ?? null;
+    requestOpen(taskId, task);
+  }, [requestOpen, allTasksWithClosed]);
 
   // Board management handlers
   const handleCreateBoard = useCallback(
@@ -432,7 +433,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
             parentTaskMap={parentTaskMap}
             viewMode={viewMode}
             labelColorMap={labelColorMap}
-            onCardDoubleClick={handleCardDoubleClick}
+            onCardClick={handleCardClick}
             onSameListReorder={handleSameListReorder}
             onCrossListDrag={handleCrossListDrag}
             closedTotalCount={closedTotalCount}
@@ -611,6 +612,7 @@ export function KanbanView({ showSettings, onSettingsClose }) {
           </div>
         </div>
       )}
+      <SharedEditor />
     </div>
   );
 }

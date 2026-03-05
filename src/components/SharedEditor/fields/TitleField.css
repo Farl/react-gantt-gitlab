@@ -1,0 +1,40 @@
+/* src/components/SharedEditor/fields/TitleField.css */
+.title-field-input {
+  width: 100%;
+  border: 1px solid var(--wx-border, #dcdcde);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wx-color-font, #303030);
+  background: var(--wx-background, #fff);
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  min-height: 36px;
+  line-height: 1.4;
+}
+
+.title-field-input:focus {
+  border-color: var(--wx-color-primary, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+.title-field-hint {
+  font-size: 11px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  margin-top: 2px;
+}
+
+.title-field-saving {
+  font-size: 11px;
+  color: var(--wx-color-primary, #1976d2);
+  margin-top: 2px;
+}
+
+.title-field-error {
+  font-size: 11px;
+  color: #e24329;
+  margin-top: 2px;
+}
