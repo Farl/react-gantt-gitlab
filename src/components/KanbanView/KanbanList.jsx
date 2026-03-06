@@ -113,6 +113,7 @@ export function KanbanList({
   defaultSortBy = 'position', // Default sort field from list config
   defaultSortOrder = 'asc', // Default sort order from list config
   listType = 'label', // 'label' | 'status' — list grouping dimension
+  listLabels = [], // Label names that define this list (for filtering redundant labels on cards)
   listColor = null, // Resolved indicator color hex (status color or first label color)
   labelColorMap,
   specialType = null, // 'others' | 'closed'
@@ -196,6 +197,7 @@ export function KanbanList({
                 childTasks={childTasksMap?.get(task.id) || []}
                 parentTask={parentTaskMap?.get(task.id)}
                 viewMode={viewMode}
+                listLabels={listLabels}
                 labelColorMap={labelColorMap}
                 onCardClick={onCardClick}
                 isDragging={task.id === activeTaskId}

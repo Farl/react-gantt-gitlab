@@ -263,6 +263,7 @@ export function KanbanBoard({
               ? (list.statusColor || null)
               : (list.labels?.[0] ? (labelColorMap?.get(list.labels[0]) || null) : null)
           }
+          listLabels={list.labels || []}
           labelColorMap={labelColorMap}
           specialType={list.specialType}
           onCardClick={onCardClick}

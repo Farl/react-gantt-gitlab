@@ -14,15 +14,12 @@
  * Supports drag-and-drop via @dnd-kit/sortable.
  */
 
-import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { openGitLabLink } from '../../utils/GitLabLinkUtils';
 import { isGitLabTask, TASK_COLORS } from '../../utils/TaskTypeUtils';
 import { LabelBadge } from '../shared/LabelBadge.jsx';
-import { LabelTooltip } from '../shared/LabelTooltip.jsx';
 import '../shared/LabelBadge.css';
-import '../shared/LabelTooltip.css';
 import './KanbanCard.css';
 
 /**
@@ -70,37 +67,17 @@ function parseAssignees(assigneesStr) {
 }
 
 /**
- * Labels row with hover tooltip showing all labels (reuses shared LabelTooltip)
+ * Labels row — shows all labels with wrapping (no truncation).
  */
-function KanbanCardLabels({ labels, maxLabels = 2, labelColorMap }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const labelsRef = useRef(null);
-  const visibleLabels = labels.slice(0, maxLabels);
-  const overflowCount = labels.length - maxLabels;
-
+function KanbanCardLabels({ labels, labelColorMap }) {
   return (
-    <div
-      className="kanban-card-labels"
-      ref={labelsRef}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
+    <div className="kanban-card-labels">
       <i className="fas fa-tag kanban-card-icon" />
       <span className="kanban-card-labels-list">
-        {visibleLabels.map((label) => (
+        {labels.map((label) => (
           <LabelBadge key={label} name={label} color={labelColorMap?.get(label)} />
         ))}
-        {overflowCount > 0 && (
-          <span className="kanban-card-overflow">+{overflowCount}</span>
-        )}
       </span>
-      {showTooltip && overflowCount > 0 && (
-        <LabelTooltip
-          anchorRef={labelsRef}
-          labels={labels}
-          colorMap={labelColorMap}
-        />
-      )}
     </div>
   );
 }
@@ -108,10 +85,10 @@ function KanbanCardLabels({ labels, maxLabels = 2, labelColorMap }) {
 export function KanbanCard({
   task,
   labelColorMap,
+  listLabels = [], // Labels defining this list — filtered out from card display
   childTasks = [], // Child tasks (workItemType=Task) to display
   parentTask, // Parent Issue object (for Tasks in 'tasks'/'all' mode)
   viewMode = 'issues', // Current view mode
-  maxLabels = 2,
   maxAssignees = 2,
   listId,
   isDragging = false,
@@ -149,7 +126,8 @@ export function KanbanCard({
     classNames.push('drag-overlay');
   }
 
-  const labels = parseLabels(task.labels);
+  // Filter out the list's own labels — they're redundant since the list header shows them
+  const labels = parseLabels(task.labels).filter((l) => !listLabels.includes(l));
   const assignees = parseAssignees(task.assigned);
   const dueInfo = formatDueDate(task.end);
 
@@ -274,7 +252,6 @@ export function KanbanCard({
       {labels.length > 0 && (
         <KanbanCardLabels
           labels={labels}
-          maxLabels={maxLabels}
           labelColorMap={labelColorMap}
         />
       )}

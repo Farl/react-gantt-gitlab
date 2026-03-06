@@ -82,10 +82,7 @@
 
 .kanban-card-title {
   color: #1f2937;
-  /* Single line with ellipsis for overflow */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-wrap: break-word;
   display: block;
 }
 
@@ -128,19 +125,12 @@
   color: #6b7280;
 }
 
-.kanban-card-assignees-list {
+.kanban-card-assignees-list,
+.kanban-card-labels-list {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
   align-items: center;
-}
-
-.kanban-card-labels-list {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 2px;
-  align-items: center;
-  overflow: hidden;
 }
 
 .kanban-card-overflow {
