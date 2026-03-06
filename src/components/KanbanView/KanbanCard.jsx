@@ -14,12 +14,15 @@
  * Supports drag-and-drop via @dnd-kit/sortable.
  */
 
+import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { openGitLabLink } from '../../utils/GitLabLinkUtils';
 import { isGitLabTask, TASK_COLORS } from '../../utils/TaskTypeUtils';
 import { LabelBadge } from '../shared/LabelBadge.jsx';
+import { LabelTooltip } from '../shared/LabelTooltip.jsx';
 import '../shared/LabelBadge.css';
+import '../shared/LabelTooltip.css';
 import './KanbanCard.css';
 
 /**
@@ -64,6 +67,42 @@ function parseLabels(labelsStr) {
 function parseAssignees(assigneesStr) {
   if (!assigneesStr) return [];
   return assigneesStr.split(', ').filter(Boolean);
+}
+
+/**
+ * Labels row with hover tooltip showing all labels (reuses shared LabelTooltip)
+ */
+function KanbanCardLabels({ labels, maxLabels = 2, labelColorMap }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const labelsRef = useRef(null);
+  const visibleLabels = labels.slice(0, maxLabels);
+  const overflowCount = labels.length - maxLabels;
+
+  return (
+    <div
+      className="kanban-card-labels"
+      ref={labelsRef}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <i className="fas fa-tag kanban-card-icon" />
+      <span className="kanban-card-labels-list">
+        {visibleLabels.map((label) => (
+          <LabelBadge key={label} name={label} color={labelColorMap?.get(label)} />
+        ))}
+        {overflowCount > 0 && (
+          <span className="kanban-card-overflow">+{overflowCount}</span>
+        )}
+      </span>
+      {showTooltip && overflowCount > 0 && (
+        <LabelTooltip
+          anchorRef={labelsRef}
+          labels={labels}
+          colorMap={labelColorMap}
+        />
+      )}
+    </div>
+  );
 }
 
 export function KanbanCard({
@@ -127,10 +166,6 @@ export function KanbanCard({
   // Child tasks (GitLab Tasks with workItemType='Task')
   // Only show in 'issues' mode (in other modes, Tasks are independent cards)
   const hasChildTasks = viewMode === 'issues' && childTasks && childTasks.length > 0;
-
-  // Calculate visible labels and overflow
-  const visibleLabels = labels.slice(0, maxLabels);
-  const overflowLabels = labels.length - maxLabels;
 
   // Calculate visible assignees and overflow
   const visibleAssignees = assignees.slice(0, maxAssignees);
@@ -235,19 +270,13 @@ export function KanbanCard({
         </div>
       )}
 
-      {/* Labels */}
+      {/* Labels with hover tooltip showing all labels */}
       {labels.length > 0 && (
-        <div className="kanban-card-labels">
-          <i className="fas fa-tag kanban-card-icon" />
-          <span className="kanban-card-labels-list">
-            {visibleLabels.map((label) => (
-              <LabelBadge key={label} name={label} color={labelColorMap?.get(label)} />
-            ))}
-            {overflowLabels > 0 && (
-              <span className="kanban-card-overflow">+{overflowLabels}</span>
-            )}
-          </span>
-        </div>
+        <KanbanCardLabels
+          labels={labels}
+          maxLabels={maxLabels}
+          labelColorMap={labelColorMap}
+        />
       )}
 
       {/* Child Tasks (GitLab Tasks) */}

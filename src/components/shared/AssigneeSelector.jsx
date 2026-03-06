@@ -155,7 +155,7 @@ export function AssigneeSelector({
                 <span className="as-option-content">
                   <span className="as-option-label">{opt.label}</span>
                   {opt.subtitle && (
-                    <span className="as-option-subtitle">{opt.subtitle}</span>
+                    <span className="as-option-subtitle" title={opt.subtitle}>{opt.subtitle}</span>
                   )}
                 </span>
               </label>

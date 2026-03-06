@@ -4,10 +4,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { getGitLabLinkInfo } from '../utils/GitLabLinkUtils';
 import { LabelBadge } from './shared/LabelBadge.jsx';
+import { LabelTooltip } from './shared/LabelTooltip.jsx';
 import './shared/LabelBadge.css';
+import './shared/LabelTooltip.css';
 
 const STORAGE_KEY = 'gantt-column-settings';
 
@@ -473,63 +474,6 @@ export const LabelCell = ({ row, labelColorMap, labelPriorityMap }) => {
         />
       )}
     </div>
-  );
-};
-
-/**
- * LabelTooltip - Portal-rendered tooltip showing all labels
- * Uses position:fixed with viewport-based flip logic (same approach as DateEditCell)
- */
-const LabelTooltip = ({ anchorRef, labels, colorMap }) => {
-  const tooltipRef = useRef(null);
-
-  // Position the tooltip after render using requestAnimationFrame
-  // to ensure accurate height measurement for flip logic
-  useLayoutEffect(() => {
-    if (!anchorRef.current || !tooltipRef.current) return;
-
-    const positionTooltip = () => {
-      const el = tooltipRef.current;
-      const anchor = anchorRef.current;
-      if (!el || !anchor) return;
-
-      const rect = anchor.getBoundingClientRect();
-      const tooltipHeight = el.offsetHeight || el.getBoundingClientRect().height || 0;
-
-      // Viewport boundaries for flip calculation
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-
-      let top;
-      // Flip to above if below space is insufficient AND above has enough space
-      if (spaceBelow < tooltipHeight + 4 && spaceAbove >= tooltipHeight + 4) {
-        // Show above - tooltip bottom aligns above cell top
-        top = rect.top - tooltipHeight - 4;
-      } else {
-        // Show below (default) - overlapping cell top
-        top = rect.top;
-      }
-
-      el.style.position = 'fixed';
-      el.style.top = `${top}px`;
-      el.style.left = `${rect.left}px`;
-      el.style.zIndex = '99999';
-    };
-
-    // Use requestAnimationFrame to wait for DOM to render
-    requestAnimationFrame(positionTooltip);
-  }, [anchorRef]);
-
-  return ReactDOM.createPortal(
-    <div
-      ref={tooltipRef}
-      className="label-cell-tooltip-portal"
-    >
-      {labels.map((title, index) => (
-        <LabelBadge key={index} name={title} color={colorMap?.get(title)} />
-      ))}
-    </div>,
-    document.body
   );
 };
 

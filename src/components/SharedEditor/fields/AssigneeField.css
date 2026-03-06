@@ -1,0 +1,57 @@
+/* AssigneeField styles */
+.assignee-field-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+  min-height: 24px;
+}
+
+.assignee-field-empty {
+  font-size: 12px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  font-style: italic;
+}
+
+.assignee-field-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  background: var(--wx-gitlab-filter-hover-background, #f0f0f0);
+  color: var(--wx-gitlab-filter-text, #303030);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.assignee-field-tag-name {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.assignee-field-tag-id {
+  font-size: 11px;
+  color: var(--wx-gitlab-control-text, #666);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.assignee-field-tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.assignee-field-tag-remove:hover {
+  opacity: 1;
+}

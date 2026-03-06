@@ -1,0 +1,21 @@
+/* Shared tooltip portal for label badges
+ * position/top/left/z-index set inline by LabelTooltip component */
+.label-cell-tooltip-portal {
+  padding: 8px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 320px;
+  min-width: 120px;
+}
+
+/* ========== Dark Theme ========== */
+.wx-willow-dark-theme .label-cell-tooltip-portal {
+  background: #363a3f;
+  border-color: #4a5058;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

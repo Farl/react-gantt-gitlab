@@ -164,7 +164,7 @@ export function KanbanList({
             style={{ backgroundColor: listColor }}
           />
         )}
-        <span className="kanban-list-name">{name}</span>
+        <span className="kanban-list-name" title={name}>{name}</span>
         <span className="kanban-list-count">
           {closedTotalCount != null && closedTotalCount > tasks.length
             ? closedTotalCount

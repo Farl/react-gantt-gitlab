@@ -108,6 +108,36 @@
   letter-spacing: 0.04em;
 }
 
+/* Row layout for field label + Edit button */
+.shared-editor-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-edit-btn {
+  padding: 1px 8px;
+  font-size: 11px;
+  background: none;
+  border: 1px solid var(--wx-border, #dcdcde);
+  border-radius: 3px;
+  color: var(--wx-color-font-alt, #9fa1ae);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.field-edit-btn:hover:not(:disabled) {
+  background: var(--wx-gitlab-filter-hover-background, #f5f5f5);
+  color: var(--wx-gitlab-filter-text, #303030);
+}
+
+.field-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Unsaved changes confirmation dialog */
 .shared-editor-confirm-overlay {
   position: absolute;

@@ -52,6 +52,10 @@
   font-weight: 600;
   font-size: 13px;
   color: #374151;
+  min-width: 0; /* Allow shrinking in flex */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kanban-list-count {
@@ -63,6 +67,7 @@
   border-radius: 10px;
   min-width: 20px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .kanban-list-header-others .kanban-list-count {
@@ -76,6 +81,7 @@
 /* SortControl is positioned at end of header */
 .kanban-list-header .sort-control {
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .kanban-list-content {

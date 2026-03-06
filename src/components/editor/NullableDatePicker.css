@@ -10,7 +10,6 @@
 .nullable-date-picker {
   display: flex;
   flex-direction: column;
-  position: relative;
 }
 
 .nullable-date-picker.disabled {
@@ -42,9 +41,4 @@
   background-color: var(--wx-background-alt, rgba(0, 0, 0, 0.02));
 }
 
-/* Picker popup positioning (relative to container, overlapping trigger) */
-.nullable-date-picker-popup {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
+/* Popup is now rendered via Portal with fixed positioning — no CSS needed here */

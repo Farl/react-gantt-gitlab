@@ -83,7 +83,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   cursor: pointer;
   font-size: 13px;
   color: var(--wx-gitlab-filter-text, #303030);
@@ -108,7 +108,9 @@
 
 .as-option-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
   flex: 1;
 }
@@ -117,6 +119,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 60%; /* Cap name width so @username still visible */
 }
 
 .as-option-subtitle {
@@ -125,6 +128,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* Empty state */

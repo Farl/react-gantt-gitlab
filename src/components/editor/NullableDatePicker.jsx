@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import DatePickerPopup from '../shared/DatePickerPopup.jsx';
 import { formatDateDisplay } from '../../utils/dateUtils.js';
 import './NullableDatePicker.css';
@@ -15,7 +16,8 @@ import './NullableDatePicker.css';
  * - Clear button in popover to set date to null
  * - Works with the Editor's onChange/onchange pattern
  *
- * UI Design: Uses shared DatePickerPopup for consistency with DateEditCell (Grid)
+ * UI Design: Uses shared DatePickerPopup via Portal with viewport-aware positioning
+ * so the calendar never gets clipped by the SharedEditor's boundaries.
  *
  * @param {Object} props
  * @param {Date|null} props.value - Current date value (can be null)
@@ -24,12 +26,88 @@ import './NullableDatePicker.css';
  * @param {string} props.label - Field label
  * @param {boolean} props.disabled - If true, disable editing
  */
+/**
+ * DatePickerPortal — renders DatePickerPopup in a portal, positioned relative to the trigger.
+ * Uses ResizeObserver to reposition after the SVAR Calendar async-renders its content.
+ */
+function DatePickerPortal({ value, triggerRef, pickerRef, onDateSelect, onClear }) {
+  const popupRef = useRef(null);
+
+  // Assign to parent's pickerRef for click-outside detection
+  const setRef = useCallback((el) => {
+    popupRef.current = el;
+    pickerRef.current = el;
+  }, [pickerRef]);
+
+  // Position popup relative to trigger, with viewport-aware flip.
+  // Uses ResizeObserver because the SVAR Calendar renders its content asynchronously,
+  // so the popup height is 0 on first layout — we must reposition once it has real size.
+  useEffect(() => {
+    const el = popupRef.current;
+    const trigger = triggerRef.current;
+    if (!el || !trigger) return;
+
+    const position = () => {
+      const rect = trigger.getBoundingClientRect();
+      const popupHeight = el.offsetHeight;
+      const popupWidth = el.offsetWidth;
+
+      if (popupHeight === 0) return; // Calendar not yet rendered
+
+      const spaceBelow = window.innerHeight - rect.top;
+      const spaceAbove = rect.top;
+      let top;
+      if (spaceBelow < popupHeight && spaceAbove >= popupHeight) {
+        top = rect.top - popupHeight;
+      } else {
+        top = rect.top;
+      }
+
+      let left = rect.left;
+      if (left + popupWidth > window.innerWidth - 8) {
+        left = window.innerWidth - popupWidth - 8;
+      }
+      if (left < 8) left = 8;
+
+      el.style.top = `${top}px`;
+      el.style.left = `${left}px`;
+      el.style.visibility = 'visible';
+    };
+
+    const ro = new ResizeObserver(() => {
+      position();
+      // Disconnect after first successful positioning — Calendar only needs one resize
+      if (el.offsetHeight > 0) ro.disconnect();
+    });
+    ro.observe(el);
+
+    return () => ro.disconnect();
+  }, [triggerRef]);
+
+  return createPortal(
+    <DatePickerPopup
+      value={value}
+      onDateSelect={onDateSelect}
+      onClear={onClear}
+      popupRef={setRef}
+      style={{
+        position: 'fixed',
+        zIndex: 10000,
+        // Start hidden to prevent flash at wrong position; revealed after positioning
+        visibility: 'hidden',
+      }}
+    />,
+    document.body
+  );
+}
+
 export default function NullableDatePicker(props) {
   const { value, onChange, onchange, label, disabled = false } = props;
   const onChangeHandler = onChange ?? onchange;
 
   const [showPicker, setShowPicker] = useState(false);
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
   const pickerRef = useRef(null);
 
   // Check if we have a valid date
@@ -122,6 +200,7 @@ export default function NullableDatePicker(props) {
     <div className="nullable-date-picker" ref={containerRef}>
       {/* Clickable date display */}
       <span
+        ref={triggerRef}
         className="nullable-date-value clickable"
         style={noneStyle}
         onClick={handleOpenPicker}
@@ -130,14 +209,14 @@ export default function NullableDatePicker(props) {
         {displayValue}
       </span>
 
-      {/* Picker popup - uses shared DatePickerPopup */}
+      {/* Picker popup via Portal — viewport-aware positioning prevents clipping by SharedEditor */}
       {showPicker && (
-        <DatePickerPopup
+        <DatePickerPortal
           value={value}
+          triggerRef={triggerRef}
+          pickerRef={pickerRef}
           onDateSelect={handleDateSelect}
           onClear={handleClear}
-          popupRef={pickerRef}
-          className="nullable-date-picker-popup"
         />
       )}
     </div>
