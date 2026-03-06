@@ -649,6 +649,7 @@ export class GitLabGraphQLProvider {
         $milestoneWildcardId: MilestoneWildcardId,
         $assigneeUsernames: [String!],
         $assigneeWildcardId: AssigneeWildcardId,
+        $iterationWildcardId: IterationWildcardId,
         $createdAfter: Time,
         $createdBefore: Time
       ) {
@@ -663,6 +664,7 @@ export class GitLabGraphQLProvider {
             milestoneWildcardId: $milestoneWildcardId,
             assigneeUsernames: $assigneeUsernames,
             assigneeWildcardId: $assigneeWildcardId,
+            iterationWildcardId: $iterationWildcardId,
             createdAfter: $createdAfter,
             createdBefore: $createdBefore
           ) {
@@ -923,23 +925,37 @@ export class GitLabGraphQLProvider {
       issuesVariables.milestoneTitle = otherMilestoneTitles;
     }
 
-    // Handle iteration filtering - only applicable to issues query
-    // NOTE: workItems query does NOT support iterationTitle filter parameter yet
-    // iterationTitle (String, not array) and iterationWildcardId are mutually exclusive
+    // Handle iteration filtering
+    // iterationTitle/iterationWildcardId are mutually exclusive
+    // workItems query supports iterationWildcardId but not iterationTitle
     if (serverFilters?.iterationTitles?.length) {
       const iterHasNone = serverFilters.iterationTitles.includes('NONE');
+      const iterHasCurrent = serverFilters.iterationTitles.includes('CURRENT');
       const otherIterTitles = serverFilters.iterationTitles.filter(
-        (t) => t !== 'NONE',
+        (t) => t !== 'NONE' && t !== 'CURRENT',
       );
 
-      if (iterHasNone && otherIterTitles.length === 0) {
+      if (iterHasCurrent && !iterHasNone && otherIterTitles.length === 0) {
+        // Only CURRENT selected - use wildcard to find items in the current iteration
+        variables.iterationWildcardId = 'CURRENT';
+        issuesVariables.iterationWildcardId = 'CURRENT';
+      } else if (
+        iterHasNone &&
+        !iterHasCurrent &&
+        otherIterTitles.length === 0
+      ) {
         // Only NONE selected - use wildcard to find items without iteration
+        variables.iterationWildcardId = 'NONE';
         issuesVariables.iterationWildcardId = 'NONE';
-      } else if (otherIterTitles.length === 1) {
-        // Single specific title - use iterationTitle (API accepts single String, not array)
+      } else if (
+        otherIterTitles.length === 1 &&
+        !iterHasNone &&
+        !iterHasCurrent
+      ) {
+        // Single specific title - issues query only (workItems doesn't support iterationTitle)
         issuesVariables.iterationTitle = otherIterTitles[0];
       }
-      // If multiple titles: server-side cannot handle it (API limitation), client-side filter will apply
+      // If multiple titles or mixed wildcards: server-side cannot handle it (API limitation), client-side filter will apply
     }
 
     // Fetch work items with optional pagination

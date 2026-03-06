@@ -760,6 +760,7 @@ export function FilterPanel({
                   <FilterMultiSelect
                     title="Iterations (OR)"
                     options={[
+                      { value: 'CURRENT', label: 'Current Iteration' },
                       { value: 'NONE', label: 'None (No Iteration)' },
                       ...(filterOptions?.iterations || []).map(it => ({
                         value: it.title,
