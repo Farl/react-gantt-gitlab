@@ -6,7 +6,7 @@
   align-items: center;
   gap: 1px;
   padding: 4px 6px;
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-bottom: none;
   border-radius: 6px 6px 0 0;
   background: var(--wx-background-alt, #f8f8fb);
@@ -55,7 +55,7 @@
 
 .desc-toolbar-separator {
   width: 1px;
-  background: var(--wx-border, #dcdcde);
+  background: var(--wx-border-color, #dcdcde);
   margin: 4px 4px;
   height: 18px;
   align-self: center;
@@ -64,13 +64,19 @@
 
 /* Editor content area */
 .description-field-editor {
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-radius: 0 0 6px 6px;
   min-height: 180px;
   max-height: 420px;
   overflow-y: auto;
   cursor: text;
+  background: var(--wx-background-alt, #f8f8fb);
+}
+
+.description-field-editor:focus-within {
   background: var(--wx-background, #fff);
+  border-color: var(--wx-color-primary, #1f75cb);
+  box-shadow: 0 0 0 3px rgba(31, 117, 203, 0.12);
 }
 
 .description-field-editor .tiptap {
@@ -82,18 +88,13 @@
   min-height: 180px;
 }
 
-.description-field-editor:focus-within {
-  border-color: var(--wx-color-primary, #1f75cb);
-  box-shadow: 0 0 0 3px rgba(31, 117, 203, 0.12);
-}
-
 /* TipTap content styles */
 .description-field-editor h1 {
   font-size: 1.5em;
   font-weight: 700;
   margin: 0.75em 0 0.3em;
   line-height: 1.3;
-  border-bottom: 2px solid var(--wx-border, #dcdcde);
+  border-bottom: 2px solid var(--wx-border-color, #dcdcde);
   padding-bottom: 0.2em;
 }
 
@@ -165,7 +166,7 @@
 
 .description-field-editor hr {
   border: none;
-  border-top: 2px solid var(--wx-border, #dcdcde);
+  border-top: 2px solid var(--wx-border-color, #dcdcde);
   margin: 0.8em 0;
 }
 
@@ -214,7 +215,7 @@
   font-size: 12px;
   font-weight: 600;
   border-radius: 4px;
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   cursor: pointer;
   background: none;
   color: var(--wx-color-font, #303030);

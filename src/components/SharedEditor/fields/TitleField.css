@@ -1,13 +1,13 @@
 /* src/components/SharedEditor/fields/TitleField.css */
 .title-field-input {
   width: 100%;
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 14px;
   font-weight: 600;
   color: var(--wx-color-font, #303030);
-  background: var(--wx-background, #fff);
+  background: var(--wx-background-alt, #f8f8fb);
   font-family: inherit;
   resize: none;
   outline: none;
@@ -19,6 +19,7 @@
 .title-field-input:focus {
   border-color: var(--wx-color-primary, #1976d2);
   box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+  background: var(--wx-background, #fff);
 }
 
 .title-field-hint {

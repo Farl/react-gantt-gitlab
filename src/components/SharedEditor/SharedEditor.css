@@ -7,7 +7,7 @@
   width: 520px;
   height: 100%;
   background: var(--wx-background, #fff);
-  border-left: 1px solid var(--wx-border, #dcdcde);
+  border-left: var(--wx-border, 1px solid #dcdcde);
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
   z-index: 1000;
   display: flex;
@@ -49,7 +49,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--wx-border, #dcdcde);
+  border-bottom: var(--wx-border, 1px solid #dcdcde);
   flex-shrink: 0;
 }
 
@@ -119,7 +119,7 @@
   padding: 1px 8px;
   font-size: 11px;
   background: none;
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-radius: 3px;
   color: var(--wx-color-font-alt, #9fa1ae);
   cursor: pointer;
@@ -189,7 +189,7 @@
 
 .shared-editor-confirm-cancel {
   background: none;
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   color: var(--wx-color-font, #303030);
 }
 

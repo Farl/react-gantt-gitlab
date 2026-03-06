@@ -29,7 +29,7 @@
 }
 
 .label-field-picker {
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-radius: 4px;
   overflow: hidden;
 }

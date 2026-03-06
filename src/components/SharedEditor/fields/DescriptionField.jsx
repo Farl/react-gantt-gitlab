@@ -77,9 +77,9 @@ function markdownToHtml(markdown) {
       continue;
     }
 
-    // Empty line → paragraph break
+    // Empty line — skip entirely. Block-level elements (headings, lists, code)
+    // already have margins; extra <p><br></p> only adds unwanted visual gaps.
     if (!line.trim()) {
-      result.push('<p><br></p>');
       i++;
       continue;
     }

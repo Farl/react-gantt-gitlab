@@ -23,7 +23,7 @@
   color: var(--wx-color-font, #303030);
   padding: 6px 10px;
   background: var(--wx-background, #fff);
-  border: 1px solid var(--wx-border, #dcdcde);
+  border: var(--wx-border, 1px solid #dcdcde);
   border-radius: 4px;
   min-width: 90px;
   display: inline-block;

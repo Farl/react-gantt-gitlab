@@ -45,7 +45,7 @@ export function WeightField({ task }) {
         onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
         disabled={saving}
         style={{
-          border: '1px solid var(--wx-border, #dcdcde)',
+          border: 'var(--wx-border, 1px solid #dcdcde)',
           borderRadius: 4,
           padding: '5px 8px',
           fontSize: 13,
