@@ -54,9 +54,12 @@ async function handleCreate(request, env) {
     return json({ error: 'Invalid JSON' }, 400);
   }
 
-  const { pat } = body;
+  const { pat, gitlabUrl } = body;
   if (!pat || typeof pat !== 'string' || pat.length < 10) {
     return json({ error: 'Missing or invalid pat' }, 400);
+  }
+  if (!gitlabUrl || typeof gitlabUrl !== 'string') {
+    return json({ error: 'Missing gitlabUrl' }, 400);
   }
 
   // Generate a unique code — retry on collision (extremely unlikely with 32^6 = 1B+ combos).
@@ -70,10 +73,12 @@ async function handleCreate(request, env) {
     if (!existing) break;
   }
 
-  // PAT is stored as plain text in KV. Mitigations: short TTL (30 min),
+  // Credential data stored as plain text JSON in KV. Mitigations: short TTL (30 min),
   // one-time deletion on redemption, and 32^6 keyspace guarding the entry.
   // Anyone with Cloudflare dashboard/API access to this namespace can read PATs at rest.
-  await env.SESSION_KV.put(code, pat, { expirationTtl: CODE_TTL_SECONDS });
+  await env.SESSION_KV.put(code, JSON.stringify({ pat, gitlabUrl }), {
+    expirationTtl: CODE_TTL_SECONDS,
+  });
 
   return json({ code, expiresInSeconds: CODE_TTL_SECONDS });
 }
@@ -92,16 +97,18 @@ async function handleRedeem(request, env) {
   }
 
   const normalizedCode = code.trim().toUpperCase();
-  const pat = await env.SESSION_KV.get(normalizedCode);
+  const raw = await env.SESSION_KV.get(normalizedCode);
 
-  if (!pat) {
+  if (!raw) {
     return json({ error: 'Invalid or expired code' }, 404);
   }
 
   // One-time use: delete immediately after reading
   await env.SESSION_KV.delete(normalizedCode);
 
-  return json({ pat });
+  // KV stores { pat, gitlabUrl } as JSON
+  const data = JSON.parse(raw);
+  return json({ pat: data.pat, gitlabUrl: data.gitlabUrl });
 }
 
 export default {

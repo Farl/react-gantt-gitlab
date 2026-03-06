@@ -1,84 +1,90 @@
 // src/components/session/RedeemSessionCode.jsx
 //
-// Two-step modal for redeeming a session login code on a shared/meeting-room device.
+// Single-step modal for redeeming a session login code on a shared/meeting-room device.
+// Uses BaseDialog for consistent modal behavior (Escape, overlay click, close button).
 //
-// Step A (code): User enters the 6-char code → PAT fetched from Worker (KV entry deleted)
-//   PAT is held in local state from this point — never re-fetched.
-// Step B (url):  User confirms GitLab URL → testConnection() verifies PAT+URL.
-//   If connection fails, the URL can be corrected and retried without a new code.
-//   On success, addSessionCredential() is called and onSuccess(cred) fires.
+// User enters 6-char code → Worker returns PAT + GitLab URL → testConnection() verifies
+// → addSessionCredential() stores in sessionStorage → onSuccess(cred) fires.
+//
+// If connection fails, the user can retry (code is already consumed, but PAT + URL
+// are held in local state so retries don't need a new code).
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { redeemSessionCode } from '../../utils/sessionWorkerClient';
 import {
   gitlabCredentialManager,
   GitLabCredentialManager,
 } from '../../config/GitLabCredentialManager';
+import { BaseDialog } from '../shared/dialogs/BaseDialog';
+
+// Matches characters NOT in the session code alphabet (no 0/O/1/I to avoid visual confusion)
+const NON_CODE_CHAR = /[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g;
 
 /**
  * @param {Object} props
- * @param {string} [props.initialGitlabUrl] - Pre-filled GitLab URL (from first persistent credential)
  * @param {Function} props.onSuccess - Called with the new GitLabCredential on success
  * @param {Function} props.onClose - Called when user cancels
  */
-export function RedeemSessionCode({ initialGitlabUrl = '', onSuccess, onClose }) {
-  const [step, setStep] = useState('code'); // 'code' | 'url'
+export function RedeemSessionCode({ onSuccess, onClose }) {
   const [code, setCode] = useState('');
-  const [gitlabUrl, setGitlabUrl] = useState(initialGitlabUrl);
-  // PAT is fetched once in step 'code' and retained for step 'url' retries.
-  // testConnection failures do NOT consume a new code.
-  const [fetchedPat, setFetchedPat] = useState(null);
+  // After code redemption, PAT + URL are held in state for connection retries
+  // without consuming a new code.
+  const [redeemed, setRedeemed] = useState(null); // { pat, gitlabUrl }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const inputRef = useRef(null);
 
-  const handleFetchPat = async () => {
-    if (code.trim().length !== 6) {
-      setError('Code must be 6 characters');
-      return;
-    }
-    setLoading(true);
-    setError(null);
+  const handlePaste = async () => {
     try {
-      const pat = await redeemSessionCode(code);
-      setFetchedPat(pat);
-      setStep('url');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      const text = await navigator.clipboard.readText();
+      const cleaned = text.toUpperCase().replace(NON_CODE_CHAR, '').slice(0, 6);
+      if (cleaned) setCode(cleaned);
+    } catch {
+      // Clipboard API denied — focus input so user can Ctrl+V manually
+      inputRef.current?.focus();
     }
   };
 
-  const handleVerify = async () => {
-    if (!fetchedPat) {
-      // Shouldn't happen in normal flow, but guard against component remount losing state
-      setError('Session expired. Please go back and enter the code again.');
-      setStep('code');
-      return;
-    }
-    if (!gitlabUrl.trim()) {
-      setError('GitLab URL is required');
-      return;
-    }
+  const handleSubmit = async () => {
     setLoading(true);
     setError(null);
     try {
+      // Step 1: Redeem code (or reuse previously redeemed data on retry)
+      let data = redeemed;
+      if (!data) {
+        if (code.trim().length !== 6) {
+          setError('Code must be 6 characters');
+          setLoading(false);
+          return;
+        }
+        data = await redeemSessionCode(code);
+        setRedeemed(data);
+      }
+
+      // Step 2: Test connection with the PAT + URL from the code
       const test = await GitLabCredentialManager.testConnection({
-        gitlabUrl: gitlabUrl.trim(),
-        token: fetchedPat,
+        gitlabUrl: data.gitlabUrl,
+        token: data.pat,
       });
       if (!test.success) {
         // Truncate HTML-heavy errors (e.g. Cloudflare error pages) to keep UI usable
-        const msg = test.error?.length > 200
-          ? test.error.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) + '…'
-          : test.error;
+        const msg =
+          test.error?.length > 200
+            ? test.error
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 200) + '…'
+            : test.error;
         setError(`Connection failed: ${msg}`);
         return;
       }
+
+      // Step 3: Save session credential
       const cred = gitlabCredentialManager.addSessionCredential({
         name: `Session (${test.username})`,
-        gitlabUrl: gitlabUrl.trim(),
-        token: fetchedPat,
+        gitlabUrl: data.gitlabUrl,
+        token: data.pat,
       });
       onSuccess(cred);
     } catch (err) {
@@ -88,139 +94,107 @@ export function RedeemSessionCode({ initialGitlabUrl = '', onSuccess, onClose })
     }
   };
 
-  const overlayStyle = {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 20000,
-  };
+  const isDisabled = loading || (!redeemed && code.length !== 6);
 
-  const cardStyle = {
-    background: 'var(--wx-gitlab-modal-background, #fff)',
-    borderRadius: '12px',
-    padding: '32px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-    maxWidth: '360px',
-    width: '90%',
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '6px',
-    fontSize: '14px',
-    fontWeight: 500,
-    color: 'var(--wx-gitlab-modal-text, #333)',
-  };
-
-  const inputStyle = {
-    width: '100%',
-    padding: '8px 12px',
-    border: '1px solid var(--wx-gitlab-filter-input-border, #ccc)',
-    borderRadius: '6px',
-    background: 'var(--wx-gitlab-filter-input-background, #fff)',
-    color: 'var(--wx-gitlab-modal-text, #333)',
-    fontSize: '14px',
-    boxSizing: 'border-box',
-    marginBottom: '16px',
-  };
+  const footer = (
+    <>
+      <button onClick={onClose} className="dialog-btn dialog-btn-secondary">
+        Cancel
+      </button>
+      <button
+        onClick={handleSubmit}
+        disabled={isDisabled}
+        className="dialog-btn dialog-btn-primary"
+      >
+        {loading
+          ? redeemed
+            ? 'Connecting…'
+            : 'Redeeming…'
+          : redeemed
+            ? 'Retry'
+            : 'Sign In'}
+      </button>
+    </>
+  );
 
   return (
-    <div style={overlayStyle}>
-      <div style={cardStyle}>
-        <h2 style={{ margin: '0 0 4px', fontSize: '18px', color: 'var(--wx-gitlab-modal-text, #333)' }}>
-          Use Login Code
-        </h2>
-        <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--wx-gitlab-modal-hint-text, #666)' }}>
-          {step === 'code'
-            ? 'Enter the 6-character code from your other device.'
-            : 'Confirm your GitLab URL to complete sign-in. Your credentials are loaded for this session only and cleared when you close this tab.'}
-        </p>
+    <BaseDialog
+      isOpen={true}
+      onClose={onClose}
+      title="Use Login Code"
+      width={400}
+      className="redeem-code-dialog"
+      footer={footer}
+    >
+      <p className="dialog-hint">
+        Enter the 6-character code from your other device. Your credentials
+        are loaded for this session only and cleared when you close this tab.
+      </p>
 
-        {step === 'code' && (
-          <>
-            <label style={labelStyle}>Login Code</label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) =>
-                // Strip chars not in CHARS alphabet (no 0/O/1/I to avoid visual confusion)
-                setCode(e.target.value.toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g, ''))
-              }
-              placeholder="AB3K9X"
-              maxLength={6}
-              autoFocus
-              style={{
-                ...inputStyle,
-                fontFamily: 'monospace',
-                fontSize: '24px',
-                letterSpacing: '0.3em',
-                textAlign: 'center',
-              }}
-            />
-            <p style={{ fontSize: '12px', color: 'var(--wx-gitlab-modal-hint-text, #999)', marginTop: '-12px', marginBottom: '16px', textAlign: 'center' }}>
-              Letters A–Z (no O or I) and digits 2–9
-            </p>
-          </>
-        )}
-
-        {step === 'url' && (
-          <>
-            <label style={labelStyle}>GitLab URL</label>
-            <input
-              type="url"
-              value={gitlabUrl}
-              onChange={(e) => setGitlabUrl(e.target.value)}
-              placeholder="https://gitlab.company.com"
-              autoFocus
-              style={inputStyle}
-            />
-          </>
-        )}
-
-        {error && (
-          <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '16px', maxHeight: '80px', overflowY: 'auto', wordBreak: 'break-word' }}>
-            {error}
-          </p>
-        )}
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '8px 16px',
-              border: '1px solid #ccc',
-              borderRadius: '6px',
-              background: 'none',
-              fontSize: '14px',
-              cursor: 'pointer',
-              color: 'var(--wx-gitlab-modal-text, #333)',
+      <div className="dialog-form-group">
+        <label>Login Code</label>
+        <div className="redeem-code-input-row">
+          <input
+            ref={inputRef}
+            type="text"
+            value={code}
+            onChange={(e) =>
+              setCode(
+                e.target.value
+                  .toUpperCase()
+                  .replace(NON_CODE_CHAR, ''),
+              )
+            }
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isDisabled) handleSubmit();
             }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={step === 'code' ? handleFetchPat : handleVerify}
-            disabled={loading || (step === 'code' && code.length !== 6)}
-            style={{
-              flex: 1,
-              padding: '8px 16px',
-              border: 'none',
-              borderRadius: '6px',
-              background: '#3b82f6',
-              color: '#fff',
-              fontSize: '14px',
-              cursor: 'pointer',
-              opacity: loading || (step === 'code' && code.length !== 6) ? 0.5 : 1,
-            }}
-          >
-            {loading ? 'Loading…' : step === 'code' ? 'Next' : 'Sign In'}
-          </button>
+            placeholder="AB3K9X"
+            maxLength={6}
+            autoFocus
+            disabled={!!redeemed}
+            className="dialog-input redeem-code-input"
+          />
+          {!redeemed && (
+            <button
+              onClick={handlePaste}
+              className="dialog-btn dialog-btn-secondary redeem-code-paste-btn"
+              title="Paste from clipboard"
+              type="button"
+            >
+              Paste
+            </button>
+          )}
         </div>
+        <span className="dialog-hint">Letters A–Z (no O or I) and digits 2–9</span>
       </div>
-    </div>
+
+      {error && (
+        <div className="dialog-error" style={{ maxHeight: '80px', overflowY: 'auto', wordBreak: 'break-word' }}>
+          {error}
+        </div>
+      )}
+
+      <style>{`
+        .redeem-code-input-row {
+          display: flex;
+          gap: 8px;
+          align-items: stretch;
+        }
+        .redeem-code-input {
+          flex: 1;
+          min-width: 0;
+          font-family: monospace !important;
+          font-size: 20px !important;
+          letter-spacing: 0.2em !important;
+          text-align: center !important;
+        }
+        .redeem-code-input:disabled {
+          opacity: 0.5;
+        }
+        .redeem-code-paste-btn {
+          white-space: nowrap;
+        }
+      `}</style>
+    </BaseDialog>
   );
 }

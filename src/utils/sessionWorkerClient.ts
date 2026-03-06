@@ -35,14 +35,15 @@ export interface CreateSessionResult {
   expiresInSeconds: number;
 }
 
-/** Send PAT to Worker, get back a 6-char code. */
+/** Send PAT + GitLab URL to Worker, get back a 6-char code. */
 export async function createSessionCode(
   pat: string,
+  gitlabUrl: string,
 ): Promise<CreateSessionResult> {
   const res = await fetchWithTimeout(workerUrl('/session/create'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pat }),
+    body: JSON.stringify({ pat, gitlabUrl }),
   });
 
   if (!res.ok) {
@@ -53,8 +54,15 @@ export async function createSessionCode(
   return res.json();
 }
 
-/** Exchange a 6-char code for a PAT. One-time use — KV entry deleted on redemption. */
-export async function redeemSessionCode(code: string): Promise<string> {
+export interface RedeemSessionResult {
+  pat: string;
+  gitlabUrl: string;
+}
+
+/** Exchange a 6-char code for PAT + GitLab URL. One-time use — KV entry deleted on redemption. */
+export async function redeemSessionCode(
+  code: string,
+): Promise<RedeemSessionResult> {
   const res = await fetchWithTimeout(workerUrl('/session/redeem'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,6 +74,5 @@ export async function redeemSessionCode(code: string): Promise<string> {
     throw new Error(err.error ?? `HTTP ${res.status}`);
   }
 
-  const data = await res.json();
-  return data.pat as string;
+  return res.json();
 }

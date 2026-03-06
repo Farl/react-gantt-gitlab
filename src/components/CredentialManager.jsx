@@ -79,7 +79,7 @@ export function CredentialManager({ isOpen, onClose, onCredentialsChange }) {
     setGeneratingCodeFor(credential.id);
     setCodeGenError(null);
     try {
-      const result = await createSessionCode(credential.token);
+      const result = await createSessionCode(credential.token, credential.gitlabUrl);
       setSessionCode({
         code: result.code,
         expiresAt: Date.now() + result.expiresInSeconds * 1000,
